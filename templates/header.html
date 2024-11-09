@@ -1,0 +1,64 @@
+{{define "header"}}
+<header class="site-header">
+    <nav class="main-nav">
+        <div class="nav-left">
+            <a href="/" class="nav-logo">Sample Tracker</a>
+        </div>
+        <div class="nav-center">
+            <a href="/wiki" class="nav-item">Wiki</a>
+            <a href="/booking" class="nav-item">Equipment Booking</a>
+        </div>
+        <div class="nav-right">
+            <span class="user-info">{{.Username}}</span>
+            <a href="/logout" class="nav-item">Logout</a>
+        </div>
+    </nav>
+</header>
+
+<style>
+.site-header {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.main-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.nav-left, .nav-center, .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-logo {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #333;
+    text-decoration: none;
+}
+
+.nav-item {
+    padding: 0.5rem 1rem;
+    color: #666;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.nav-item:hover {
+    background-color: #e9ecef;
+    color: #333;
+}
+
+.user-info {
+    color: #666;
+    font-size: 0.9rem;
+}
+</style>
+{{end}}

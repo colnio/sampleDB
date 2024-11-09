@@ -1,268 +1,73 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Name}} - Sample Details</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        }
+{{define "title"}}Sample Tracker{{end}}
+{{define "content"}}
 
-        body {
-            padding: 2rem;
-            background-color: #f5f5f5;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
+<!-- <div class="content"> -->
+<h1>{{.Sample.Name}}</h1>
 
-        h1, h2, h3 {
-            color: #333;
-        }
-
-        h1 {
-            margin-bottom: 2rem;
-            font-size: 2rem;
-        }
-
-        h2 {
-            margin-bottom: 1.5rem;
-            font-size: 1.5rem;
-        }
-
-        h3 {
-            margin-bottom: 1rem;
-            font-size: 1.2rem;
-        }
-
-        .attachments-container {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-
-        .attachment-preview {
-            display: inline-block;
-            margin: 0 1rem 1rem 0;
-            text-align: center;
-            vertical-align: top;
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 6px;
-            border: 1px solid #eee;
-        }
-
-        .attachment-preview img {
-            max-width: 200px;
-            max-height: 200px;
-            object-fit: contain;
-            border-radius: 4px;
-            margin-bottom: 0.5rem;
-        }
-
-        .attachment-preview .file-icon {
-            font-size: 48px;
-            color: #666;
-            margin-bottom: 0.5rem;
-        }
-
-        .attachment-name {
-            margin: 0.5rem 0;
-            font-size: 0.9em;
-            color: #333;
-            word-break: break-all;
-            max-width: 200px;
-        }
-
-        .delete-button {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 0.4rem 0.8rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
-        }
-
-        .delete-button:hover {
-            background-color: #c82333;
-        }
-
-        .upload-form {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid #eee;
-        }
-
-        .upload-form input[type="file"] {
-            margin: 1rem 0;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .form-container {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-top: 2rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #333;
-            font-weight: 500;
-        }
-
-        input[type="text"],
-        textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            transition: border-color 0.2s;
-        }
-
-        input[type="text"]:focus,
-        textarea:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-        }
-
-        textarea {
-            min-height: 120px;
-            resize: vertical;
-            font-family: inherit;
-            line-height: 1.5;
-        }
-
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-top: 1.5rem;
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 1rem;
-            }
-
-            .attachments-container,
-            .form-container {
-                padding: 1.5rem;
-            }
-
-            .attachment-preview {
-                display: block;
-                margin: 0 0 1rem 0;
-                width: 100%;
-            }
-
-            .attachment-preview img {
-                max-width: 100%;
-            }
-
-            .attachment-name {
-                max-width: none;
-            }
-        }
-    </style>
-</head>
-<body>
-    <h1>{{.Name}}</h1>
-
-    <div class="attachments-container">
-        <h2>Attachments</h2>
-        {{range .Attachments}}
-            <div class="attachment-preview">
-                {{if .IsImage}}
-                    <a href="/attachment/{{.ID}}" target="_blank">
-                        <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}">
-                    </a>
-                {{else}}
-                    <a href="/attachment/{{.ID}}" download>
-                        <div class="file-icon">📄</div>
-                    </a>
-                {{end}}
-                <div class="attachment-name">{{.OriginalName}}</div>
-                <form method="POST" action="/attachment/{{.ID}}/delete">
-                    <button type="submit" class="delete-button">Delete</button>
-                </form>
-            </div>
+<div class="attachments-container">
+    <h2>Attachments</h2>
+    {{range .Sample.Attachments}}
+    <div class="attachment-preview">
+        {{if .IsImage}}
+        <a href="/attachment/{{.ID}}" target="_blank">
+            <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}">
+        </a>
+        {{else}}
+        <a href="/attachment/{{.ID}}" download>
+            <div class="file-icon">📄</div>
+        </a>
         {{end}}
-
-        <div class="upload-form">
-            <h3>Upload New Attachment</h3>
-            <form method="POST" action="/samples/{{.ID}}/upload" enctype="multipart/form-data">
-                <input type="file" name="file" required>
-                <button type="submit">Upload</button>
-            </form>
-        </div>
-    </div>
-
-    <div class="form-container">
-        <h2>Edit Sample Details</h2>
-        <form method="POST" action="/samples/edit/{{.ID}}">
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input type="text" id="name" name="name" value="{{.Name}}" required>
-            </div>
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" required>{{.Description}}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="sample_prep">Sample Preparation</label>
-                <textarea id="sample_prep" name="sample_prep">{{.Sample_prep}}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="keywords">Keywords</label>
-                <input type="text" id="keywords" name="keywords" value="{{.Keywords}}">
-            </div>
-            <div class="form-group">
-                <label for="owner">Owner</label>
-                <input type="text" id="owner" name="owner" value="{{.Owner}}">
-            </div>
-            <button type="submit">Save Changes</button>
+        <div class="attachment-name">{{.OriginalName}}</div>
+        <form action="/attachment/{{.ID}}/delete" method="POST">
+            <button type="submit">Delete</button>
         </form>
     </div>
+    {{end}}
+    
+    <div class="upload-form">
+        <h3>Upload New Attachment</h3>
+        <form action="/samples/{{.Sample.ID}}/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <button type="submit">Upload</button>
+        </form>
+    </div>
+</div>
 
-    <a href="/" class="back-link">← Back to main page</a>
-</body>
-</html>
+<div class="form-container">
+    <h2>Edit Sample Details</h2>
+    <form action="/samples/edit/{{.Sample.ID}}" method="POST">
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" value="{{.Sample.Name}}" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description">{{.Sample.Description}}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Sample Preparation</label>
+            <textarea name="sample_prep">{{.Sample.Sample_prep}}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Keywords</label>
+            <input type="text" name="keywords" value="{{.Sample.Keywords}}">
+        </div>
+        
+        <div class="form-group">
+            <label>Owner</label>
+            <input type="text" name="owner" value="{{.Sample.Owner}}">
+        </div>
+        
+        <button type="submit">Save Changes</button>
+    </form>
+</div>
+
+<a href="/" class="back-link">← Back to main page</a>
+<!-- </div> -->
+
+{{end}}
+
+{{template "base" .}}

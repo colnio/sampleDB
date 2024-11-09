@@ -1,0 +1,29 @@
+{{define "title"}}Wiki Articles{{end}}
+
+{{define "content"}}
+<div class="wiki-container">
+    <div class="wiki-header">
+        <h1>Wiki Articles</h1>
+        <a href="/wiki/new" class="button">Create New Article</a>
+    </div>
+
+    {{if .Articles}}
+        <div class="wiki-articles">
+            {{range .Articles}}
+                <div class="article-tile">
+                    <h2><a href="/wiki/{{.Title}}">{{.Title}}</a></h2>
+                    <div class="article-meta">
+                        Created: {{.CreatedAt.Format "Jan 02, 2006 15:04"}}
+                    </div>
+                </div>
+            {{end}}
+        </div>
+    {{else}}
+        <div class="no-articles">
+            <p>No articles yet. Be the first to create one!</p>
+        </div>
+    {{end}}
+</div>
+{{end}}
+
+{{template "base" .}}

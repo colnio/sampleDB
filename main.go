@@ -35,6 +35,10 @@ type Attachment struct {
 	IsImage      bool
 }
 
+type BasePageData struct {
+	Username string
+}
+
 // Sample represents a sample record in the database
 type Sample struct {
 	ID          int
@@ -75,27 +79,57 @@ var dbPool *pgxpool.Pool
 func main() {
 	// Connect to PostgreSQL
 	var err error
-	dbURL := "postgres://app:app@container-pg:5432/sampledb" // replace with your credentials
+	dbURL := "postgres://app:app@localhost:5432/sampledb"
 	dbPool, err = pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
 	defer dbPool.Close()
 
-	// Start server
+	// Set up static file serving
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// Auth routes
 	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/register", registerHandler) // Add this line
+	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/logout", requireAuth(logoutHandler))
 
-	// Protected routes
+	// Sample management routes
 	http.HandleFunc("/", requireAuth(mainPageHandler))
 	http.HandleFunc("/samples/new", requireAuth(newSampleHandler))
 	http.HandleFunc("/samples/edit/", requireAuth(editSampleHandler))
 	http.HandleFunc("/samples/", requireAuth(handleSample))
 	http.HandleFunc("/attachment/", requireAuth(handleAttachment))
 
+	// Wiki routes
+	http.HandleFunc("/wiki", requireAuth(handleWiki))
+	http.HandleFunc("/wiki/", requireAuth(handleWiki)) // This will handle all wiki subpaths
+
+	// Create uploads directory if it doesn't exist
+	err = os.MkdirAll("uploads", 0755)
+	if err != nil {
+		log.Fatalf("Error creating uploads directory: %v\n", err)
+	}
+
+	// Create static directory if it doesn't exist
+	err = os.MkdirAll("static/css", 0755)
+	if err != nil {
+		log.Fatalf("Error creating static directories: %v\n", err)
+	}
+
 	fmt.Println("Server started at :8010")
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Fatal(http.ListenAndServe(":8010", nil))
+}
+
+func parseTemplates(files ...string) (*template.Template, error) {
+	// Always include base and header templates
+	files = append([]string{
+		"templates/base.html",
+		"templates/header.html",
+	}, files...)
+
+	return template.ParseFiles(files...)
 }
 
 // mainPageHandler serves the main page and handles search functionality
@@ -116,26 +150,28 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		samples, err = getAllSamples()
 		if err != nil {
-			fmt.Printf("%v\n", err)
 			http.Error(w, "Error retrieving samples", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	// Create page data
-	data := MainPageData{
-		Samples:  samples,
-		Username: session.Username,
-		Query:    query,
+	data := struct {
+		BasePageData
+		Samples []Sample
+		Query   string
+	}{
+		BasePageData: BasePageData{Username: session.Username},
+		Samples:      samples,
+		Query:        query,
 	}
 
-	tmpl, err := template.ParseFiles("templates/main.html")
+	tmpl, err := parseTemplates("templates/main.html")
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
 
-	tmpl.Execute(w, data)
+	tmpl.ExecuteTemplate(w, "base", data)
 }
 
 // Update handleSample function to properly handle the upload path pattern
@@ -301,31 +337,40 @@ func getSamples() ([]Sample, error) {
 
 	return samples, nil
 }
+
 func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Extract sample ID from URL by removing "/samples/"
+	session := r.Context().Value("user").(Session)
 	sampleID := strings.TrimPrefix(r.URL.Path, "/samples/")
 
-	// Retrieve sample details from the database
 	sample, err := getSampleByID(sampleID)
 	if err != nil {
 		http.Error(w, "Sample not found", http.StatusNotFound)
 		return
 	}
 
-	// Load the sample detail template
-	tmpl, err := template.ParseFiles("templates/sample_detail.html")
+	data := struct {
+		BasePageData
+		Sample Sample
+	}{
+		BasePageData: BasePageData{Username: session.Username},
+		Sample:       sample,
+	}
+
+	tmpl, err := parseTemplates("templates/sample_detail.html")
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
 
-	tmpl.Execute(w, sample)
+	tmpl.ExecuteTemplate(w, "base", data)
+
 }
+
 func getSampleByID(sampleID string) (Sample, error) {
 	var sample Sample
 	err := dbPool.QueryRow(context.Background(),
@@ -380,25 +425,45 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // newSampleFormHandler displays the form to add a new sample
-func newSampleFormHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("templates/new_sample.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	tmpl.Execute(w, nil)
-}
+// func newSampleHandler(w http.ResponseWriter, r *http.Request) {
+//     if r.Method == http.MethodGet {
+//         session := r.Context().Value("user").(Session)
+//         data := struct {
+//             BasePageData
+//         }{
+//             BasePageData: BasePageData{Username: session.Username},
+//         }
+
+//         tmpl, err := template.ParseFiles("templates/header.html", "templates/new_sample.html")
+//         if err != nil {
+//             http.Error(w, "Error loading template", http.StatusInternalServerError)
+//             return
+//         }
+//         tmpl.ExecuteTemplate(w, "new_sample", data)
+//         return
+//     }
+// 	tmpl.Execute(w, nil)
+// }
 
 // newSampleHandler handles both displaying the form and processing the submission
 func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		// Display the form
-		tmpl, err := template.ParseFiles("templates/new_sample.html")
+		session := r.Context().Value("user").(Session)
+		data := struct {
+			BasePageData
+		}{
+			BasePageData: BasePageData{Username: session.Username},
+		}
+
+		tmpl, err := parseTemplates("templates/new_sample.html")
 		if err != nil {
 			http.Error(w, "Error loading template", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Execute(w, nil)
+
+		tmpl.ExecuteTemplate(w, "base", data)
+
+		return
 	} else if r.Method == http.MethodPost {
 		// Process the form submission
 		name := r.FormValue("name")
@@ -744,6 +809,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		username).Scan(&userID, &passwdHash, &isApproved)
 
 	if err != nil {
+		fmt.Println(err)
 		http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
 		return
 	}
