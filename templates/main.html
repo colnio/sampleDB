@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Tracker</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        body {
+            padding: 2rem;
+            background-color: #f5f5f5;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 2rem;
+        }
+
+        h1 a {
+            color: #333;
+            text-decoration: none;
+            font-size: 2rem;
+        }
+
+        h1 a:hover {
+            color: #666;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: center;
+            justify-content: space-between; /* This spreads out the children */
+        }
+
+        .search-container {
+            flex-grow: 1;
+            margin-right: 1rem; /* Add space between search and button */
+        }
+
+        button, input[type="submit"] {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        button:hover, input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            max-width: 600px; /* Limit search form width */
+        }
+
+        input[type="text"] {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 0.9rem;
+        }
+
+        #samples {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding: 1rem 0;
+        }
+
+        .tile {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .tile h2 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .tile h2 a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .tile h2 a:hover {
+            color: #007bff;
+        }
+
+        .tile p {
+            margin-bottom: 0.5rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .tile p:last-child {
+            margin-bottom: 0;
+        }
+
+        .tile strong {
+            color: #333;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-form {
+                flex-direction: column;
+            }
+            
+            input[type="text"] {
+                max-width: none;
+            }
+
+            .search-container {
+                margin-right: 0;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1><a href="/">Sample Tracker</a></h1>
+    
+    <div class="controls">
+        <div class="search-container">
+            <form class="search-form" action="/" method="GET">
+                <input type="text" id="query" name="query" placeholder="Search by Name or Keywords">
+                <button type="submit">Search</button>
+            </form>
+        </div>
+        <a href="/samples/new"><button>Add New Sample</button></a>
+        <div class="header-right">
+            <span class="user-info">Logged in as: {{.Username}}</span>
+            <form action="/logout" method="POST" style="display: inline;">
+                <button type="submit" class="logout-button">Logout</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="samples">
+        {{range .Samples}}
+        <div class="tile">
+            <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>
+            <p><strong>Description:</strong> {{.Description}}</p>
+            <p><strong>Keywords:</strong> {{.Keywords}}</p>
+            <p><strong>Owner:</strong> {{.Owner}}</p>
+        </div>
+        {{end}}
+    </div>
+</body>
+</html>

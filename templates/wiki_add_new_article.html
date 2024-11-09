@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Article - Wiki</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .app-title {
+            color: #333;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .app-title:hover {
+            color: #007bff;
+        }
+
+        /* Main content */
+        .main-container {
+            max-width: 1000px;
+            margin: 6rem auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+
+        .content-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .content-title {
+            font-size: 2rem;
+            color: #333;
+        }
+
+        /* Form styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+
+        textarea {
+            min-height: 400px;
+            font-family: monospace;
+            line-height: 1.6;
+            resize: vertical;
+        }
+
+        /* Preview section */
+        .preview-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #eee;
+        }
+
+        .preview-content {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+
+        /* Markdown tips */
+        .markdown-tips {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+
+        .markdown-tips h3 {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .markdown-tips code {
+            background: #fff;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        /* Attachments */
+        .attachments {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .attachment-preview {
+            display: inline-block;
+            margin: 0.5rem;
+            text-align: center;
+        }
+
+        .attachment-preview img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 4px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .button-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .button-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .button-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .button-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+                margin-top: 5rem;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="app-title">Sample Tracker</a>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="content">
+            <div class="content-header">
+                <h1 class="content-title">Add New Article</h1>
+            </div>
+
+            <form action="/wiki/new" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="title">Article Title</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" name="category" required>
+                        <option value="">Select a category</option>
+                        <option value="getting-started">Getting Started</option>
+                        <option value="sample-preparation">Sample Preparation</option>
+                        <option value="analysis-methods">Analysis Methods</option>
+                        <option value="best-practices">Best Practices</option>
+                        <option value="troubleshooting">Troubleshooting</option>
+                        <option value="faq">FAQ</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="content">Content (Markdown supported)</label>
+                    <textarea id="content" name="content" required></textarea>
+                    
+                    <div class="markdown-tips">
+                        <h3>Markdown Tips</h3>
+                        <p><code># Heading 1</code> - Main heading</p>
+                        <p><code>## Heading 2</code> - Sub heading</p>
+                        <p><code>**bold**</code> - Bold text</p>
+                        <p><code>*italic*</code> - Italic text</p>
+                        <p><code>![alt text](image.jpg)</code> - Image</p>
+                        <p><code>[link text](url)</code> - Link</p>
+                        <p><code>```code block```</code> - Code block</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="attachments">Attachments</label>
+                    <input type="file" id="attachments" name="attachments" multiple accept="image/*,.pdf,.doc,.docx">
+                    <div class="attachments" id="attachment-previews">
+                        <!-- Preview thumbnails will be added here via JavaScript -->
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="button button-primary">Create Article</button>
+                    <a href="/wiki" class="button button-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Simple file preview functionality
+        document.getElementById('attachments').addEventListener('change', function(event) {
+            const previewContainer = document.getElementById('attachment-previews');
+            previewContainer.innerHTML = '';
+            
+            Array.from(event.target.files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const preview = document.createElement('div');
+                    preview.className = 'attachment-preview';
+                    
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.onload = () => URL.revokeObjectURL(img.src);
+                    
+                    preview.appendChild(img);
+                    previewContainer.appendChild(preview);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
