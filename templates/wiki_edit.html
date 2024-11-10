@@ -1,5 +1,10 @@
 {{define "title"}}{{if .Article}}Edit{{else}}New{{end}} Article - Wiki{{end}}
 
+{{define "additional_styles"}}
+<link rel="stylesheet" href="/static/css/easymde.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+{{end}}
+
 {{define "content"}}
 <div class="wiki-edit">
     <h1>{{if .Article}}Edit Article{{else}}Create New Article{{end}}</h1>
@@ -12,7 +17,7 @@
 
         <div class="form-group">
             <label for="content">Content</label>
-            <textarea id="content" name="content" rows="20" required>{{if .Article}}{{.Article.Content}}{{end}}</textarea>
+            <textarea id="content" name="content" required>{{if .Article}}{{.Article.Content.Raw}}{{end}}</textarea>
         </div>
 
         <div class="button-row">
@@ -21,6 +26,88 @@
         </div>
     </form>
 </div>
-{{end}}
 
-{{template "base" .}}
+<script src="/static/js/easymde.min.js"></script>
+<script>
+    var easyMDE = new EasyMDE({
+        element: document.getElementById('content'),
+        spellChecker: false,
+        autosave: {
+            enabled: true,
+            uniqueId: "wikiEditor_{{if .Article}}{{.Article.Title}}{{else}}new{{end}}",
+            delay: 1000,
+        },
+        toolbar: [
+            "bold", "italic", "heading", "|",
+            "quote", "unordered-list", "ordered-list", "|",
+            "link", "image", "table", "|",
+            "preview", "side-by-side", "fullscreen", "|",
+            "guide"
+        ]
+    });
+</script>
+
+<style>
+/* Make sure the editor container is visible and properly sized */
+.EasyMDEContainer {
+    display: block;
+    width: 100%;
+}
+
+/* Ensure toolbar is visible */
+.editor-toolbar {
+    display: flex !important;
+    opacity: 1 !important;
+    border: 1px solid #ddd;
+    background-color: #000000;
+    padding: 5px;
+}
+
+/* Style toolbar buttons */
+.editor-toolbar a {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin: 0 2px;
+    padding: 3px;
+    color: #8b8b8b !important;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    text-decoration: none !important;
+}
+
+.editor-toolbar a:hover {
+    background-color: #31343766;
+    border-color: #ddd;
+}
+
+.editor-toolbar a.active {
+    background-color: #e9ecef;
+    border-color: #ddd;
+}
+
+/* Style the editor area */
+.CodeMirror {
+    height: 500px !important;
+    border: 1px solid #ddd;
+    border-top: none;
+}
+
+/* Style the preview area */
+.editor-preview-side {
+    border: 1px solid #ddd;
+    padding: 10px;
+}
+
+/* Ensure proper spacing for separators */
+.editor-toolbar i.separator {
+    display: inline-block;
+    width: 1px;
+    height: 20px;
+    margin: 0 5px;
+    background-color: #000000;
+}
+</style>
+{{end}}

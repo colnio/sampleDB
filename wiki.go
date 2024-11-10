@@ -3,17 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
-	"mime"
+	"html/template"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
+	"github.com/gomarkdown/markdown/parser"
 )
 
 type Article struct {
 	ID             int
 	Title          string
-	Content        string
+	Content        ArticleContent
 	CreatedBy      int
 	CreatedAt      time.Time
 	LastModifiedAt time.Time
@@ -37,6 +40,11 @@ type WikiPageData struct {
 	Article  *Article
 	Error    string
 	Success  string
+}
+
+type ArticleContent struct {
+	Raw  string
+	HTML template.HTML
 }
 
 func handleWiki(w http.ResponseWriter, r *http.Request) {
@@ -108,13 +116,20 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 	title := strings.TrimPrefix(r.URL.Path, "/wiki/")
 
 	var article Article
+	var rawContent string
 	err := dbPool.QueryRow(context.Background(),
 		`SELECT article_id, title, content, created_at, created_by 
          FROM articles WHERE title = $1`, title).Scan(
-		&article.ID, &article.Title, &article.Content, &article.CreatedAt, &article.CreatedBy)
+		&article.ID, &article.Title, &rawContent, &article.CreatedAt, &article.CreatedBy)
 	if err != nil {
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return
+	}
+
+	// Set both raw content and rendered HTML
+	article.Content = ArticleContent{
+		Raw:  rawContent,
+		HTML: renderMarkdown(rawContent),
 	}
 
 	// Get attachments
@@ -127,9 +142,6 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 			var att ArticleAttachment
 			err := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt)
 			if err == nil {
-				contentType := mime.TypeByExtension(filepath.Ext(att.Address))
-				att.IsImage = isImage(contentType)
-				att.Address = filepath.Base(att.Address)
 				article.Attachments = append(article.Attachments, att)
 			}
 		}
@@ -151,6 +163,7 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 
 	tmpl.ExecuteTemplate(w, "base", data)
 }
+
 func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 	session := r.Context().Value("user").(Session)
 
@@ -195,18 +208,20 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	fmt.Println(r.URL.Path)
 	title := parts[3]
-	fmt.Println("Article to edit title: " + title)
+
 	if r.Method == http.MethodGet {
 		var article Article
+		var rawContent string
 		err := dbPool.QueryRow(context.Background(),
 			`SELECT article_id, title, content FROM articles WHERE title = $1`,
-			title).Scan(&article.ID, &article.Title, &article.Content)
+			title).Scan(&article.ID, &article.Title, &rawContent)
 		if err != nil {
 			http.Error(w, "Article not found", http.StatusNotFound)
 			return
 		}
+
+		article.Content = ArticleContent{Raw: rawContent}
 
 		data := struct {
 			BasePageData
@@ -239,6 +254,7 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/wiki/"+title, http.StatusSeeOther)
 }
+
 func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -261,6 +277,7 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/wiki", http.StatusSeeOther)
 }
+
 func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -306,4 +323,42 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
+}
+
+func renderMarkdown(md string) template.HTML {
+	// Create markdown parser with extensions
+	extensions := parser.CommonExtensions |
+		parser.AutoHeadingIDs |
+		parser.NoEmptyLineBeforeBlock |
+		parser.Tables |
+		parser.FencedCode |
+		parser.Autolink |
+		parser.Strikethrough |
+		parser.SpaceHeadings |
+		parser.HeadingIDs |
+		parser.BackslashLineBreak |
+		parser.DefinitionLists |
+		parser.Footnotes
+
+	p := parser.NewWithExtensions(extensions)
+
+	// Parse markdown
+	doc := p.Parse([]byte(md))
+
+	// Create HTML renderer with options
+	opts := html.RendererOptions{
+		Flags: html.CommonFlags |
+			html.HrefTargetBlank |
+			html.LazyLoadImages |
+			html.TOC |
+			html.UseXHTML |
+			html.FootnoteReturnLinks,
+		CSS: "",
+	}
+	renderer := html.NewRenderer(opts)
+
+	// Render HTML
+	html := markdown.Render(doc, renderer)
+
+	return template.HTML(html)
 }
