@@ -194,6 +194,7 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
          VALUES ($1, $2, $3, $3)`,
 		title, content, session.UserID)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Error creating article", http.StatusInternalServerError)
 		return
 	}
