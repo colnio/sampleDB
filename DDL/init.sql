@@ -21,7 +21,8 @@ CREATE TABLE if not exists users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     is_approved BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    admin bool default false;
 );
 
 grant all on users to app;
@@ -104,11 +105,11 @@ GRANT ALL ON SEQUENCE article_attachments_attachment_id_seq TO app;
 GRANT ALL ON SEQUENCE equipment_equipment_id_seq TO app;
 
 grant all on samples to app with grant option;
-alter samples owner to app;
+alter samples owner to  to app;
 grant all on users to app with grant option;
-alter users owner to app;
+alter users owner to  to app;
 grant all on attachments to app with grant option;
-alter attachments owner to app;
+alter attachments owner to  to app;
 grant all on articles to app with grant option;
 alter articles owner to app;
 grant all on article_attachments to app with grant option;
