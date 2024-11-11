@@ -33,6 +33,7 @@ CREATE TABLE if not exists attachments (
     attachment_address VARCHAR(255) NOT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 grant all on schema public to app;
 grant all on attachments to app;
 grant all on attachments_attachment_id_seq to app;
@@ -102,8 +103,24 @@ GRANT ALL ON SEQUENCE articles_article_id_seq TO app;
 GRANT ALL ON SEQUENCE article_attachments_attachment_id_seq TO app;
 GRANT ALL ON SEQUENCE equipment_equipment_id_seq TO app;
 
+grant all on samples to app with grant option;
+alter samples owner to app;
+grant all on users to app with grant option;
+alter users owner to app;
+grant all on attachments to app with grant option;
+alter attachments owner to app;
+grant all on articles to app with grant option;
+alter articles owner to app;
+grant all on article_attachments to app with grant option;
+alter article_attachments owner to app;
+grant all on equipment to app with grant option;
+alter equipment owner to app;
+grant all on user_equipment_permissions to app with grant option;
+alter user_equipment_permissions owner to app;
+grant all on bookings to app with grant option;
+alter bookings owner to app;
 -- Create extension for time range exclusion
-CREATE EXTENSION IF NOT EXISTS btree_gist;
+-- CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 -- Insert some sample equipment
 INSERT INTO equipment (name, description, location) VALUES
