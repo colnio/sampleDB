@@ -1,3 +1,15 @@
+CREATE TABLE if not exists users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    is_approved BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    admin bool default false;
+);
+
+grant all on users to app;
+grant all on sequence users_user_id_seq to app;
+
 CREATE TABLE if not exists samples (
     sample_id SERIAL PRIMARY KEY,
     sample_name VARCHAR(100) NOT NULL,
@@ -16,17 +28,6 @@ insert into samples (sample_name, sample_description, sample_keywords, sample_ow
 insert into samples (sample_name, sample_description, sample_keywords, sample_owner) values ('T3', 'desc3', 'MAC', 'colnio');
 insert into samples (sample_name, sample_description, sample_keywords, sample_owner) values ('T4', 'desc4', 'MoS2', 'colnio');
 
-CREATE TABLE if not exists users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    is_approved BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    admin bool default false;
-);
-
-grant all on users to app;
-grant all on sequence users_user_id_seq to app;
 
 CREATE TABLE if not exists attachments (
     attachment_id SERIAL PRIMARY KEY,
