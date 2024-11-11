@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 type UserAccess struct {
@@ -23,8 +26,30 @@ type AdminPageData struct {
 	Success   string
 }
 
+func getBasePageData(session Session) (BasePageData, error) {
+	var isAdmin bool
+	err := dbPool.QueryRow(context.Background(),
+		"SELECT admin FROM users WHERE user_id = $1",
+		session.UserID).Scan(&isAdmin)
+	if err != nil {
+		return BasePageData{}, err
+	}
+
+	return BasePageData{
+		Username: session.Username,
+		UserID:   session.UserID,
+		IsAdmin:  isAdmin,
+	}, nil
+}
 func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 	session := r.Context().Value("user").(Session)
+
+	// Get base page data
+	baseData, err := getBasePageData(session)
+	if err != nil {
+		http.Error(w, "Error getting user data", http.StatusInternalServerError)
+		return
+	}
 
 	// Get all equipment first
 	equipment, err := getAllEquipment()
@@ -40,10 +65,13 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
             u.username, 
             u.is_approved, 
             u.admin,
-            array_remove(array_agg(uep.equipment_id), NULL) as equipment_ids
+            COALESCE(
+                array_agg(uep.equipment_id) FILTER (WHERE uep.equipment_id IS NOT NULL),
+                '{}'::int[]
+            ) as equipment_ids
         FROM users u
         LEFT JOIN user_equipment_permissions uep ON u.user_id = uep.user_id
-        GROUP BY u.user_id, u.username
+        GROUP BY u.user_id, u.username, u.is_approved, u.admin
         ORDER BY u.username`)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -58,16 +86,19 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&u.UserID, &u.Username, &u.Approved,
 			&u.Admin, &equipmentIDs)
 		if err != nil {
+			fmt.Println(err)
 			continue
 		}
 
 		// Map equipment permissions
 		u.EquipmentAccess = make([]Equipment, 0)
-		for _, eqID := range equipmentIDs {
+		if equipmentIDs != nil {
 			for _, eq := range equipment {
-				if eq.ID == eqID {
-					u.EquipmentAccess = append(u.EquipmentAccess, eq)
-					break
+				for _, id := range equipmentIDs {
+					if eq.ID == id {
+						u.EquipmentAccess = append(u.EquipmentAccess, eq)
+						break
+					}
 				}
 			}
 		}
@@ -75,15 +106,11 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := AdminPageData{
-		BasePageData: BasePageData{
-			Username: session.Username,
-			UserID:   session.UserID,
-			IsAdmin:  true,
-		},
-		Users:     users,
-		Equipment: equipment,
-		Error:     r.URL.Query().Get("error"),
-		Success:   r.URL.Query().Get("success"),
+		BasePageData: baseData,
+		Users:        users,
+		Equipment:    equipment,
+		Error:        r.URL.Query().Get("error"),
+		Success:      r.URL.Query().Get("success"),
 	}
 
 	tmpl, err := parseTemplates("templates/admin.html")
@@ -128,6 +155,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 		"UPDATE users SET is_approved = $1 WHERE user_id = $2",
 		data.Approved, data.UserID)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Error updating approval status", http.StatusInternalServerError)
 		return
 	}
@@ -137,6 +165,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM user_equipment_permissions WHERE user_id = $1",
 		data.UserID)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Error updating equipment permissions", http.StatusInternalServerError)
 		return
 	}
@@ -147,12 +176,14 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 			"INSERT INTO user_equipment_permissions (user_id, equipment_id) VALUES ($1, $2)",
 			data.UserID, equipID)
 		if err != nil {
+			fmt.Println(err)
 			continue
 		}
 	}
 
 	// Commit transaction
 	if err = tx.Commit(context.Background()); err != nil {
+		fmt.Println(err)
 		http.Error(w, "Error committing changes", http.StatusInternalServerError)
 		return
 	}
@@ -197,4 +228,94 @@ func handleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/admin?success=Admin+status+updated", http.StatusSeeOther)
+}
+
+func handleAddEquipment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get equipment name from form
+	equipmentName := r.FormValue("name")
+	if equipmentName == "" {
+		http.Redirect(w, r, "/admin?error=Equipment+name+is+required", http.StatusSeeOther)
+		return
+	}
+
+	// Insert new equipment
+	_, err := dbPool.Exec(context.Background(),
+		"INSERT INTO equipment (name) VALUES ($1)",
+		equipmentName)
+
+	if err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+add+equipment", http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/admin?success=Equipment+added+successfully", http.StatusSeeOther)
+}
+
+func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract equipment ID from URL
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	equipmentID, err := strconv.Atoi(parts[3])
+	if err != nil {
+		http.Error(w, "Invalid equipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Start a transaction
+	tx, err := dbPool.Begin(context.Background())
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(context.Background())
+
+	// Delete related bookings first
+	_, err = tx.Exec(context.Background(),
+		"DELETE FROM bookings WHERE equipment_id = $1",
+		equipmentID)
+	if err != nil {
+		http.Error(w, "Error deleting bookings", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete equipment permissions
+	_, err = tx.Exec(context.Background(),
+		"DELETE FROM user_equipment_permissions WHERE equipment_id = $1",
+		equipmentID)
+	if err != nil {
+		http.Error(w, "Error deleting permissions", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete the equipment
+	_, err = tx.Exec(context.Background(),
+		"DELETE FROM equipment WHERE equipment_id = $1",
+		equipmentID)
+	if err != nil {
+		http.Error(w, "Error deleting equipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Commit transaction
+	if err = tx.Commit(context.Background()); err != nil {
+		http.Error(w, "Error committing transaction", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
 }

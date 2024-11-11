@@ -287,7 +287,7 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 
 func getAllEquipment() ([]Equipment, error) {
 	rows, err := dbPool.Query(context.Background(),
-		`SELECT equipment_id, name, description, location 
+		`SELECT equipment_id, name, coalesce(description, 'N/A'), coalesce(location, 'N/A') 
          FROM equipment 
          ORDER BY name`)
 	if err != nil {

@@ -2,72 +2,127 @@
 
 {{define "content"}}
 <div class="admin-container">
-    <h1>User Management</h1>
+    <!-- Equipment Section -->
+    <div class="section">
+        <div class="section-header">
+            <h2>Equipment Management</h2>
+            <button onclick="showEquipmentModal()" class="btn btn-primary">Add New Equipment</button>
+        </div>
+        
+        <div class="equipment-list">
+            <table class="equipment-table">
+                <thead>
+                    <tr>
+                        <th>Equipment Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Equipment}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>
+                            <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" 
+                                    class="btn btn-small btn-danger">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    {{with .Error}}
-    <div class="alert alert-error">{{.}}</div>
-    {{end}}
-    
-    {{with .Success}}
-    <div class="alert alert-success">{{.}}</div>
-    {{end}}
+    <!-- User Management Section -->
+    <div class="section">
+        <h2>User Management</h2>
+        
+        {{with .Error}}
+        <div class="alert alert-error">{{.}}</div>
+        {{end}}
+        
+        {{with .Success}}
+        <div class="alert alert-success">{{.}}</div>
+        {{end}}
 
-    <div class="users-table-wrapper">
-        <table class="users-table">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <!-- <th>Created</th> -->
-                    <th>Status</th>
-                    <th>Equipment Access</th>
-                    <th>Admin Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .Users}}
-                <tr data-user-id="{{.UserID}}">
-                    <td>{{.Username}}</td>
-                    <!-- <td>{{.CreatedAt}}</td> -->
-                    <td>
-                        <label class="toggle">
-                            <input type="checkbox" class="approved-toggle" 
-                                   {{if .Approved}}checked{{end}}
-                                   onchange="updateAccess({{.UserID}})">
-                            Approved
-                        </label>
-                    </td>
-                    <td>
-                        <div class="equipment-access">
-                            <select multiple class="equipment-select" 
-                                    onchange="updateAccess({{.UserID}})">
-                                {{$user := .}}
-                                {{range $equipment := $.Equipment}}
-                                <option value="{{$equipment.ID}}" 
-                                        {{range $user.EquipmentAccess}}
-                                            {{if eq .ID $equipment.ID}}selected{{end}}
-                                        {{end}}>
-                                        {{$equipment.Name}}
-                                    </option>
+        <div class="users-table-wrapper">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <!-- <th>Created</th> -->
+                        <th>Status</th>
+                        <th>Equipment Access</th>
+                        <th>Admin Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Users}}
+                    <tr data-user-id="{{.UserID}}">
+                        <td>{{.Username}}</td>
+                        <!-- <td>{{.CreatedAt}}</td> -->
+                        <td>
+                            <label class="toggle">
+                                <input type="checkbox" class="approved-toggle" 
+                                       {{if .Approved}}checked{{end}}
+                                       onchange="updateAccess({{.UserID}})">
+                                Approved
+                            </label>
+                        </td>
+                        <td>
+                            <div class="equipment-access">
+                                <select multiple class="equipment-select" 
+                                        onchange="updateAccess({{.UserID}})">
+                                    {{$user := .}}
+                                    {{range $equipment := $.Equipment}}
+                                    <option value="{{$equipment.ID}}" 
+                                            {{range $user.EquipmentAccess}}
+                                                {{if eq .ID $equipment.ID}}selected{{end}}
+                                            {{end}}>
+                                            {{$equipment.Name}}
+                                        </option>
+                                    {{end}}
+                                </select>
+                            </div>
+                        </td>
+                        <td>
+                            <form action="/admin/set-admin" method="POST" class="inline-form">
+                                <input type="hidden" name="user_id" value="{{.UserID}}">
+                                {{if not .Admin}}
+                                    <button type="submit" name="is_admin" value="true" 
+                                            class="btn btn-small">Make Admin</button>
+                                {{else}}
+                                    <button type="submit" name="is_admin" value="false"
+                                            class="btn btn-small btn-danger">Remove Admin</button>
                                 {{end}}
-                            </select>
-                        </div>
-                    </td>
-                    <td>
-                        <form action="/admin/set-admin" method="POST" class="inline-form">
-                            <input type="hidden" name="user_id" value="{{.UserID}}">
-                            {{if not .Admin}}
-                                <button type="submit" name="is_admin" value="true" 
-                                        class="btn btn-small">Make Admin</button>
-                            {{else}}
-                                <button type="submit" name="is_admin" value="false"
-                                        class="btn btn-small btn-danger">Remove Admin</button>
-                            {{end}}
-                        </form>
-                    </td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Equipment Modal -->
+    <div id="equipment-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Equipment</h3>
+                <span class="close" onclick="closeEquipmentModal()">&times;</span>
+            </div>
+            <form action="/admin/add-equipment" method="POST">
+                <div class="form-group">
+                    <label for="equipment_name">Equipment Name:</label>
+                    <input type="text" id="equipment_name" name="name" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Equipment</button>
+                    <button type="button" class="btn" onclick="closeEquipmentModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -78,19 +133,35 @@
     margin: 0 auto;
 }
 
+.section {
+    margin-bottom: 40px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Tables */
+.equipment-list,
 .users-table-wrapper {
-    overflow-x: auto;
-    margin-top: 20px;
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    overflow-x: auto;
 }
 
+.equipment-table,
 .users-table {
     width: 100%;
     border-collapse: collapse;
 }
 
+.equipment-table th,
+.equipment-table td,
 .users-table th,
 .users-table td {
     padding: 12px;
@@ -98,11 +169,13 @@
     border-bottom: 1px solid #eee;
 }
 
+.equipment-table th,
 .users-table th {
     background: #f8f9fa;
     font-weight: 600;
 }
 
+/* Forms and Inputs */
 .equipment-select {
     width: 100%;
     min-height: 100px;
@@ -115,19 +188,138 @@
     gap: 6px;
 }
 
+.toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.equipment-access {
+    max-width: 250px;
+}
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #ddd;
+    background: #fff;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
 .btn-small {
     padding: 4px 8px;
     font-size: 0.875rem;
 }
 
 .btn-danger {
-    background: #dc3545;
+    background-color: #dc3545;
     color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: relative;
+    background-color: #fff;
+    margin: 15% auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.close {
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #666;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* Alerts */
+.alert {
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.alert-error {
+    background: #fee;
+    color: #c00;
+    border: 1px solid #fcc;
+}
+
+.alert-success {
+    background: #efe;
+    color: #0a0;
+    border: 1px solid #cfc;
 }
 </style>
 
 <script>
-async function updateAccess(userId) {
+function updateAccess(userId) {
     const row = document.querySelector(`tr[data-user-id="${userId}"]`);
     const approved = row.querySelector('.approved-toggle').checked;
     const equipmentSelect = row.querySelector('.equipment-select');
@@ -135,7 +327,7 @@ async function updateAccess(userId) {
                                   .map(option => parseInt(option.value));
 
     try {
-        const response = await fetch('/admin/update-access', {
+        fetch('/admin/update-access', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -145,26 +337,66 @@ async function updateAccess(userId) {
                 approved: approved,
                 equipment: selectedEquipment
             })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to update access');
+            
+            // // Show success message
+            // const msg = document.createElement('div');
+            // msg.className = 'alert alert-success';
+            // msg.textContent = 'Access updated successfully';
+            // document.querySelector('.admin-container').insertBefore(
+            //     msg, 
+            //     document.querySelector('.users-table-wrapper')
+            // );
+            // setTimeout(() => msg.remove(), 3000);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to update access rights');
+            location.reload();
         });
-
-        if (!response.ok) {
-            throw new Error('Failed to update access');
-        }
-
-        // // Show success message
-        // const msg = document.createElement('div');
-        // msg.className = 'alert alert-success';
-        // msg.textContent = 'Access updated successfully';
-        // document.querySelector('.admin-container').insertBefore(
-        //     msg, 
-        //     document.querySelector('.users-table-wrapper')
-        // );
-        // setTimeout(() => msg.remove(), 3000);
-
     } catch (error) {
         console.error('Error:', error);
         alert('Failed to update access rights');
         location.reload();
+    }
+}
+
+function showEquipmentModal() {
+    document.getElementById('equipment-modal').style.display = 'block';
+}
+
+function closeEquipmentModal() {
+    document.getElementById('equipment-modal').style.display = 'none';
+    document.querySelector('#equipment-modal form').reset();
+}
+
+function confirmDeleteEquipment(equipmentId, equipmentName) {
+    if (confirm(`Are you sure you want to remove ${equipmentName}? This will also remove all related bookings and permissions.`)) {
+        fetch(`/admin/delete-equipment/${equipmentId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to delete equipment');
+            }
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to delete equipment');
+        });
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
     }
 }
 </script>

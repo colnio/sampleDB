@@ -125,6 +125,8 @@ func main() {
 	http.HandleFunc("/admin", requireAuth(requireAdmin(handleAdminPage)))
 	http.HandleFunc("/admin/update-access", requireAuth(requireAdmin(handleUpdateAccess)))
 	http.HandleFunc("/admin/set-admin", requireAuth(requireAdmin(handleSetAdmin)))
+	http.HandleFunc("/admin/add-equipment", requireAuth(requireAdmin(handleAddEquipment)))
+	http.HandleFunc("/admin/delete-equipment/", requireAuth(requireAdmin(handleDeleteEquipment))) // Note the trailing slash
 
 	// Create uploads directory if it doesn't exist
 	err = os.MkdirAll("uploads", 0755)
