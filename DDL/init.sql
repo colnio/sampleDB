@@ -74,15 +74,21 @@ CREATE TABLE user_equipment_permissions (
     PRIMARY KEY (user_id, equipment_id)
 );
 
-CREATE TABLE bookings (
+CREATE TABLE IF NOT EXISTS bookings (
     booking_id SERIAL PRIMARY KEY,
-    equipment_id INT REFERENCES equipment(equipment_id),
-    user_id INT REFERENCES users(user_id),
+    equipment_id INTEGER REFERENCES equipment(equipment_id),
+    user_id INTEGER REFERENCES users(user_id),
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
-    purpose TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    purpose TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT valid_time_range CHECK (end_time > start_time)
 );
+
+CREATE INDEX IF NOT EXISTS idx_bookings_time_range 
+ON bookings (equipment_id, start_time, end_time);
+
+grant all on bookings to app;
 
 -- Grant necessary permissions
 GRANT ALL ON articles TO app;

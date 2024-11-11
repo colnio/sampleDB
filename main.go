@@ -37,6 +37,7 @@ type Attachment struct {
 
 type BasePageData struct {
 	Username string
+	UserID   int
 }
 
 // Sample represents a sample record in the database
@@ -76,7 +77,19 @@ var sessions = make(map[string]Session)
 // Initialize a global database connection pool
 var dbPool *pgxpool.Pool
 
+var loc *time.Location
+
+// Add this function to booking.go
+func initLocation() {
+	var err error
+	loc, err = time.LoadLocation("Local")
+	if err != nil {
+		log.Fatalf("Failed to load local timezone: %v", err)
+	}
+}
+
 func main() {
+	initLocation()
 	// Connect to PostgreSQL
 	var err error
 	dbURL := "postgres://app:app@localhost:5432/sampledb"
@@ -101,7 +114,9 @@ func main() {
 	http.HandleFunc("/samples/edit/", requireAuth(editSampleHandler))
 	http.HandleFunc("/samples/", requireAuth(handleSample))
 	http.HandleFunc("/attachment/", requireAuth(handleAttachment))
-
+	http.HandleFunc("/booking", requireAuth(handleBooking))
+	http.HandleFunc("/api/bookings", requireAuth(handleGetBookings))
+	http.HandleFunc("/booking/delete", requireAuth(handleDeleteBooking))
 	// Wiki routes
 	http.HandleFunc("/wiki", requireAuth(handleWiki))
 	http.HandleFunc("/wiki/", requireAuth(handleWiki)) // This will handle all wiki subpaths
