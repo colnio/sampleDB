@@ -38,6 +38,7 @@ type Attachment struct {
 type BasePageData struct {
 	Username string
 	UserID   int
+	IsAdmin  bool
 }
 
 // Sample represents a sample record in the database
@@ -121,6 +122,10 @@ func main() {
 	http.HandleFunc("/wiki", requireAuth(handleWiki))
 	http.HandleFunc("/wiki/", requireAuth(handleWiki)) // This will handle all wiki subpaths
 
+	http.HandleFunc("/admin", requireAuth(requireAdmin(handleAdminPage)))
+	http.HandleFunc("/admin/update-access", requireAuth(requireAdmin(handleUpdateAccess)))
+	http.HandleFunc("/admin/set-admin", requireAuth(requireAdmin(handleSetAdmin)))
+
 	// Create uploads directory if it doesn't exist
 	err = os.MkdirAll("uploads", 0755)
 	if err != nil {
@@ -170,16 +175,29 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Execute the query
+	rows := dbPool.QueryRow(context.Background(), `SELECT admin
+	FROM users
+	WHERE username = $1`, session.Username)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	data := struct {
 		BasePageData
 		Samples []Sample
 		Query   string
 	}{
-		BasePageData: BasePageData{Username: session.Username},
+		BasePageData: BasePageData{Username: session.Username, IsAdmin: false},
 		Samples:      samples,
 		Query:        query,
 	}
 
+	err = rows.Scan(&data.BasePageData.IsAdmin)
+	if err != nil {
+		fmt.Println(err)
+	}
 	tmpl, err := parseTemplates("templates/main.html")
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)

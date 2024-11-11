@@ -8,6 +8,12 @@
             <a href="/wiki" class="nav-item">Wiki</a>
             <a href="/booking" class="nav-item">Equipment Booking</a>
         </div>
+        {{if .IsAdmin}}
+        <div class="nav-right">
+            <!-- <span class="user-info">{{.Username}}</span> -->
+            <a href="/admin" class="nav-item">Admin Panel</a>
+        {{end}}
+        </div>
         <div class="nav-right">
             <span class="user-info">{{.Username}}</span>
             <a href="/logout" class="nav-item">Logout</a>
