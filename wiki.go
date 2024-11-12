@@ -98,8 +98,16 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 		BasePageData
 		Articles []Article
 	}{
-		BasePageData: BasePageData{Username: session.Username},
+		BasePageData: BasePageData{Username: session.Username, IsAdmin: false},
 		Articles:     articles,
+	}
+	row := dbPool.QueryRow(context.Background(), `SELECT admin
+	FROM users
+	WHERE username = $1`, session.Username)
+
+	err = row.Scan(&data.BasePageData.IsAdmin)
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	tmpl, err := parseTemplates("templates/wiki_list.html")

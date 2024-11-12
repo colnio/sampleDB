@@ -180,8 +180,12 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rows := dbPool.QueryRow(context.Background(), `SELECT admin
+	FROM users
+	WHERE username = $1`, session.Username)
+
 	data := BookingPageData{
-		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID},
+		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: false},
 		Equipment:     equipment,
 		Bookings:      bookings,
 		UserBookings:  userBookings,
@@ -192,6 +196,11 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		WeekOffset:    weekOffset,
 		Error:         r.URL.Query().Get("error"),
 		Success:       r.URL.Query().Get("success"),
+	}
+
+	err = rows.Scan(&data.BasePageData.IsAdmin)
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	tmpl, err := parseTemplatesBooking("templates/booking.html")
