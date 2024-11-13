@@ -35,19 +35,19 @@
             {{range .Article.Attachments}}
             <div class="attachment-preview">
                 {{if .IsImage}}
-                <a href="/attachment/{{.ID}}" target="_blank" class="attachment-link">
-                    <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}">
+                <a href="/wiki/attachment/{{.ID}}" target="_blank" class="attachment-link">
+                    <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}">
                 </a>
                 {{else}}
-                <a href="/attachment/{{.ID}}" download class="attachment-link">
+                <a href="/wiki/attachment/{{.ID}}" download class="attachment-link">
                     <div class="file-icon">📄</div>
                 </a>
                 {{end}}
                 <div class="attachment-info">
                     <div class="attachment-name" title="{{.OriginalName}}">{{.OriginalName}}</div>
                     <div class="attachment-actions">
-                        <a href="/attachment/{{.ID}}" class="button button-small" {{if not .IsImage}}download{{end}}>Download</a>
-                        <form action="/attachment/{{.ID}}/delete" method="POST" class="inline-form">
+                        <a href="/wiki/attachment/{{.ID}}" class="button button-small" {{if not .IsImage}}download{{end}}>Download</a>
+                        <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
                             <button type="submit" class="button button-small button-danger" onclick="return confirm('Delete this attachment?')">Delete</button>
                         </form>
                     </div>

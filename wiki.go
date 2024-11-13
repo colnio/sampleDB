@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"mime"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -40,6 +43,7 @@ type WikiPageData struct {
 	Article  *Article
 	Error    string
 	Success  string
+	IsAdmin  bool
 }
 
 type ArticleContent struct {
@@ -150,16 +154,26 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 			var att ArticleAttachment
 			err := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt)
 			if err == nil {
+				att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(att.Address)))
 				article.Attachments = append(article.Attachments, att)
 			}
 		}
+	}
+	var isAdmin bool
+	err = dbPool.QueryRow(context.Background(),
+		"SELECT admin FROM users WHERE user_id = $1",
+		session.UserID).Scan(&isAdmin)
+
+	if err != nil || !isAdmin {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
 	}
 
 	data := struct {
 		BasePageData
 		Article *Article
 	}{
-		BasePageData: BasePageData{Username: session.Username},
+		BasePageData: BasePageData{Username: session.Username, IsAdmin: isAdmin},
 		Article:      &article,
 	}
 
@@ -370,4 +384,79 @@ func renderMarkdown(md string) template.HTML {
 	html := markdown.Render(doc, renderer)
 
 	return template.HTML(html)
+}
+
+func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 3 {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	// Check if this is a delete request
+	if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/delete") {
+		// Remove "/delete" from the end to get the attachment ID
+		attachmentID := pathParts[2]
+		deleteAttachmentWiki(attachmentID)
+		return
+	}
+
+	// Handle download request
+	if r.Method == http.MethodGet {
+		downloadAttachmentHandlerWiki(w, r)
+		return
+	}
+
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+}
+
+func deleteAttachmentWiki(attachmentID string) error {
+	// First get the file path
+	var filepath string
+	err := dbPool.QueryRow(context.Background(),
+		"SELECT attachment_address FROM article_attachments WHERE attachment_id = $1",
+		attachmentID).Scan(&filepath)
+	if err != nil {
+		return err
+	}
+
+	// Delete from database
+	_, err = dbPool.Exec(context.Background(),
+		"DELETE FROM article_attachments WHERE attachment_id = $1",
+		attachmentID)
+	if err != nil {
+		return err
+	}
+
+	// Delete file from filesystem
+	return os.Remove(filepath)
+
+}
+
+func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get attachment ID from URL
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+	attachmentID := parts[3]
+	fmt.Println(attachmentID)
+	// Get file path from database
+	var filepath string
+	err := dbPool.QueryRow(context.Background(),
+		"SELECT attachment_address FROM article_attachments WHERE attachment_id = $1",
+		attachmentID).Scan(&filepath)
+	if err != nil {
+		http.Error(w, "Attachment not found", http.StatusNotFound)
+		return
+	}
+
+	// Serve the file
+	http.ServeFile(w, r, filepath)
 }

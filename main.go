@@ -120,7 +120,8 @@ func main() {
 	http.HandleFunc("/booking/delete", requireAuth(handleDeleteBooking))
 	// Wiki routes
 	http.HandleFunc("/wiki", requireAuth(handleWiki))
-	http.HandleFunc("/wiki/", requireAuth(handleWiki)) // This will handle all wiki subpaths
+	http.HandleFunc("/wiki/", requireAuth(handleWiki))                      // This will handle all wiki subpaths
+	http.HandleFunc("/wiki/attachment/", requireAuth(handleAttachmentWiki)) // This will handle all wiki subpaths
 
 	http.HandleFunc("/admin", requireAuth(requireAdmin(handleAdminPage)))
 	http.HandleFunc("/admin/update-access", requireAuth(requireAdmin(handleUpdateAccess)))
@@ -295,8 +296,8 @@ func searchSamples(query string) ([]Sample, error) {
 	var whereClauses []string
 	var args []interface{}
 	for i, keyword := range keywords {
-		whereClauses = append(whereClauses, fmt.Sprintf("$%d = ANY(string_to_array(sample_keywords, ','))", i+1))
-		args = append(args, keyword)
+		whereClauses = append(whereClauses, fmt.Sprintf("$%d = ANY(string_to_array(lower(sample_keywords), ','))", i+1))
+		args = append(args, strings.ToLower(keyword))
 	}
 	whereClause := strings.Join(whereClauses, " OR ")
 
