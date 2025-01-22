@@ -19,15 +19,19 @@
                 </thead>
                 <tbody>
                     {{range .Equipment}}
-                    <tr>
-                        <td>{{.Name}}</td>
-                        <td>
-                            <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" 
-                                    class="btn btn-small btn-danger">
-                                Remove
-                            </button>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td>{{.Name}}</td>
+                            <td>
+                                <button onclick="showReportModal({{.ID}}, '{{.Name}}')" 
+                                        class="btn btn-small">
+                                    Download Usage
+                                </button>
+                                <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" 
+                                        class="btn btn-small btn-danger">
+                                    Remove
+                                </button>
+                            </td>
+                        </tr>
                     {{end}}
                 </tbody>
             </table>
@@ -203,7 +207,7 @@
     border-radius: 4px;
     cursor: pointer;
     border: 1px solid #ddd;
-    background: #fff;
+    background: #8169d1;
 }
 
 .btn-primary {
@@ -400,4 +404,55 @@ window.onclick = function(event) {
     }
 }
 </script>
+
+
+<!-- Report Modal -->
+<div id="report-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Download Usage Report</h3>
+            <span class="close" onclick="closeReportModal()">&times;</span>
+        </div>
+        <div class="form-group">
+            <label for="start_date">Start Date:</label>
+            <input type="date" id="start_date" required>
+        </div>
+        <div class="form-group">
+            <label for="end_date">End Date:</label>
+            <input type="date" id="end_date" required>
+        </div>
+        <div class="form-actions">
+            <button onclick="downloadReport()" class="btn btn-primary">Download</button>
+            <button onclick="closeReportModal()" class="btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentEquipmentId = null;
+
+function showReportModal(equipmentId, equipmentName) {
+    currentEquipmentId = equipmentId;
+    document.getElementById('report-modal').style.display = 'block';
+}
+
+function closeReportModal() {
+    document.getElementById('report-modal').style.display = 'none';
+    currentEquipmentId = null;
+}
+
+function downloadReport() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    if (!startDate || !endDate) {
+        alert('Please select both start and end dates');
+        return;
+    }
+    
+    window.location.href = `/admin/equipment-report?id=${currentEquipmentId}&start=${startDate}&end=${endDate}`;
+    closeReportModal();
+}
+</script>
+
 {{end}}

@@ -303,7 +303,7 @@
     cursor: pointer;
     font-size: 14px;
     border: 1px solid #ddd;
-    background: #fff;
+    background: #ee6060;
 }
 
 .btn-primary {
@@ -317,7 +317,7 @@
 }
 
 .btn:hover {
-    background: #f0f0f0;
+    background: #fa0a0a;
 }
 
 .alert {
@@ -500,11 +500,11 @@
                     return;
                 }
     
-                if (startTime < new Date()) {
-                    e.preventDefault();
-                    alert('Cannot book in the past');
-                    return;
-                }
+                // if (startTime < new Date()) {
+                //     e.preventDefault();
+                //     alert('Cannot book in the past');
+                //     return;
+                // }
     
                 if (!purpose.trim()) {
                     e.preventDefault();

@@ -146,8 +146,8 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 	weekEnd := weekStart.AddDate(0, 0, 7)
 
 	// Generate time slots in local timezone
-	timeSlots := make([]time.Time, 10) // 8 AM to 5 PM
-	baseTime := time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 8, 0, 0, 0, loc)
+	timeSlots := make([]time.Time, 24) // 8 AM to 5 PM
+	baseTime := time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, loc)
 	for i := range timeSlots {
 		timeSlots[i] = baseTime.Add(time.Duration(i) * time.Hour)
 	}
@@ -251,10 +251,10 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if startTime.Before(time.Now()) {
-		http.Redirect(w, r, "/booking?error=Cannot+book+in+the+past", http.StatusSeeOther)
-		return
-	}
+	// if startTime.Before(time.Now()) {
+	// 	http.Redirect(w, r, "/booking?error=Cannot+book+in+the+past", http.StatusSeeOther)
+	// 	return
+	// }
 
 	// Check for conflicts
 	hasConflict, err := checkBookingConflict(equipmentID, startTime, endTime)

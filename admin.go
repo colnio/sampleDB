@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type UserAccess struct {
@@ -318,4 +320,77 @@ func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
 
 	// Return success
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse equipment ID and date range
+	equipmentID := r.URL.Query().Get("id")
+	startDate := r.URL.Query().Get("start")
+	endDate := r.URL.Query().Get("end")
+
+	// Query bookings
+	rows, err := dbPool.Query(context.Background(), `
+        SELECT 
+            b.start_time,
+            b.end_time,
+            b.purpose,
+            u.username,
+            e.name as equipment_name
+        FROM bookings b
+        JOIN users u ON b.user_id = u.user_id
+        JOIN equipment e ON b.equipment_id = e.equipment_id
+        WHERE b.equipment_id = $1
+        AND b.start_time >= $2
+        AND b.end_time <= $3
+        ORDER BY b.start_time ASC`,
+		equipmentID, startDate, endDate)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	// Set up CSV writer
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=equipment_usage.csv")
+
+	csvWriter := csv.NewWriter(w)
+	defer csvWriter.Flush()
+
+	// Write headers
+	headers := []string{"Start Time", "End Time", "Duration (hours)", "User", "Equipment", "Purpose"}
+	if err := csvWriter.Write(headers); err != nil {
+		http.Error(w, "Error writing CSV", http.StatusInternalServerError)
+		return
+	}
+
+	// Write data rows
+	for rows.Next() {
+		var startTime, endTime time.Time
+		var purpose, username, equipmentName string
+
+		if err := rows.Scan(&startTime, &endTime, &purpose, &username, &equipmentName); err != nil {
+			continue
+		}
+
+		duration := endTime.Sub(startTime).Hours()
+
+		row := []string{
+			startTime.Format("2006-01-02 15:04"),
+			endTime.Format("2006-01-02 15:04"),
+			fmt.Sprintf("%.2f", duration),
+			username,
+			equipmentName,
+			purpose,
+		}
+
+		if err := csvWriter.Write(row); err != nil {
+			continue
+		}
+	}
 }
