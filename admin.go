@@ -140,13 +140,15 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		fmt.Println("ON parsing json:", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
-
+	// fmt.Println(data)
 	// Start a transaction
 	tx, err := dbPool.Begin(context.Background())
 	if err != nil {
+		fmt.Println("ON starting transaction:", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -157,7 +159,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 		"UPDATE users SET is_approved = $1 WHERE user_id = $2",
 		data.Approved, data.UserID)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("ON update users approved: ", err)
 		http.Error(w, "Error updating approval status", http.StatusInternalServerError)
 		return
 	}
@@ -167,7 +169,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM user_equipment_permissions WHERE user_id = $1",
 		data.UserID)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("On deleting permissions:", err)
 		http.Error(w, "Error updating equipment permissions", http.StatusInternalServerError)
 		return
 	}
@@ -178,14 +180,14 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 			"INSERT INTO user_equipment_permissions (user_id, equipment_id) VALUES ($1, $2)",
 			data.UserID, equipID)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("On inserting permissions", err)
 			continue
 		}
 	}
 
 	// Commit transaction
 	if err = tx.Commit(context.Background()); err != nil {
-		fmt.Println(err)
+		fmt.Println("On commiting to db", err)
 		http.Error(w, "Error committing changes", http.StatusInternalServerError)
 		return
 	}

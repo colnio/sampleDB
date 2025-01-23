@@ -345,15 +345,15 @@ function updateAccess(userId) {
         .then(response => {
             if (!response.ok) throw new Error('Failed to update access');
             
-            // // Show success message
-            // const msg = document.createElement('div');
-            // msg.className = 'alert alert-success';
-            // msg.textContent = 'Access updated successfully';
-            // document.querySelector('.admin-container').insertBefore(
-            //     msg, 
-            //     document.querySelector('.users-table-wrapper')
-            // );
-            // setTimeout(() => msg.remove(), 3000);
+            // Show success message
+            const msg = document.createElement('div');
+            msg.className = 'alert alert-success';
+            msg.textContent = 'Access updated successfully';
+            document.querySelector('.admin-container').insertBefore(
+                msg, 
+                document.querySelector('.users-table-wrapper')
+            );
+            setTimeout(() => msg.remove(), 3000);
         })
         .catch(error => {
             console.error('Error:', error);
