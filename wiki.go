@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"html/template"
+	"log"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,8 @@ import (
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
+
+	"sampleDB/internal/auth"
 )
 
 type Article struct {
@@ -78,7 +82,7 @@ func handleWiki(w http.ResponseWriter, r *http.Request) {
 }
 
 func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 
 	rows, err := dbPool.Query(context.Background(),
 		`SELECT article_id, title, created_at FROM articles ORDER BY created_at DESC`)
@@ -109,9 +113,8 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 	FROM users
 	WHERE username = $1`, session.Username)
 
-	err = row.Scan(&data.BasePageData.IsAdmin)
-	if err != nil {
-		fmt.Println(err)
+	if err := row.Scan(&data.BasePageData.IsAdmin); err != nil {
+		log.Printf("wiki: unable to load admin flag for %s: %v", session.Username, err)
 	}
 
 	tmpl, err := parseTemplates("templates/wiki_list.html")
@@ -124,7 +127,7 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 	title := strings.TrimPrefix(r.URL.Path, "/wiki/")
 
 	var article Article
@@ -159,21 +162,19 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	var isAdmin bool
-	err = dbPool.QueryRow(context.Background(),
+	isAdmin := false
+	if err := dbPool.QueryRow(context.Background(),
 		"SELECT admin FROM users WHERE user_id = $1",
-		session.UserID).Scan(&isAdmin)
-
-	if err != nil || !isAdmin {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
+		session.UserID).Scan(&isAdmin); err != nil {
+		log.Printf("wiki: unable to load admin status for user %d: %v", session.UserID, err)
+		isAdmin = false
 	}
 
 	data := struct {
 		BasePageData
 		Article *Article
 	}{
-		BasePageData: BasePageData{Username: session.Username, IsAdmin: isAdmin},
+		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
 		Article:      &article,
 	}
 
@@ -187,7 +188,7 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func newArticleHandler(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 
 	if r.Method == http.MethodGet {
 		data := struct {
@@ -216,7 +217,7 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
          VALUES ($1, $2, $3, $3)`,
 		title, content, session.UserID)
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("wiki: error creating article %q: %v", title, err)
 		http.Error(w, "Error creating article", http.StatusInternalServerError)
 		return
 	}
@@ -225,7 +226,7 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func editArticleHandler(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 3 {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
@@ -307,7 +308,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 3 {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
@@ -340,7 +341,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
          VALUES ($1, $2, $3, $4)`,
 		articleID, filepath, header.Filename, session.UserID)
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("wiki: error storing attachment metadata for article %s: %v", articleID, err)
 		http.Error(w, "Error storing attachment info", http.StatusInternalServerError)
 		return
 	}
@@ -387,67 +388,73 @@ func renderMarkdown(md string) template.HTML {
 }
 
 func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 3 {
+	trimmedPath := strings.TrimSuffix(r.URL.Path, "/")
+	pathParts := strings.Split(trimmedPath, "/")
+	if len(pathParts) < 4 {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
 
-	// Check if this is a delete request
-	if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/delete") {
-		// Remove "/delete" from the end to get the attachment ID
-		attachmentID := pathParts[2]
-		deleteAttachmentWiki(attachmentID)
+	attachmentID := pathParts[3]
+
+	switch {
+	case r.Method == http.MethodPost && strings.HasSuffix(trimmedPath, "/delete"):
+		articleTitle, err := deleteAttachmentWiki(attachmentID)
+		if err != nil {
+			log.Printf("wiki: failed to delete attachment %s: %v", attachmentID, err)
+			http.Error(w, "Error deleting attachment", http.StatusInternalServerError)
+			return
+		}
+
+		redirect := r.Header.Get("Referer")
+		if redirect == "" {
+			if articleTitle != "" {
+				redirect = "/wiki/" + url.PathEscape(articleTitle)
+			} else {
+				redirect = "/wiki"
+			}
+		}
+
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
-	}
-
-	// Handle download request
-	if r.Method == http.MethodGet {
-		downloadAttachmentHandlerWiki(w, r)
+	case r.Method == http.MethodGet:
+		downloadAttachmentHandlerWiki(w, r, attachmentID)
 		return
-	}
-
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-}
-
-func deleteAttachmentWiki(attachmentID string) error {
-	// First get the file path
-	var filepath string
-	err := dbPool.QueryRow(context.Background(),
-		"SELECT attachment_address FROM article_attachments WHERE attachment_id = $1",
-		attachmentID).Scan(&filepath)
-	if err != nil {
-		return err
-	}
-
-	// Delete from database
-	_, err = dbPool.Exec(context.Background(),
-		"DELETE FROM article_attachments WHERE attachment_id = $1",
-		attachmentID)
-	if err != nil {
-		return err
-	}
-
-	// Delete file from filesystem
-	return os.Remove(filepath)
-
-}
-
-func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+}
 
-	// Get attachment ID from URL
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 3 {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return
+func deleteAttachmentWiki(attachmentID string) (string, error) {
+	var filepath string
+	var articleTitle string
+	err := dbPool.QueryRow(context.Background(),
+		`SELECT aa.attachment_address, a.title
+         FROM article_attachments aa
+         JOIN articles a ON aa.article_id = a.article_id
+         WHERE aa.attachment_id = $1`,
+		attachmentID).Scan(&filepath, &articleTitle)
+	if err != nil {
+		return "", err
 	}
-	attachmentID := parts[3]
-	fmt.Println(attachmentID)
-	// Get file path from database
+
+	// Delete from database
+	if _, err = dbPool.Exec(context.Background(),
+		"DELETE FROM article_attachments WHERE attachment_id = $1",
+		attachmentID); err != nil {
+		return "", err
+	}
+
+	// Delete file from filesystem
+	if removeErr := os.Remove(filepath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+		return "", removeErr
+	}
+
+	return articleTitle, nil
+}
+
+func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request, attachmentID string) {
 	var filepath string
 	err := dbPool.QueryRow(context.Background(),
 		"SELECT attachment_address FROM article_attachments WHERE attachment_id = $1",

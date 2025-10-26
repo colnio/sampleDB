@@ -368,7 +368,7 @@
     }
     
     function updateBookingSlots() {
-        const bookings = {{.Bookings}};
+        const bookings = {{toJSON .Bookings}};
         const currentUserId = {{.BasePageData.UserID}};
         if (!bookings || !bookings.length) return;
     

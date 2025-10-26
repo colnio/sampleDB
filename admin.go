@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"sampleDB/internal/auth"
 )
 
 type UserAccess struct {
@@ -28,7 +30,7 @@ type AdminPageData struct {
 	Success   string
 }
 
-func getBasePageData(session Session) (BasePageData, error) {
+func getBasePageData(session auth.Session) (BasePageData, error) {
 	var isAdmin bool
 	err := dbPool.QueryRow(context.Background(),
 		"SELECT admin FROM users WHERE user_id = $1",
@@ -44,7 +46,7 @@ func getBasePageData(session Session) (BasePageData, error) {
 	}, nil
 }
 func handleAdminPage(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 
 	// Get base page data
 	baseData, err := getBasePageData(session)
@@ -196,7 +198,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 }
 func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value("user").(Session)
+		session := auth.MustSessionFromContext(r.Context())
 
 		var isAdmin bool
 		err := dbPool.QueryRow(context.Background(),

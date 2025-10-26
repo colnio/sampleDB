@@ -344,15 +344,18 @@ function updateAccess(userId) {
         })
         .then(response => {
             if (!response.ok) throw new Error('Failed to update access');
-            
-            // Show success message
+
             const msg = document.createElement('div');
             msg.className = 'alert alert-success';
             msg.textContent = 'Access updated successfully';
-            document.querySelector('.admin-container').insertBefore(
-                msg, 
-                document.querySelector('.users-table-wrapper')
-            );
+
+            const usersWrapper = document.querySelector('.users-table-wrapper');
+            if (usersWrapper && usersWrapper.parentElement) {
+                usersWrapper.parentElement.insertBefore(msg, usersWrapper);
+            } else {
+                document.querySelector('.admin-container')?.prepend(msg);
+            }
+
             setTimeout(() => msg.remove(), 3000);
         })
         .catch(error => {

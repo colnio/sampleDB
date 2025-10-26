@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"html/template"
@@ -18,13 +17,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	"sampleDB/internal/auth"
 )
 
-type AuthPageData struct {
-	Error      string
-	Success    string
-	IsRegister bool
-}
 type Attachment struct {
 	ID           int
 	SampleID     int
@@ -59,21 +55,11 @@ type User struct {
 	CreatedAt  time.Time
 }
 
-// Session represents a user session
-type Session struct {
-	Token     string
-	UserID    int
-	Username  string
-	ExpiresAt time.Time
-}
 type MainPageData struct {
 	Samples  []Sample
 	Username string
 	Query    string
 }
-
-// Store sessions in memory (you might want to move this to database for production)
-var sessions = make(map[string]Session)
 
 // Initialize a global database connection pool
 var dbPool *pgxpool.Pool
@@ -100,35 +86,38 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	authManager := auth.NewManager(dbPool)
+
 	// Set up static file serving
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Auth routes
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/logout", requireAuth(logoutHandler))
+	http.HandleFunc("/login", authManager.LoginHandler())
+	http.HandleFunc("/register", authManager.RegisterHandler())
+	http.HandleFunc("/logout", authManager.RequireAuth(authManager.LogoutHandler()))
 
 	// Sample management routes
-	http.HandleFunc("/", requireAuth(mainPageHandler))
-	http.HandleFunc("/samples/new", requireAuth(newSampleHandler))
-	http.HandleFunc("/samples/edit/", requireAuth(editSampleHandler))
-	http.HandleFunc("/samples/", requireAuth(handleSample))
-	http.HandleFunc("/attachment/", requireAuth(handleAttachment))
-	http.HandleFunc("/booking", requireAuth(handleBooking))
-	http.HandleFunc("/api/bookings", requireAuth(handleGetBookings))
-	http.HandleFunc("/booking/delete", requireAuth(handleDeleteBooking))
+	withAuth := authManager.RequireAuth
+	http.HandleFunc("/", withAuth(mainPageHandler))
+	http.HandleFunc("/samples/new", withAuth(newSampleHandler))
+	http.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
+	http.HandleFunc("/samples/", withAuth(handleSample))
+	http.HandleFunc("/attachment/", withAuth(handleAttachment))
+	http.HandleFunc("/booking", withAuth(handleBooking))
+	http.HandleFunc("/api/bookings", withAuth(handleGetBookings))
+	http.HandleFunc("/booking/delete", withAuth(handleDeleteBooking))
 	// Wiki routes
-	http.HandleFunc("/wiki", requireAuth(handleWiki))
-	http.HandleFunc("/wiki/", requireAuth(handleWiki))                      // This will handle all wiki subpaths
-	http.HandleFunc("/wiki/attachment/", requireAuth(handleAttachmentWiki)) // This will handle all wiki subpaths
+	http.HandleFunc("/wiki", withAuth(handleWiki))
+	http.HandleFunc("/wiki/", withAuth(handleWiki))                      // This will handle all wiki subpaths
+	http.HandleFunc("/wiki/attachment/", withAuth(handleAttachmentWiki)) // This will handle all wiki subpaths
 
-	http.HandleFunc("/admin", requireAuth(requireAdmin(handleAdminPage)))
-	http.HandleFunc("/admin/update-access", requireAuth(requireAdmin(handleUpdateAccess)))
-	http.HandleFunc("/admin/set-admin", requireAuth(requireAdmin(handleSetAdmin)))
-	http.HandleFunc("/admin/add-equipment", requireAuth(requireAdmin(handleAddEquipment)))
-	http.HandleFunc("/admin/delete-equipment/", requireAuth(requireAdmin(handleDeleteEquipment))) // Note the trailing slash
-	http.HandleFunc("/admin/equipment-report", requireAuth(requireAdmin(handleEquipmentReport)))
+	http.HandleFunc("/admin", withAuth(requireAdmin(handleAdminPage)))
+	http.HandleFunc("/admin/update-access", withAuth(requireAdmin(handleUpdateAccess)))
+	http.HandleFunc("/admin/set-admin", withAuth(requireAdmin(handleSetAdmin)))
+	http.HandleFunc("/admin/add-equipment", withAuth(requireAdmin(handleAddEquipment)))
+	http.HandleFunc("/admin/delete-equipment/", withAuth(requireAdmin(handleDeleteEquipment))) // Note the trailing slash
+	http.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
 	// Create uploads directory if it doesn't exist
 	err = os.MkdirAll("uploads", 0755)
 	if err != nil {
@@ -162,7 +151,7 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	// Get user info from context
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 
 	if query != "" {
 		samples, err = searchSamples(query)
@@ -380,7 +369,7 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 	sampleID := strings.TrimPrefix(r.URL.Path, "/samples/")
 
 	sample, err := getSampleByID(sampleID)
@@ -463,7 +452,7 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 // newSampleFormHandler displays the form to add a new sample
 // func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 //     if r.Method == http.MethodGet {
-//         session := r.Context().Value("user").(Session)
+//         session := auth.MustSessionFromContext(r.Context())
 //         data := struct {
 //             BasePageData
 //         }{
@@ -484,7 +473,7 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 // newSampleHandler handles both displaying the form and processing the submission
 func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		session := r.Context().Value("user").(Session)
+		session := auth.MustSessionFromContext(r.Context())
 		data := struct {
 			BasePageData
 		}{
@@ -769,212 +758,6 @@ func handleAttachment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-}
-
-// generateSessionToken creates a random session token
-func generateSessionToken() (string, error) {
-	b := make([]byte, 32)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-// middleware to check if user is authenticated
-func requireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Skip auth for login page and login handler
-		if r.URL.Path == "/login" {
-			next(w, r)
-			return
-		}
-
-		// Check for session cookie
-		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		// Validate session
-		session, exists := sessions[cookie.Value]
-		if !exists || time.Now().After(session.ExpiresAt) {
-			if exists {
-				delete(sessions, cookie.Value)
-			}
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		// Add user info to request context
-		ctx := context.WithValue(r.Context(), "user", session)
-		next(w, r.WithContext(ctx))
-	}
-}
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		data := AuthPageData{
-			Error:      r.URL.Query().Get("error"),
-			Success:    r.URL.Query().Get("success"),
-			IsRegister: false,
-		}
-
-		// Show login form
-		tmpl, err := template.ParseFiles("templates/login.html")
-		if err != nil {
-			http.Error(w, "Error loading template", http.StatusInternalServerError)
-			return
-		}
-		tmpl.Execute(w, data)
-		return
-	}
-
-	// Handle login POST
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-
-	// Get user from database
-	var (
-		userID     int
-		passwdHash string
-		isApproved bool
-	)
-	err := dbPool.QueryRow(context.Background(),
-		"SELECT user_id, password_hash, is_approved FROM users WHERE username = $1",
-		username).Scan(&userID, &passwdHash, &isApproved)
-
-	if err != nil {
-		fmt.Println(err)
-		http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
-		return
-	}
-
-	// Check if user is approved
-	if !isApproved {
-		http.Redirect(w, r, "/login?error=Your+account+is+pending+approval", http.StatusSeeOther)
-		return
-	}
-
-	// Check password
-	err = bcrypt.CompareHashAndPassword([]byte(passwdHash), []byte(password))
-	if err != nil {
-		http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
-		return
-	}
-
-	// Create session
-	token, err := generateSessionToken()
-	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
-	sessions[token] = Session{
-		Token:     token,
-		UserID:    userID,
-		Username:  username,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-
-	// Set session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_token",
-		Value:    token,
-		Path:     "/",
-		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: true,
-		Secure:   false, // Enable in production with HTTPS
-		SameSite: http.SameSiteStrictMode,
-	})
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func registerHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		data := AuthPageData{
-			Error:      r.URL.Query().Get("error"),
-			IsRegister: true,
-		}
-
-		// Show registration form
-		tmpl, err := template.ParseFiles("templates/login.html")
-		if err != nil {
-			http.Error(w, "Error loading template", http.StatusInternalServerError)
-			return
-		}
-		tmpl.Execute(w, data)
-		return
-	}
-
-	// Handle register POST
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-	confirmPassword := r.FormValue("confirm_password")
-
-	// Validate input
-	if username == "" || password == "" {
-		http.Redirect(w, r, "/register?error=Username+and+password+are+required", http.StatusSeeOther)
-		return
-	}
-
-	if password != confirmPassword {
-		http.Redirect(w, r, "/register?error=Passwords+do+not+match", http.StatusSeeOther)
-		return
-	}
-
-	// Check if username already exists
-	var exists bool
-	err := dbPool.QueryRow(context.Background(),
-		"SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)",
-		username).Scan(&exists)
-
-	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
-	if exists {
-		http.Redirect(w, r, "/register?error=Username+already+taken", http.StatusSeeOther)
-		return
-	}
-
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Insert new user
-	_, err = dbPool.Exec(context.Background(),
-		"INSERT INTO users (username, password_hash, is_approved) VALUES ($1, $2, false)",
-		username, string(hashedPassword))
-
-	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Redirect to login page with success message
-	http.Redirect(w, r, "/login?success=Registration+successful.+Please+wait+for+admin+approval", http.StatusSeeOther)
-}
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_token")
-	if err == nil {
-		delete(sessions, cookie.Value)
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_token",
-		Value:    "",
-		Path:     "/",
-		Expires:  time.Now().Add(-time.Hour),
-		HttpOnly: true,
-	})
-
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 // Helper function to create a new user (you'll need to run this manually or create an admin interface)

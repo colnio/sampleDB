@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"sampleDB/internal/auth"
 )
 
 type Equipment struct {
@@ -59,6 +62,13 @@ func handleBooking(w http.ResponseWriter, r *http.Request) {
 func parseTemplatesBooking(files ...string) (*template.Template, error) {
 	// Create a new template with base name and include all functions
 	funcMap := template.FuncMap{
+		"toJSON": func(value interface{}) template.JS {
+			data, err := json.Marshal(value)
+			if err != nil || string(data) == "null" {
+				return template.JS("[]")
+			}
+			return template.JS(data)
+		},
 		// Date formatting
 		"formatDate": func(t time.Time) string {
 			return t.Format("January 2, 2006")
@@ -131,7 +141,7 @@ func parseTemplatesBooking(files ...string) (*template.Template, error) {
 }
 
 func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 
 	// Parse week offset
 	weekOffset := 0
@@ -173,11 +183,17 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error retrieving bookings", http.StatusInternalServerError)
 		return
 	}
+	if len(bookings) == 0 {
+		bookings = make([]Booking, 0)
+	}
 
 	userBookings, err := getUserBookings(session.UserID)
 	if err != nil {
 		http.Error(w, "Error retrieving user bookings", http.StatusInternalServerError)
 		return
+	}
+	if len(userBookings) == 0 {
+		userBookings = make([]Booking, 0)
 	}
 
 	rows := dbPool.QueryRow(context.Background(), `SELECT admin
@@ -198,9 +214,8 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		Success:       r.URL.Query().Get("success"),
 	}
 
-	err = rows.Scan(&data.BasePageData.IsAdmin)
-	if err != nil {
-		fmt.Println(err)
+	if err := rows.Scan(&data.BasePageData.IsAdmin); err != nil {
+		log.Printf("booking: unable to load admin flag for %s: %v", session.Username, err)
 	}
 
 	tmpl, err := parseTemplatesBooking("templates/booking.html")
@@ -216,7 +231,7 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 
 	// Parse form
 	err := r.ParseForm()
@@ -359,6 +374,9 @@ func getBookingsForWeek(start, end time.Time) ([]Booking, error) {
 		b.EndTime = b.EndTime.In(loc)
 		bookings = append(bookings, b)
 	}
+	if len(bookings) == 0 {
+		return []Booking{}, nil
+	}
 	return bookings, nil
 }
 
@@ -369,7 +387,7 @@ func handleDeleteBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session := r.Context().Value("user").(Session)
+	session := auth.MustSessionFromContext(r.Context())
 	bookingID := r.FormValue("booking_id")
 
 	// Verify the booking belongs to the user
@@ -418,6 +436,9 @@ func getUserBookings(userID int) ([]Booking, error) {
 			continue
 		}
 		bookings = append(bookings, b)
+	}
+	if len(bookings) == 0 {
+		return []Booking{}, nil
 	}
 	return bookings, nil
 }
