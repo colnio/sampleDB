@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -18,14 +19,21 @@ type UserAccess struct {
 	Username        string      `json:"username"`
 	Approved        bool        `json:"approved"`
 	Admin           bool        `json:"admin"`
+	GroupName       string      `json:"group_name"`
 	CreatedAt       string      `json:"created_at"`
 	EquipmentAccess []Equipment `json:"equipment_access"`
+}
+
+type Group struct {
+	ID   int
+	Name string
 }
 
 type AdminPageData struct {
 	BasePageData
 	Users     []UserAccess
 	Equipment []Equipment
+	Groups    []Group
 	Error     string
 	Success   string
 }
@@ -48,34 +56,38 @@ func getBasePageData(session auth.Session) (BasePageData, error) {
 func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
-	// Get base page data
 	baseData, err := getBasePageData(session)
 	if err != nil {
 		http.Error(w, "Error getting user data", http.StatusInternalServerError)
 		return
 	}
 
-	// Get all equipment first
 	equipment, err := getAllEquipment()
 	if err != nil {
 		http.Error(w, "Error getting equipment", http.StatusInternalServerError)
 		return
 	}
 
-	// Get all users and their permissions
+	groups, err := getAllGroups()
+	if err != nil {
+		http.Error(w, "Error getting groups", http.StatusInternalServerError)
+		return
+	}
+
 	rows, err := dbPool.Query(context.Background(), `
-        SELECT DISTINCT 
+        SELECT 
             u.user_id, 
             u.username, 
             u.is_approved, 
             u.admin,
+            btrim(u."group") AS group_name,
             COALESCE(
                 array_agg(uep.equipment_id) FILTER (WHERE uep.equipment_id IS NOT NULL),
                 '{}'::int[]
             ) as equipment_ids
         FROM users u
         LEFT JOIN user_equipment_permissions uep ON u.user_id = uep.user_id
-        GROUP BY u.user_id, u.username, u.is_approved, u.admin
+        GROUP BY u.user_id, u.username, u.is_approved, u.admin, group_name
         ORDER BY u.username`)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -85,16 +97,23 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 
 	var users []UserAccess
 	for rows.Next() {
-		var u UserAccess
-		var equipmentIDs []int
+		var (
+			u            UserAccess
+			groupName    sql.NullString
+			equipmentIDs []int
+		)
+
 		err := rows.Scan(&u.UserID, &u.Username, &u.Approved,
-			&u.Admin, &equipmentIDs)
+			&u.Admin, &groupName, &equipmentIDs)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
-		// Map equipment permissions
+		if groupName.Valid {
+			u.GroupName = groupName.String
+		}
+
 		u.EquipmentAccess = make([]Equipment, 0)
 		if equipmentIDs != nil {
 			for _, eq := range equipment {
@@ -113,6 +132,7 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 		BasePageData: baseData,
 		Users:        users,
 		Equipment:    equipment,
+		Groups:       groups,
 		Error:        r.URL.Query().Get("error"),
 		Success:      r.URL.Query().Get("success"),
 	}
@@ -123,8 +143,7 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tmpl.ExecuteTemplate(w, "base", data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -136,9 +155,10 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data struct {
-		UserID    int   `json:"user_id"`
-		Approved  bool  `json:"approved"`
-		Equipment []int `json:"equipment"`
+		UserID    int     `json:"user_id"`
+		Approved  bool    `json:"approved"`
+		GroupName *string `json:"group_name"`
+		Equipment []int   `json:"equipment"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
@@ -156,10 +176,17 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(context.Background())
 
-	// Update approved status
+	var groupParam interface{}
+	if data.GroupName != nil {
+		name := strings.TrimSpace(*data.GroupName)
+		if name != "" {
+			groupParam = name
+		}
+	}
+
 	_, err = tx.Exec(context.Background(),
-		"UPDATE users SET is_approved = $1 WHERE user_id = $2",
-		data.Approved, data.UserID)
+		`UPDATE users SET is_approved = $1, "group" = $2 WHERE user_id = $3`,
+		data.Approved, groupParam, data.UserID)
 	if err != nil {
 		fmt.Println("ON update users approved: ", err)
 		http.Error(w, "Error updating approval status", http.StatusInternalServerError)
@@ -195,6 +222,27 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func getAllGroups() ([]Group, error) {
+	rows, err := dbPool.Query(context.Background(),
+		`SELECT group_id, name
+         FROM groups
+         ORDER BY name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []Group
+	for rows.Next() {
+		var g Group
+		if err := rows.Scan(&g.ID, &g.Name); err != nil {
+			continue
+		}
+		groups = append(groups, g)
+	}
+	return groups, nil
 }
 func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -324,6 +372,70 @@ func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
 
 	// Return success
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleAddGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	name := strings.TrimSpace(r.FormValue("name"))
+	if name == "" {
+		http.Redirect(w, r, "/admin?error=Group+name+is+required", http.StatusSeeOther)
+		return
+	}
+
+	_, err := dbPool.Exec(context.Background(),
+		"INSERT INTO groups (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
+		name)
+	if err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+add+group", http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/admin?success=Group+added", http.StatusSeeOther)
+}
+
+func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	parts := strings.Split(strings.TrimSuffix(r.URL.Path, "/"), "/")
+	if len(parts) < 4 {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	groupID := parts[len(parts)-1]
+
+	var groupName string
+	if err := dbPool.QueryRow(context.Background(),
+		"SELECT name FROM groups WHERE group_id = $1",
+		groupID).Scan(&groupName); err != nil {
+		http.Redirect(w, r, "/admin?error=Unknown+group", http.StatusSeeOther)
+		return
+	}
+
+	_, err := dbPool.Exec(context.Background(),
+		`UPDATE users SET "group" = NULL WHERE btrim("group") = $1`,
+		groupName)
+	if err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+unlink+users+from+group", http.StatusSeeOther)
+		return
+	}
+
+	_, err = dbPool.Exec(context.Background(),
+		"DELETE FROM groups WHERE group_id = $1",
+		groupID)
+	if err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+delete+group", http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/admin?success=Group+removed", http.StatusSeeOther)
 }
 
 func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {

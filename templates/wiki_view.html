@@ -19,7 +19,7 @@
 
     <div class="article-meta">
         <span>Created: {{.Article.CreatedAt.Format "Jan 02, 2006 15:04"}}</span>
-        {{if ne .Article.LastModifiedAt.IsZero true}}
+        {{if not .Article.LastModifiedAt.IsZero}}
         <span>· Last modified: {{.Article.LastModifiedAt.Format "Jan 02, 2006 15:04"}}</span>
         {{end}}
     </div>
@@ -33,17 +33,18 @@
         <h2>Attachments</h2>
         <div class="attachments-grid">
             {{range .Article.Attachments}}
-            <div class="attachment-preview">
+            <figure class="attachment-preview">
                 {{if .IsImage}}
-                <a href="/wiki/attachment/{{.ID}}" target="_blank" class="attachment-link">
+                <button type="button" class="attachment-thumb" data-image="/wiki/attachment/{{.ID}}" data-name="{{.OriginalName}}">
                     <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}">
-                </a>
+                </button>
                 {{else}}
-                <a href="/wiki/attachment/{{.ID}}" download class="attachment-link">
+                <a href="/wiki/attachment/{{.ID}}" download class="attachment-file">
                     <div class="file-icon">📄</div>
+                    <span>Download file</span>
                 </a>
                 {{end}}
-                <div class="attachment-info">
+                <figcaption class="attachment-info">
                     <div class="attachment-name" title="{{.OriginalName}}">{{.OriginalName}}</div>
                     <div class="attachment-actions">
                         <a href="/wiki/attachment/{{.ID}}" class="button button-small" {{if not .IsImage}}download{{end}}>Download</a>
@@ -51,8 +52,8 @@
                             <button type="submit" class="button button-small button-danger" onclick="return confirm('Delete this attachment?')">Delete</button>
                         </form>
                     </div>
-                </div>
-            </div>
+                </figcaption>
+            </figure>
             {{end}}
         </div>
     </div>
@@ -65,6 +66,15 @@
             <button type="submit" class="button">Upload</button>
         </form>
     </div>
+
+    <div id="image-lightbox" class="image-lightbox" aria-hidden="true">
+        <div class="lightbox-overlay" onclick="closeLightbox()"></div>
+        <div class="lightbox-panel" role="dialog" aria-modal="true">
+            <button type="button" class="lightbox-close" onclick="closeLightbox()" aria-label="Close preview">&times;</button>
+            <img id="lightbox-image" src="" alt="">
+            <p id="lightbox-caption"></p>
+        </div>
+    </div>
 </div>
 
 <a href="/wiki" class="back-link">← Back to Wiki</a>
@@ -72,9 +82,59 @@
 <!-- Add syntax highlighting -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 <script>
+    function closeLightbox() {
+        const lightbox = document.getElementById('image-lightbox');
+        if (!lightbox) {
+            return;
+        }
+
+        lightbox.classList.remove('is-visible');
+        lightbox.setAttribute('aria-hidden', 'true');
+
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+        if (lightboxImage) {
+            lightboxImage.src = '';
+            lightboxImage.alt = '';
+        }
+        if (lightboxCaption) {
+            lightboxCaption.textContent = '';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);
+        });
+
+        const lightbox = document.getElementById('image-lightbox');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+
+        document.querySelectorAll('.attachment-thumb').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (!lightbox || !lightboxImage) {
+                    return;
+                }
+
+                const src = button.dataset.image;
+                const name = button.dataset.name || '';
+
+                lightboxImage.src = src;
+                lightboxImage.alt = name;
+                if (lightboxCaption) {
+                    lightboxCaption.textContent = name;
+                }
+
+                lightbox.classList.add('is-visible');
+                lightbox.setAttribute('aria-hidden', 'false');
+            });
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.key === 'Escape') {
+                closeLightbox();
+            }
         });
     });
 </script>
@@ -268,23 +328,36 @@
     margin-top: 1rem;
 }
 
-.attachment-preview {
+figure.attachment-preview {
     border: 1px solid #ddd;
     border-radius: 4px;
     overflow: hidden;
+    margin: 0;
 }
 
-.attachment-link {
-    display: block;
+.attachment-thumb,
+.attachment-file {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     padding: 1rem;
-    text-align: center;
+    width: 100%;
     background: #f8f9fa;
+    border: none;
+    cursor: pointer;
 }
 
-.attachment-link img {
+.attachment-thumb img {
     max-width: 100%;
     max-height: 150px;
     object-fit: contain;
+}
+
+.attachment-file {
+    text-decoration: none;
+    color: #333;
+    gap: 0.75rem;
+    font-weight: 500;
 }
 
 .file-icon {
@@ -324,6 +397,65 @@
     gap: 1rem;
     align-items: center;
     margin-top: 1rem;
+}
+
+.image-lightbox {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 50;
+}
+
+.image-lightbox.is-visible {
+    display: block;
+}
+
+.lightbox-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(3px);
+}
+
+.lightbox-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #111827;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: min(90vw, 680px);
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+}
+
+.lightbox-panel img {
+    width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 8px;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.lightbox-panel p {
+    margin: 0;
+    color: #f9fafb;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    color: #f9fafb;
+    font-size: 2rem;
+    cursor: pointer;
+    line-height: 1;
 }
 
 /* Utility classes */

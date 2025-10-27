@@ -1,113 +1,182 @@
 {{define "title"}}Admin Panel{{end}}
 
 {{define "content"}}
-<div class="admin-container">
-    <!-- Equipment Section -->
-    <div class="section">
-        <div class="section-header">
-            <h2>Equipment Management</h2>
-            <button onclick="showEquipmentModal()" class="btn btn-primary">Add New Equipment</button>
+<div class="admin-page">
+    <div class="flash-region">
+        {{with .Error}}
+        <div class="alert alert-error">{{.}}</div>
+        {{end}}
+        {{with .Success}}
+        <div class="alert alert-success">{{.}}</div>
+        {{end}}
+    </div>
+
+    <div class="admin-grid">
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>User Groups</h2>
+                    <p class="card-subtitle">Organise users into research teams or labs for quick filtering.</p>
+                </div>
+                <form action="/admin/add-group" method="POST" class="inline-form add-inline">
+                    <input type="text" name="name" placeholder="New group name" required>
+                    <button type="submit" class="btn btn-primary btn-small">Add</button>
+                </form>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{if .Groups}}
+                            {{range .Groups}}
+                            <tr>
+                                <td>{{.Name}}</td>
+                                <td class="col-actions">
+                                    <form action="/admin/delete-group/{{.ID}}" method="POST" class="inline-form"
+                                          onsubmit="return confirm('Remove group {{.Name}}? Users will be unassigned.');">
+                                        <button type="submit" class="btn btn-small btn-danger">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {{end}}
+                        {{else}}
+                            <tr>
+                                <td colspan="2" class="empty-state">No groups yet. Add your first group to get started.</td>
+                            </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Equipment Catalogue</h2>
+                    <p class="card-subtitle">Manage bookable equipment and usage reports.</p>
+                </div>
+                <button onclick="showEquipmentModal()" class="btn btn-primary btn-small">Add Equipment</button>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{if .Equipment}}
+                            {{range .Equipment}}
+                            <tr>
+                                <td>{{.Name}}</td>
+                                <td class="col-actions">
+                                    <button onclick="showReportModal({{.ID}}, '{{.Name}}')" class="btn btn-small">Usage</button>
+                                    <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" class="btn btn-small btn-danger">Remove</button>
+                                </td>
+                            </tr>
+                            {{end}}
+                        {{else}}
+                            <tr>
+                                <td colspan="2" class="empty-state">No equipment registered yet.</td>
+                            </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <section class="card">
+        <div class="card-header column">
+            <div>
+                <h2>User Management</h2>
+                <p class="card-subtitle">Approve access, assign groups, and grant equipment permissions.</p>
+            </div>
         </div>
-        
-        <div class="equipment-list">
-            <table class="equipment-table">
+        <div class="table-scroll">
+            <table class="data-table users-table">
                 <thead>
                     <tr>
-                        <th>Equipment Name</th>
-                        <th>Actions</th>
+                        <th>User</th>
+                        <th>Group</th>
+                        <th>Status</th>
+                        <th>Equipment Access</th>
+                        <th class="col-actions">Admin</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {{range .Equipment}}
-                        <tr>
-                            <td>{{.Name}}</td>
+                    {{if .Users}}
+                        {{range .Users}}
+                        {{$user := .}}
+                        <tr data-user-id="{{$user.UserID}}">
                             <td>
-                                <button onclick="showReportModal({{.ID}}, '{{.Name}}')" 
-                                        class="btn btn-small">
-                                    Download Usage
-                                </button>
-                                <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" 
-                                        class="btn btn-small btn-danger">
-                                    Remove
-                                </button>
+                                <div class="user-meta">
+                                    <strong>{{$user.Username}}</strong>
+                                    {{if $user.GroupName}}<span class="badge">{{$user.GroupName}}</span>{{end}}
+                                </div>
                             </td>
+                            <td>
+                                <select class="group-select" onchange="updateAccess({{$user.UserID}})">
+                                    <option value="">No group</option>
+                                    {{range $group := $.Groups}}
+                                    <option value="{{$group.Name}}" {{if eq $user.GroupName $group.Name}}selected{{end}}>{{$group.Name}}</option>
+                                    {{end}}
+                                </select>
+                            </td>
+                            <td>
+                                <label class="toggle">
+                                    <input type="checkbox" class="approved-toggle"
+                                           {{if $user.Approved}}checked{{end}}
+                                           onchange="updateAccess({{$user.UserID}})">
+                                    <span>{{if $user.Approved}}Approved{{else}}Pending{{end}}</span>
+                                </label>
+                            </td>
+                            <td>
+                                <div class="equipment-access">
+                                    <select multiple class="equipment-select"
+                                            aria-label="Equipment access for {{.Username}}"
+                                            onchange="updateAccess({{$user.UserID}})">
+                                        {{range $equipment := $.Equipment}}
+                                        <option value="{{$equipment.ID}}"
+                                                {{range $user.EquipmentAccess}}
+                                                    {{if eq .ID $equipment.ID}}selected{{end}}
+                                                {{end}}>
+                                            {{$equipment.Name}}
+                                        </option>
+                                        {{end}}
+                                    </select>
+                                    <small class="hint">Hold Ctrl/⌘ to toggle multiple items</small>
+                                </div>
+                            </td>
+                            <td class="col-actions">
+                                <form action="/admin/set-admin" method="POST" class="inline-form">
+                                    <input type="hidden" name="user_id" value="{{$user.UserID}}">
+                                    {{if not $user.Admin}}
+                                        <button type="submit" name="is_admin" value="true"
+                                                class="btn btn-small">Make Admin</button>
+                                    {{else}}
+                                        <button type="submit" name="is_admin" value="false"
+                                                class="btn btn-small btn-danger">Remove</button>
+                                    {{end}}
+                                </form>
+                            </td>
+                        </tr>
+                        {{end}}
+                    {{else}}
+                        <tr>
+                            <td colspan="5" class="empty-state">No users found.</td>
                         </tr>
                     {{end}}
                 </tbody>
             </table>
         </div>
-    </div>
-
-    <!-- User Management Section -->
-    <div class="section">
-        <h2>User Management</h2>
-        
-        {{with .Error}}
-        <div class="alert alert-error">{{.}}</div>
-        {{end}}
-        
-        {{with .Success}}
-        <div class="alert alert-success">{{.}}</div>
-        {{end}}
-
-        <div class="users-table-wrapper">
-            <table class="users-table">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <!-- <th>Created</th> -->
-                        <th>Status</th>
-                        <th>Equipment Access</th>
-                        <th>Admin Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{range .Users}}
-                    <tr data-user-id="{{.UserID}}">
-                        <td>{{.Username}}</td>
-                        <!-- <td>{{.CreatedAt}}</td> -->
-                        <td>
-                            <label class="toggle">
-                                <input type="checkbox" class="approved-toggle" 
-                                       {{if .Approved}}checked{{end}}
-                                       onchange="updateAccess({{.UserID}})">
-                                Approved
-                            </label>
-                        </td>
-                        <td>
-                            <div class="equipment-access">
-                                <select multiple class="equipment-select" 
-                                        onchange="updateAccess({{.UserID}})">
-                                    {{$user := .}}
-                                    {{range $equipment := $.Equipment}}
-                                    <option value="{{$equipment.ID}}" 
-                                            {{range $user.EquipmentAccess}}
-                                                {{if eq .ID $equipment.ID}}selected{{end}}
-                                            {{end}}>
-                                            {{$equipment.Name}}
-                                        </option>
-                                    {{end}}
-                                </select>
-                            </div>
-                        </td>
-                        <td>
-                            <form action="/admin/set-admin" method="POST" class="inline-form">
-                                <input type="hidden" name="user_id" value="{{.UserID}}">
-                                {{if not .Admin}}
-                                    <button type="submit" name="is_admin" value="true" 
-                                            class="btn btn-small">Make Admin</button>
-                                {{else}}
-                                    <button type="submit" name="is_admin" value="false"
-                                            class="btn btn-small btn-danger">Remove Admin</button>
-                                {{end}}
-                            </form>
-                        </td>
-                    </tr>
-                    {{end}}
-                </tbody>
-            </table>
-        </div>
-    </div>
+    </section>
 
     <!-- Add Equipment Modal -->
     <div id="equipment-modal" class="modal">
@@ -118,8 +187,8 @@
             </div>
             <form action="/admin/add-equipment" method="POST">
                 <div class="form-group">
-                    <label for="equipment_name">Equipment Name:</label>
-                    <input type="text" id="equipment_name" name="name" required>
+                    <label for="equipment_name">Equipment Name</label>
+                    <input type="text" id="equipment_name" name="name" placeholder="e.g. Confocal Microscope" required>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Add Equipment</button>
@@ -128,114 +197,246 @@
             </form>
         </div>
     </div>
+
+    <!-- Report Modal -->
+    <div id="report-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Download Usage Report</h3>
+                <span class="close" onclick="closeReportModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label for="start_date">Start Date</label>
+                <input type="date" id="start_date" required>
+            </div>
+            <div class="form-group">
+                <label for="end_date">End Date</label>
+                <input type="date" id="end_date" required>
+            </div>
+            <div class="form-actions">
+                <button onclick="downloadReport()" class="btn btn-primary">Download</button>
+                <button onclick="closeReportModal()" class="btn">Cancel</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
-.admin-container {
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.section {
-    margin-bottom: 40px;
-}
-
-.section-header {
+.admin-page {
+    padding: 24px;
+    max-width: 1280px;
+    margin: 0 auto 60px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+    flex-direction: column;
+    gap: 32px;
 }
 
-/* Tables */
-.equipment-list,
-.users-table-wrapper {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 20px;
+.flash-region .alert {
+    margin-bottom: 0;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.08);
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    padding: 0;
+}
+
+.card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.card-header.column {
+    flex-direction: column;
+}
+
+.card-header h2 {
+    margin: 0;
+    font-size: 1.35rem;
+    color: #1f2937;
+}
+
+.card-subtitle {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.add-inline {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.add-inline input {
+    flex: 1;
+    min-width: 160px;
+}
+
+.table-scroll {
     overflow-x: auto;
 }
 
-.equipment-table,
-.users-table {
+.data-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.equipment-table th,
-.equipment-table td,
-.users-table th,
-.users-table td {
-    padding: 12px;
+.data-table thead th {
     text-align: left;
-    border-bottom: 1px solid #eee;
+    padding: 14px 24px;
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #6b7280;
+    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+    background: #f9fafb;
 }
 
-.equipment-table th,
-.users-table th {
-    background: #f8f9fa;
-    font-weight: 600;
+.data-table tbody td {
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+    vertical-align: top;
 }
 
-/* Forms and Inputs */
-.equipment-select {
-    width: 100%;
-    min-height: 100px;
-    padding: 4px;
+.data-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
-.toggle {
-    display: flex;
+.col-actions {
+    width: 160px;
+    text-align: right;
+}
+
+.inline-form {
+    display: inline-flex;
+    gap: 8px;
     align-items: center;
-    gap: 6px;
 }
 
-.toggle input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+.inline-form input[type="text"] {
+    min-width: 0;
 }
 
-.equipment-access {
-    max-width: 250px;
-}
-
-/* Buttons */
 .btn {
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    border: 1px solid #ddd;
-    background: #8169d1;
-}
-
-.btn-primary {
-    background-color: #007bff;
-    color: white;
+    background: #4f46e5;
+    color: #fff;
     border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 0.9rem;
 }
 
-.btn-primary:hover {
-    background-color: #0056b3;
+.btn:hover {
+    background: #4338ca;
 }
 
 .btn-small {
-    padding: 4px 8px;
-    font-size: 0.875rem;
+    padding: 6px 12px;
+    font-size: 0.85rem;
 }
 
 .btn-danger {
-    background-color: #dc3545;
-    color: white;
-    border: none;
+    background: #dc2626;
 }
 
 .btn-danger:hover {
-    background-color: #c82333;
+    background: #b91c1c;
 }
 
-/* Modal */
+.btn-primary {
+    background: #2563eb;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #374151;
+}
+
+.toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}
+
+.group-select,
+.equipment-select,
+input[type="text"],
+input[type="date"],
+textarea,
+select {
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.group-select:focus,
+.equipment-select:focus,
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.equipment-access select {
+    min-height: 120px;
+}
+
+.hint {
+    display: inline-block;
+    margin-top: 6px;
+    color: #9ca3af;
+    font-size: 0.75rem;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #4338ca;
+    font-size: 0.75rem;
+    margin-left: 6px;
+}
+
+.user-meta {
+    display: flex;
+    align-items: center;
+}
+
+.empty-state {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 32px 16px;
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -243,135 +444,134 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    background: rgba(17, 24, 39, 0.4);
+    z-index: 20;
+    justify-content: center;
+    align-items: center;
 }
 
 .modal-content {
-    position: relative;
-    background-color: #fff;
-    margin: 15% auto;
-    padding: 20px;
-    width: 90%;
-    max-width: 500px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: min(420px, 90%);
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 16px;
 }
 
-.close {
-    font-size: 24px;
-    font-weight: bold;
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #1f2937;
+}
+
+.modal .close {
+    font-size: 1.5rem;
     cursor: pointer;
-    color: #666;
-}
-
-.close:hover {
-    color: #333;
+    color: #6b7280;
 }
 
 .form-group {
-    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    font-weight: 600;
+    color: #374151;
 }
 
 .form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
+    gap: 12px;
 }
 
-/* Alerts */
-.alert {
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-}
+@media (max-width: 768px) {
+    .card-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
 
-.alert-error {
-    background: #fee;
-    color: #c00;
-    border: 1px solid #fcc;
-}
-
-.alert-success {
-    background: #efe;
-    color: #0a0;
-    border: 1px solid #cfc;
+    .col-actions {
+        width: auto;
+        text-align: left;
+    }
 }
 </style>
 
 <script>
 function updateAccess(userId) {
     const row = document.querySelector(`tr[data-user-id="${userId}"]`);
-    const approved = row.querySelector('.approved-toggle').checked;
+    const approvedToggle = row.querySelector('.approved-toggle');
     const equipmentSelect = row.querySelector('.equipment-select');
-    const selectedEquipment = Array.from(equipmentSelect.selectedOptions)
-                                  .map(option => parseInt(option.value));
+    const groupSelect = row.querySelector('.group-select');
 
-    try {
-        fetch('/admin/update-access', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                user_id: userId,
-                approved: approved,
-                equipment: selectedEquipment
-            })
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to update access');
+    const approved = approvedToggle?.checked ?? false;
+    const selectedEquipment = Array.from(equipmentSelect?.selectedOptions ?? [])
+        .map(option => parseInt(option.value, 10))
+        .filter(Number.isInteger);
 
-            const msg = document.createElement('div');
-            msg.className = 'alert alert-success';
-            msg.textContent = 'Access updated successfully';
+    const rawGroupValue = groupSelect?.value ?? '';
+    const groupValue = rawGroupValue.trim() || null;
+    const groupLabel = groupSelect?.selectedOptions?.[0]?.textContent?.trim() ?? '';
 
-            const usersWrapper = document.querySelector('.users-table-wrapper');
-            if (usersWrapper && usersWrapper.parentElement) {
-                usersWrapper.parentElement.insertBefore(msg, usersWrapper);
-            } else {
-                document.querySelector('.admin-container')?.prepend(msg);
-            }
-
-            setTimeout(() => msg.remove(), 3000);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Failed to update access rights');
-            location.reload();
-        });
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to update access rights');
-        location.reload();
+    const badge = row.querySelector('.badge');
+    if (groupValue) {
+        if (badge) {
+            badge.textContent = groupLabel;
+        } else {
+            const newBadge = document.createElement('span');
+            newBadge.className = 'badge';
+            newBadge.textContent = groupLabel;
+            row.querySelector('.user-meta')?.appendChild(newBadge);
+        }
+    } else if (badge) {
+        badge.remove();
     }
+
+    fetch('/admin/update-access', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            approved: approved,
+            group_name: groupValue,
+            equipment: selectedEquipment
+        })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Failed to update access');
+
+        const msg = document.createElement('div');
+        msg.className = 'alert alert-success';
+        msg.textContent = 'User settings updated';
+
+        const flashRegion = document.querySelector('.flash-region');
+        if (flashRegion) {
+            flashRegion.appendChild(msg);
+        }
+
+        setTimeout(() => msg.remove(), 2500);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update access rights. Please refresh and try again.');
+    });
 }
 
 function showEquipmentModal() {
-    document.getElementById('equipment-modal').style.display = 'block';
+    document.getElementById('equipment-modal').style.display = 'flex';
 }
 
 function closeEquipmentModal() {
@@ -380,7 +580,7 @@ function closeEquipmentModal() {
 }
 
 function confirmDeleteEquipment(equipmentId, equipmentName) {
-    if (confirm(`Are you sure you want to remove ${equipmentName}? This will also remove all related bookings and permissions.`)) {
+    if (confirm(`Remove ${equipmentName}? This will also clear related bookings and permissions.`)) {
         fetch(`/admin/delete-equipment/${equipmentId}`, {
             method: 'POST',
             headers: {
@@ -400,43 +600,11 @@ function confirmDeleteEquipment(equipmentId, equipmentName) {
     }
 }
 
-// Close modal when clicking outside
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-        event.target.style.display = 'none';
-    }
-}
-</script>
-
-
-<!-- Report Modal -->
-<div id="report-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Download Usage Report</h3>
-            <span class="close" onclick="closeReportModal()">&times;</span>
-        </div>
-        <div class="form-group">
-            <label for="start_date">Start Date:</label>
-            <input type="date" id="start_date" required>
-        </div>
-        <div class="form-group">
-            <label for="end_date">End Date:</label>
-            <input type="date" id="end_date" required>
-        </div>
-        <div class="form-actions">
-            <button onclick="downloadReport()" class="btn btn-primary">Download</button>
-            <button onclick="closeReportModal()" class="btn">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<script>
 let currentEquipmentId = null;
 
-function showReportModal(equipmentId, equipmentName) {
+function showReportModal(equipmentId) {
     currentEquipmentId = equipmentId;
-    document.getElementById('report-modal').style.display = 'block';
+    document.getElementById('report-modal').style.display = 'flex';
 }
 
 function closeReportModal() {
@@ -447,15 +615,23 @@ function closeReportModal() {
 function downloadReport() {
     const startDate = document.getElementById('start_date').value;
     const endDate = document.getElementById('end_date').value;
-    
+
     if (!startDate || !endDate) {
         alert('Please select both start and end dates');
         return;
     }
-    
+
     window.location.href = `/admin/equipment-report?id=${currentEquipmentId}&start=${startDate}&end=${endDate}`;
     closeReportModal();
 }
-</script>
 
+window.onclick = function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+</script>
 {{end}}

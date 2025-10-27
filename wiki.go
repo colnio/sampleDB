@@ -133,9 +133,12 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 	var article Article
 	var rawContent string
 	err := dbPool.QueryRow(context.Background(),
-		`SELECT article_id, title, content, created_at, created_by 
-         FROM articles WHERE title = $1`, title).Scan(
-		&article.ID, &article.Title, &rawContent, &article.CreatedAt, &article.CreatedBy)
+		`SELECT article_id, title, content, created_at, created_by,
+		        COALESCE(last_modified_at, created_at) AS last_modified_at,
+		        COALESCE(last_modified_by, created_by) AS last_modified_by
+		 FROM articles WHERE title = $1`, title).Scan(
+		&article.ID, &article.Title, &rawContent, &article.CreatedAt, &article.CreatedBy,
+		&article.LastModifiedAt, &article.LastModifiedBy)
 	if err != nil {
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return

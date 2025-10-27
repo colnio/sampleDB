@@ -19,6 +19,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"sampleDB/internal/auth"
+	"sampleDB/internal/dbschema"
 )
 
 type Attachment struct {
@@ -52,6 +53,7 @@ type User struct {
 	ID         int
 	Username   string
 	IsApproved bool
+	GroupName  string
 	CreatedAt  time.Time
 }
 
@@ -86,6 +88,10 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	if err = dbschema.Ensure(context.Background(), dbPool); err != nil {
+		log.Fatalf("Unable to ensure database schema: %v\n", err)
+	}
+
 	authManager := auth.NewManager(dbPool)
 
 	// Set up static file serving
@@ -117,6 +123,8 @@ func main() {
 	http.HandleFunc("/admin/set-admin", withAuth(requireAdmin(handleSetAdmin)))
 	http.HandleFunc("/admin/add-equipment", withAuth(requireAdmin(handleAddEquipment)))
 	http.HandleFunc("/admin/delete-equipment/", withAuth(requireAdmin(handleDeleteEquipment))) // Note the trailing slash
+	http.HandleFunc("/admin/add-group", withAuth(requireAdmin(handleAddGroup)))
+	http.HandleFunc("/admin/delete-group/", withAuth(requireAdmin(handleDeleteGroup)))
 	http.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
 	// Create uploads directory if it doesn't exist
 	err = os.MkdirAll("uploads", 0755)
@@ -561,10 +569,11 @@ func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 // getAttachments retrieves all attachments for a sample
 func getAttachments(sampleID string) ([]Attachment, error) {
 	rows, err := dbPool.Query(context.Background(),
-		`SELECT attachment_id, sample_id, attachment_address, uploaded_at 
+		`SELECT attachment_id, source_id, attachment_address, uploaded_at 
          FROM attachments 
-         WHERE sample_id = $1`,
-		sampleID)
+         WHERE source_type = 'sample' AND source_id = $1`,
+		sampleID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -590,8 +599,8 @@ func getAttachments(sampleID string) ([]Attachment, error) {
 // addAttachment stores a new attachment in the database
 func addAttachment(sampleID string, filepath string) error {
 	_, err := dbPool.Exec(context.Background(),
-		`INSERT INTO attachments (sample_id, attachment_address) 
-         VALUES ($1, $2)`,
+		`INSERT INTO attachments (source_id, attachment_address, source_type) 
+         VALUES ($1, $2, 'sample')`,
 		sampleID, filepath)
 	return err
 }
@@ -601,15 +610,16 @@ func deleteAttachment(attachmentID string) error {
 	// First get the file path
 	var filepath string
 	err := dbPool.QueryRow(context.Background(),
-		"SELECT attachment_address FROM attachments WHERE attachment_id = $1",
-		attachmentID).Scan(&filepath)
+		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
+		attachmentID,
+	).Scan(&filepath)
 	if err != nil {
 		return err
 	}
 
 	// Delete from database
 	_, err = dbPool.Exec(context.Background(),
-		"DELETE FROM attachments WHERE attachment_id = $1",
+		"DELETE FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID)
 	if err != nil {
 		return err
@@ -690,8 +700,9 @@ func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Get file path from database
 	var filepath string
 	err := dbPool.QueryRow(context.Background(),
-		"SELECT attachment_address FROM attachments WHERE attachment_id = $1",
-		attachmentID).Scan(&filepath)
+		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
+		attachmentID,
+	).Scan(&filepath)
 	if err != nil {
 		http.Error(w, "Attachment not found", http.StatusNotFound)
 		return
@@ -718,8 +729,9 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Get sample ID before deleting the attachment
 	var sampleID string
 	err := dbPool.QueryRow(context.Background(),
-		"SELECT sample_id FROM attachments WHERE attachment_id = $1",
-		attachmentID).Scan(&sampleID)
+		"SELECT source_id FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
+		attachmentID,
+	).Scan(&sampleID)
 	if err != nil {
 		http.Error(w, "Error getting sample ID", http.StatusInternalServerError)
 		return
