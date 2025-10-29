@@ -13,6 +13,8 @@ body {
     margin: 0 auto;
 }
 
+/* Header */
+
 /* Header and Navigation */
 h1 {
     margin-bottom: 2rem;
@@ -366,4 +368,14 @@ label {
     background: white;
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.nav-link-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.nav-link-primary:hover,
+.nav-link-primary:focus {
+    background: #1d4ed8;
+    color: #fff;
 }

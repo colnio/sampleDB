@@ -10,8 +10,10 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -68,6 +70,8 @@ var dbPool *pgxpool.Pool
 
 var loc *time.Location
 
+var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
+
 // Add this function to booking.go
 func initLocation() {
 	var err error
@@ -75,6 +79,54 @@ func initLocation() {
 	if err != nil {
 		log.Fatalf("Failed to load local timezone: %v", err)
 	}
+}
+
+func sanitizeFilename(name string) string {
+	base := strings.TrimSpace(filepath.Base(name))
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+
+	cleanStem := nonFileChars.ReplaceAllString(stem, "-")
+	cleanStem = strings.Trim(cleanStem, "-_. ")
+	if cleanStem == "" {
+		cleanStem = "file"
+	}
+
+	cleanExt := strings.TrimLeft(ext, ".")
+	cleanExt = nonFileChars.ReplaceAllString(cleanExt, "")
+	if cleanExt != "" {
+		cleanExt = "." + strings.ToLower(cleanExt)
+	}
+
+	return cleanStem + cleanExt
+}
+
+func generateUniqueFilename(originalName string) (string, error) {
+	buffer := make([]byte, 8)
+	if _, err := rand.Read(buffer); err != nil {
+		return "", err
+	}
+
+	clean := sanitizeFilename(originalName)
+	return fmt.Sprintf("%s_%s", hex.EncodeToString(buffer), clean), nil
+}
+
+func originalFilenameFromPath(path string) string {
+	base := filepath.Base(path)
+	if idx := strings.Index(base, "_"); idx >= 0 && idx+1 < len(base) {
+		return base[idx+1:]
+	}
+	return base
+}
+
+func setDownloadHeaders(w http.ResponseWriter, filename string) {
+	if filename == "" {
+		return
+	}
+	safeName := strings.ReplaceAll(filename, "\"", "")
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s",
+			safeName, url.PathEscape(filename)))
 }
 
 func main() {
@@ -390,8 +442,15 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 		BasePageData
 		Sample Sample
 	}{
-		BasePageData: BasePageData{Username: session.Username},
+		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID},
 		Sample:       sample,
+	}
+
+	if err := dbPool.QueryRow(context.Background(),
+		"SELECT admin FROM users WHERE user_id = $1",
+		session.UserID,
+	).Scan(&data.BasePageData.IsAdmin); err != nil {
+		log.Printf("main: failed to load admin flag for user %d: %v", session.UserID, err)
 	}
 
 	tmpl, err := parseTemplates("templates/sample_detail.html")
@@ -522,19 +581,6 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// generateUniqueFilename creates a unique filename with original extension
-func generateUniqueFilename(originalName string) (string, error) {
-	// Generate 16 random bytes
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-
-	// Keep original file extension
-	ext := filepath.Ext(originalName)
-	return hex.EncodeToString(bytes) + ext, nil
-}
-
 // saveUploadedFile saves the file to disk and returns the file path
 func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 	// Create uploads directory if it doesn't exist
@@ -586,10 +632,8 @@ func getAttachments(sampleID string) ([]Attachment, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Extract original filename from path
-		att.OriginalName = filepath.Base(att.Address)
-		// Determine content type
-		att.ContentType = mime.TypeByExtension(filepath.Ext(att.Address))
+		att.OriginalName = originalFilenameFromPath(att.Address)
+		att.ContentType = mime.TypeByExtension(filepath.Ext(att.OriginalName))
 		att.IsImage = isImage(att.ContentType)
 		attachments = append(attachments, att)
 	}
@@ -708,6 +752,8 @@ func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	original := originalFilenameFromPath(filepath)
+	setDownloadHeaders(w, original)
 	// Serve the file
 	http.ServeFile(w, r, filepath)
 }

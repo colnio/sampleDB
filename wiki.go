@@ -458,13 +458,20 @@ func deleteAttachmentWiki(attachmentID string) (string, error) {
 }
 
 func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request, attachmentID string) {
-	var filepath string
+	var (
+		filepath string
+		original string
+	)
 	err := dbPool.QueryRow(context.Background(),
-		"SELECT attachment_address FROM article_attachments WHERE attachment_id = $1",
-		attachmentID).Scan(&filepath)
+		"SELECT attachment_address, original_name FROM article_attachments WHERE attachment_id = $1",
+		attachmentID).Scan(&filepath, &original)
 	if err != nil {
 		http.Error(w, "Attachment not found", http.StatusNotFound)
 		return
+	}
+
+	if original != "" {
+		setDownloadHeaders(w, original)
 	}
 
 	// Serve the file

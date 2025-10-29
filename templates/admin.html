@@ -553,16 +553,17 @@ function updateAccess(userId) {
     .then(response => {
         if (!response.ok) throw new Error('Failed to update access');
 
-        const msg = document.createElement('div');
-        msg.className = 'alert alert-success';
-        msg.textContent = 'User settings updated';
-
         const flashRegion = document.querySelector('.flash-region');
         if (flashRegion) {
-            flashRegion.appendChild(msg);
-        }
+            flashRegion.querySelectorAll('.alert-temp').forEach(el => el.remove());
 
-        setTimeout(() => msg.remove(), 2500);
+            const msg = document.createElement('div');
+            msg.className = 'alert alert-success alert-temp';
+            msg.textContent = 'User settings updated';
+            flashRegion.appendChild(msg);
+
+            setTimeout(() => msg.remove(), 2000);
+        }
     })
     .catch(error => {
         console.error('Error:', error);

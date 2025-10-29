@@ -1,0 +1,15 @@
+{{define "auth_base"}}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{template "title" .}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {{block "additional_styles" .}}{{end}}
+</head>
+<body class="auth-body">
+    {{template "content" .}}
+</body>
+</html>
+{{end}}

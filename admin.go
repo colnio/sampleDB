@@ -456,6 +456,7 @@ func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {
             b.end_time,
             b.purpose,
             u.username,
+            COALESCE(NULLIF(btrim(u."group"), ''), 'Unassigned') AS user_group,
             e.name as equipment_name
         FROM bookings b
         JOIN users u ON b.user_id = u.user_id
@@ -479,7 +480,7 @@ func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {
 	defer csvWriter.Flush()
 
 	// Write headers
-	headers := []string{"Start Time", "End Time", "Duration (hours)", "User", "Equipment", "Purpose"}
+	headers := []string{"Start Time", "End Time", "Duration (hours)", "User", "Group", "Equipment", "Purpose"}
 	if err := csvWriter.Write(headers); err != nil {
 		http.Error(w, "Error writing CSV", http.StatusInternalServerError)
 		return
@@ -488,9 +489,9 @@ func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {
 	// Write data rows
 	for rows.Next() {
 		var startTime, endTime time.Time
-		var purpose, username, equipmentName string
+		var purpose, username, groupName, equipmentName string
 
-		if err := rows.Scan(&startTime, &endTime, &purpose, &username, &equipmentName); err != nil {
+		if err := rows.Scan(&startTime, &endTime, &purpose, &username, &groupName, &equipmentName); err != nil {
 			continue
 		}
 
@@ -501,6 +502,7 @@ func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {
 			endTime.Format("2006-01-02 15:04"),
 			fmt.Sprintf("%.2f", duration),
 			username,
+			groupName,
 			equipmentName,
 			purpose,
 		}

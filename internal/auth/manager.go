@@ -70,12 +70,15 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 				IsRegister: false,
 			}
 
-			tmpl, err := template.ParseFiles("templates/login.html")
+			tmpl, err := template.ParseFiles(
+				"templates/auth_base.html",
+				"templates/login.html",
+			)
 			if err != nil {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return
 			}
-			_ = tmpl.Execute(w, data)
+			_ = tmpl.ExecuteTemplate(w, "auth_base", data)
 			return
 		}
 
@@ -132,15 +135,19 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 		if r.Method == http.MethodGet {
 			data := authPageData{
 				Error:      r.URL.Query().Get("error"),
+				Success:    r.URL.Query().Get("success"),
 				IsRegister: true,
 			}
 
-			tmpl, err := template.ParseFiles("templates/login.html")
+			tmpl, err := template.ParseFiles(
+				"templates/auth_base.html",
+				"templates/login.html",
+			)
 			if err != nil {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return
 			}
-			_ = tmpl.Execute(w, data)
+			_ = tmpl.ExecuteTemplate(w, "auth_base", data)
 			return
 		}
 
@@ -273,4 +280,6 @@ type authPageData struct {
 	Error      string
 	Success    string
 	IsRegister bool
+	Username   string
+	IsAdmin    bool
 }

@@ -39,7 +39,7 @@
                     <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}">
                 </button>
                 {{else}}
-                <a href="/wiki/attachment/{{.ID}}" download class="attachment-file">
+                <a href="/wiki/attachment/{{.ID}}" download="{{.OriginalName}}" class="attachment-file">
                     <div class="file-icon">📄</div>
                     <span>Download file</span>
                 </a>
@@ -47,7 +47,7 @@
                 <figcaption class="attachment-info">
                     <div class="attachment-name" title="{{.OriginalName}}">{{.OriginalName}}</div>
                     <div class="attachment-actions">
-                        <a href="/wiki/attachment/{{.ID}}" class="button button-small" {{if not .IsImage}}download{{end}}>Download</a>
+                        <a href="/wiki/attachment/{{.ID}}" class="button button-small" {{if not .IsImage}}download="{{.OriginalName}}"{{end}}>Download</a>
                         <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
                             <button type="submit" class="button button-small button-danger" onclick="return confirm('Delete this attachment?')">Delete</button>
                         </form>

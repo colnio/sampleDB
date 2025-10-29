@@ -13,7 +13,7 @@
             <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}">
         </a>
         {{else}}
-        <a href="/attachment/{{.ID}}" download>
+        <a href="/attachment/{{.ID}}" download="{{.OriginalName}}">
             <div class="file-icon">📄</div>
         </a>
         {{end}}
