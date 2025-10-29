@@ -107,14 +107,14 @@
                         <th>Group</th>
                         <th>Status</th>
                         <th>Equipment Access</th>
-                        <th class="col-actions">Admin</th>
+                        <th class="col-actions">Account</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{if .Users}}
                         {{range .Users}}
                         {{$user := .}}
-                        <tr data-user-id="{{$user.UserID}}">
+                        <tr data-user-id="{{$user.UserID}}" data-username="{{$user.Username}}">
                             <td>
                                 <div class="user-meta">
                                     <strong>{{$user.Username}}</strong>
@@ -155,16 +155,24 @@
                                 </div>
                             </td>
                             <td class="col-actions">
-                                <form action="/admin/set-admin" method="POST" class="inline-form">
-                                    <input type="hidden" name="user_id" value="{{$user.UserID}}">
-                                    {{if not $user.Admin}}
-                                        <button type="submit" name="is_admin" value="true"
-                                                class="btn btn-small">Make Admin</button>
-                                    {{else}}
-                                        <button type="submit" name="is_admin" value="false"
-                                                class="btn btn-small btn-danger">Remove</button>
-                                    {{end}}
-                                </form>
+                                <div class="account-actions">
+                                    <form action="/admin/set-admin" method="POST" class="inline-form">
+                                        <input type="hidden" name="user_id" value="{{$user.UserID}}">
+                                        {{if not $user.Admin}}
+                                            <button type="submit" name="is_admin" value="true"
+                                                    class="btn btn-small">Make Admin</button>
+                                        {{else}}
+                                            <button type="submit" name="is_admin" value="false"
+                                                    class="btn btn-small btn-danger">Remove Admin</button>
+                                        {{end}}
+                                    </form>
+                                    <button type="button"
+                                            class="btn btn-small btn-danger remove-user-btn"
+                                            onclick="confirmRemoveUser({{$user.UserID}})"
+                                            {{if eq $user.UserID $.BasePageData.UserID}}disabled title="You cannot remove your own account"{{end}}>
+                                        Remove User
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {{end}}
@@ -324,6 +332,22 @@
     display: inline-flex;
     gap: 8px;
     align-items: center;
+}
+
+.account-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.account-actions .inline-form {
+    justify-content: flex-end;
+}
+
+.remove-user-btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .inline-form input[type="text"] {
@@ -602,6 +626,54 @@ function confirmDeleteEquipment(equipmentId, equipmentName) {
 }
 
 let currentEquipmentId = null;
+
+function confirmRemoveUser(userId) {
+    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    const username = row?.dataset.username ?? 'this user';
+
+    if (!confirm(`Remove ${username}? They will no longer be able to sign in.`)) {
+        return;
+    }
+
+    fetch('/admin/delete-user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId }),
+    })
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 400) {
+                return response.text().then(text => { throw new Error(text || 'Invalid request'); });
+            }
+            if (response.status === 404) {
+                throw new Error('User not found or already removed');
+            }
+            throw new Error('Failed to remove user');
+        }
+        return response.json().catch(() => ({}));
+    })
+    .then(() => {
+        const flashRegion = document.querySelector('.flash-region');
+        if (flashRegion) {
+            flashRegion.querySelectorAll('.alert-temp').forEach(el => el.remove());
+
+            const msg = document.createElement('div');
+            msg.className = 'alert alert-success alert-temp';
+            msg.textContent = 'User removed';
+            flashRegion.appendChild(msg);
+
+            setTimeout(() => msg.remove(), 2000);
+        }
+
+        row?.remove();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(error.message || 'Failed to remove user. Please refresh and try again.');
+    });
+}
 
 function showReportModal(equipmentId) {
     currentEquipmentId = equipmentId;

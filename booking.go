@@ -367,7 +367,7 @@ func checkUserPermission(userID, equipmentID int) (bool, error) {
 func isUserAdmin(userID int) (bool, error) {
 	var isAdmin bool
 	err := dbPool.QueryRow(context.Background(),
-		`SELECT admin FROM users WHERE user_id = $1`,
+		`SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
 		userID).Scan(&isAdmin)
 	return isAdmin, err
 }

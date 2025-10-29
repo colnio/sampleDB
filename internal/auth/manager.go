@@ -89,13 +89,19 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			userID     int
 			passwdHash string
 			isApproved bool
+			deleted    bool
 		)
 
 		err := m.db.QueryRow(context.Background(),
-			"SELECT user_id, password_hash, is_approved FROM users WHERE username = $1",
-			username).Scan(&userID, &passwdHash, &isApproved)
+			"SELECT user_id, password_hash, is_approved, COALESCE(deleted, false) FROM users WHERE username = $1",
+			username).Scan(&userID, &passwdHash, &isApproved, &deleted)
 		if err != nil {
 			http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
+			return
+		}
+
+		if deleted {
+			http.Redirect(w, r, "/login?error=Account+is+disabled", http.StatusSeeOther)
 			return
 		}
 
@@ -216,6 +222,16 @@ func (m *Manager) LogoutHandler() http.HandlerFunc {
 
 func (m *Manager) SetCookieSecure(enable bool) {
 	m.cookieSecure = enable
+}
+
+func (m *Manager) RevokeUserSessions(userID int) {
+	m.mu.Lock()
+	for token, session := range m.sessions {
+		if session.UserID == userID {
+			delete(m.sessions, token)
+		}
+	}
+	m.mu.Unlock()
 }
 
 func (m *Manager) SetTemplateDir(dir string) {

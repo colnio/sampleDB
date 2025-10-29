@@ -41,7 +41,7 @@ type AdminPageData struct {
 func getBasePageData(session auth.Session) (BasePageData, error) {
 	var isAdmin bool
 	err := dbPool.QueryRow(context.Background(),
-		"SELECT admin FROM users WHERE user_id = $1",
+		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		session.UserID).Scan(&isAdmin)
 	if err != nil {
 		return BasePageData{}, err
@@ -87,6 +87,7 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
             ) as equipment_ids
         FROM users u
         LEFT JOIN user_equipment_permissions uep ON u.user_id = uep.user_id
+        WHERE COALESCE(u.deleted, false) = false
         GROUP BY u.user_id, u.username, u.is_approved, u.admin, group_name
         ORDER BY u.username`)
 	if err != nil {
@@ -185,7 +186,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = tx.Exec(context.Background(),
-		`UPDATE users SET is_approved = $1, "group" = $2 WHERE user_id = $3`,
+		`UPDATE users SET is_approved = $1, "group" = $2 WHERE user_id = $3 AND COALESCE(deleted, false) = false`,
 		data.Approved, groupParam, data.UserID)
 	if err != nil {
 		fmt.Println("ON update users approved: ", err)
@@ -250,7 +251,7 @@ func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 
 		var isAdmin bool
 		err := dbPool.QueryRow(context.Background(),
-			"SELECT admin FROM users WHERE user_id = $1",
+			"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 			session.UserID).Scan(&isAdmin)
 
 		if err != nil || !isAdmin {
@@ -273,7 +274,7 @@ func handleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	isAdmin := r.FormValue("is_admin") == "true"
 
 	_, err := dbPool.Exec(context.Background(),
-		"UPDATE users SET admin = $1 WHERE user_id = $2",
+		"UPDATE users SET admin = $1 WHERE user_id = $2 AND COALESCE(deleted, false) = false",
 		isAdmin, userID)
 
 	if err != nil {
@@ -282,6 +283,79 @@ func handleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/admin?success=Admin+status+updated", http.StatusSeeOther)
+}
+
+func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+
+	var userID int
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		var payload struct {
+			UserID int `json:"user_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		userID = payload.UserID
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+		idStr := r.FormValue("user_id")
+		parsed, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid user id", http.StatusBadRequest)
+			return
+		}
+		userID = parsed
+	}
+
+	if userID == 0 {
+		http.Error(w, "User id required", http.StatusBadRequest)
+		return
+	}
+
+	if userID == session.UserID {
+		http.Error(w, "You cannot remove your own account", http.StatusBadRequest)
+		return
+	}
+
+	cmdTag, err := dbPool.Exec(context.Background(),
+		`UPDATE users
+         SET deleted = true,
+             is_approved = false
+         WHERE user_id = $1
+           AND COALESCE(deleted, false) = false`,
+		userID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	if authManagerInstance != nil {
+		authManagerInstance.RevokeUserSessions(userID)
+	}
+
+	if strings.Contains(contentType, "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true}`))
+		return
+	}
+
+	http.Redirect(w, r, "/admin?success=User+removed", http.StatusSeeOther)
 }
 
 func handleAddEquipment(w http.ResponseWriter, r *http.Request) {

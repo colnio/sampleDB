@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
@@ -68,6 +69,12 @@ type MainPageData struct {
 	Query    string
 }
 
+type ChangePasswordPageData struct {
+	BasePageData
+	Error   string
+	Success string
+}
+
 // Initialize a global database connection pool
 var dbPool *pgxpool.Pool
 
@@ -76,6 +83,8 @@ var loc *time.Location
 var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
 
 var appConfig AppConfig
+
+var authManagerInstance *auth.Manager
 
 type AppConfig struct {
 	Addr         string
@@ -294,6 +303,131 @@ func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
 	})
 }
 
+func handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	session := auth.MustSessionFromContext(r.Context())
+
+	baseData, err := getBasePageData(session)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Redirect(w, r, "/logout", http.StatusSeeOther)
+			return
+		}
+		http.Error(w, "Unable to load account information", http.StatusInternalServerError)
+		return
+	}
+
+	data := ChangePasswordPageData{
+		BasePageData: baseData,
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		renderChangePasswordTemplate(w, data)
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			data.Error = "Invalid form submission"
+			w.WriteHeader(http.StatusBadRequest)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		currentPassword := strings.TrimSpace(r.FormValue("current_password"))
+		newPassword := strings.TrimSpace(r.FormValue("new_password"))
+		confirmPassword := strings.TrimSpace(r.FormValue("confirm_password"))
+
+		if currentPassword == "" || newPassword == "" || confirmPassword == "" {
+			data.Error = "All fields are required"
+			w.WriteHeader(http.StatusBadRequest)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		if len(newPassword) < 8 {
+			data.Error = "New password must be at least 8 characters long"
+			w.WriteHeader(http.StatusBadRequest)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		if newPassword != confirmPassword {
+			data.Error = "New passwords do not match"
+			w.WriteHeader(http.StatusBadRequest)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		var storedHash string
+		err := dbPool.QueryRow(context.Background(),
+			`SELECT password_hash
+	             FROM users
+	             WHERE user_id = $1
+	               AND COALESCE(deleted, false) = false`,
+			session.UserID).Scan(&storedHash)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				http.Redirect(w, r, "/logout", http.StatusSeeOther)
+				return
+			}
+			data.Error = "Unable to verify current password"
+			w.WriteHeader(http.StatusBadRequest)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)); err != nil {
+			data.Error = "Current password is incorrect"
+			w.WriteHeader(http.StatusBadRequest)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		if currentPassword == newPassword {
+			data.Error = "New password must be different from the current password"
+			w.WriteHeader(http.StatusBadRequest)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			data.Error = "Failed to update password"
+			w.WriteHeader(http.StatusInternalServerError)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		cmdTag, err := dbPool.Exec(context.Background(),
+			`UPDATE users
+             SET password_hash = $1
+             WHERE user_id = $2
+               AND COALESCE(deleted, false) = false`,
+			string(newHash), session.UserID)
+		if err != nil || cmdTag.RowsAffected() == 0 {
+			data.Error = "Failed to update password"
+			w.WriteHeader(http.StatusInternalServerError)
+			renderChangePasswordTemplate(w, data)
+			return
+		}
+
+		data.Success = "Password updated successfully"
+		renderChangePasswordTemplate(w, data)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func renderChangePasswordTemplate(w http.ResponseWriter, data ChangePasswordPageData) {
+	tmpl, err := parseTemplates("templates/change_password.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		http.Error(w, "Template execution error", http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	initLocation()
 	cfg := loadConfig()
@@ -310,11 +444,11 @@ func main() {
 		log.Fatalf("Unable to ensure database schema: %v\n", err)
 	}
 
-	authManager := auth.NewManager(dbPool)
+	authManagerInstance = auth.NewManager(dbPool)
 	if cfg.UseTLS {
-		authManager.SetCookieSecure(true)
+		authManagerInstance.SetCookieSecure(true)
 	}
-	authManager.SetTemplateDir(cfg.TemplatesDir)
+	authManagerInstance.SetTemplateDir(cfg.TemplatesDir)
 
 	mux := http.NewServeMux()
 
@@ -323,12 +457,12 @@ func main() {
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Auth routes
-	mux.HandleFunc("/login", authManager.LoginHandler())
-	mux.HandleFunc("/register", authManager.RegisterHandler())
-	mux.HandleFunc("/logout", authManager.RequireAuth(authManager.LogoutHandler()))
+	mux.HandleFunc("/login", authManagerInstance.LoginHandler())
+	mux.HandleFunc("/register", authManagerInstance.RegisterHandler())
+	mux.HandleFunc("/logout", authManagerInstance.RequireAuth(authManagerInstance.LogoutHandler()))
 
 	// Sample management routes
-	withAuth := authManager.RequireAuth
+	withAuth := authManagerInstance.RequireAuth
 	mux.HandleFunc("/", withAuth(mainPageHandler))
 	mux.HandleFunc("/samples/new", withAuth(newSampleHandler))
 	mux.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
@@ -352,6 +486,10 @@ func main() {
 	mux.HandleFunc("/admin/add-group", withAuth(requireAdmin(handleAddGroup)))
 	mux.HandleFunc("/admin/delete-group/", withAuth(requireAdmin(handleDeleteGroup)))
 	mux.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
+	mux.HandleFunc("/admin/delete-user", withAuth(requireAdmin(handleDeleteUser)))
+
+	// Account management
+	mux.HandleFunc("/change-password", withAuth(handleChangePassword))
 
 	// Ensure required directories exist
 	if err = os.MkdirAll(cfg.UploadsDir, 0755); err != nil {
@@ -439,13 +577,10 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the query
-	rows := dbPool.QueryRow(context.Background(), `SELECT admin
+	row := dbPool.QueryRow(context.Background(), `SELECT admin
 	FROM users
-	WHERE username = $1`, session.Username)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	WHERE username = $1
+	  AND COALESCE(deleted, false) = false`, session.Username)
 
 	data := struct {
 		BasePageData
@@ -457,9 +592,12 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 		Query:        query,
 	}
 
-	err = rows.Scan(&data.BasePageData.IsAdmin)
-	if err != nil {
-		fmt.Println(err)
+	if err := row.Scan(&data.BasePageData.IsAdmin); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Redirect(w, r, "/logout", http.StatusSeeOther)
+			return
+		}
+		log.Printf("main: unable to load admin flag for %s: %v", session.Username, err)
 	}
 	tmpl, err := parseTemplates("templates/main.html")
 	if err != nil {

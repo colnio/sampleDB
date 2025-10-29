@@ -16,6 +16,7 @@ import (
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
+	"github.com/jackc/pgx/v5"
 
 	"sampleDB/internal/auth"
 )
@@ -167,8 +168,12 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	isAdmin := false
 	if err := dbPool.QueryRow(context.Background(),
-		"SELECT admin FROM users WHERE user_id = $1",
+		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		session.UserID).Scan(&isAdmin); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Redirect(w, r, "/logout", http.StatusSeeOther)
+			return
+		}
 		log.Printf("wiki: unable to load admin status for user %d: %v", session.UserID, err)
 		isAdmin = false
 	}

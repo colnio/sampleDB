@@ -7,16 +7,23 @@
         <div class="nav-center">
             <a href="/wiki" class="nav-item">Wiki</a>
             <a href="/booking" class="nav-item">Equipment Booking</a>
-        </div>
-        {{if .IsAdmin}}
-        <div class="nav-right">
-            <!-- <span class="user-info">{{.Username}}</span> -->
+            {{if .IsAdmin}}
             <a href="/admin" class="nav-item">Admin Panel</a>
-        {{end}}
+            {{end}}
         </div>
         <div class="nav-right">
-            <!-- <span class="user-info">{{.Username}}</span> -->
-            <a href="/logout" class="nav-item">Logout</a>
+            <div class="user-menu">
+                <button class="user-menu-toggle" type="button" id="user-menu-toggle">
+                    <span class="user-menu-label">{{if .Username}}{{.Username}}{{else}}Account{{end}}</span>
+                    <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M5.23 7.21a.75.75 0 011.06.02L10 10.122l3.71-2.89a.75.75 0 11.92 1.18l-4.18 3.255a.75.75 0 01-.92 0L5.21 8.41a.75.75 0 01.02-1.2z" fill="currentColor"></path>
+                    </svg>
+                </button>
+                <div class="user-menu-dropdown" id="user-menu-dropdown">
+                    <a href="/change-password" class="dropdown-item">Change Password</a>
+                    <a href="/logout" class="dropdown-item">Logout</a>
+                </div>
+            </div>
         </div>
     </nav>
 </header>
@@ -26,6 +33,9 @@
     background-color: #f8f9fa;
     padding: 1rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .main-nav {
@@ -40,6 +50,11 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+}
+
+.nav-center {
+    flex: 1;
+    justify-content: center;
 }
 
 .nav-logo {
@@ -62,9 +77,99 @@
     color: #333;
 }
 
-.user-info {
-    color: #666;
-    font-size: 0.9rem;
+.user-menu {
+    position: relative;
+}
+
+.user-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 9999px;
+    background: #e0e7ff;
+    color: #4338ca;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+.user-menu-toggle:hover {
+    background: #c7d2fe;
+}
+
+.user-menu-toggle svg {
+    transition: transform 0.2s ease;
+}
+
+.user-menu-dropdown {
+    position: absolute;
+    right: 0;
+    margin-top: 0.5rem;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+    min-width: 180px;
+    padding: 0.5rem 0;
+    display: none;
+}
+
+.user-menu.open .user-menu-dropdown {
+    display: block;
+}
+
+.user-menu.open .user-menu-toggle svg {
+    transform: rotate(180deg);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    color: #374151;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.user-menu-label {
+    line-height: 1;
+}
+
+@media (max-width: 768px) {
+    .main-nav {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .nav-center {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
 }
 </style>
+
+<script>
+document.addEventListener('click', function (event) {
+    const menu = document.querySelector('.user-menu');
+    const toggle = document.getElementById('user-menu-toggle');
+    if (!menu || !toggle) {
+        return;
+    }
+
+    if (toggle.contains(event.target)) {
+        menu.classList.toggle('open');
+        return;
+    }
+
+    if (!menu.contains(event.target)) {
+        menu.classList.remove('open');
+    }
+});
+</script>
 {{end}}
