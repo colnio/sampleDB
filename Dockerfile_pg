@@ -1,5 +1,0 @@
-FROM postgres
-ENV POSTGRES_USER app
-ENV POSTGRES_PASSWORD app
-ENV POSTGRES_DB sampledb
-ADD DDL/init.sql /docker-entrypoint-initdb.d/

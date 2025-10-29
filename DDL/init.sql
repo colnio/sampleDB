@@ -1,17 +1,23 @@
-CREATE TABLE if not exists users (
+-- Core account tables
+CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     is_approved BOOLEAN DEFAULT false,
     deleted BOOLEAN DEFAULT false,
+    "group" TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    admin bool default false
+    admin BOOLEAN DEFAULT false
 );
 
-grant all on users to app;
-grant all on sequence users_user_id_seq to app;
+CREATE TABLE IF NOT EXISTS groups (
+    group_id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE TABLE if not exists samples (
+-- Samples and attachments
+CREATE TABLE IF NOT EXISTS samples (
     sample_id SERIAL PRIMARY KEY,
     sample_name VARCHAR(100) NOT NULL,
     sample_description TEXT,
@@ -20,29 +26,16 @@ CREATE TABLE if not exists samples (
     sample_owner VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-grant all on schema public to app;
-grant all on samples to app;
-grant all on sequence samples_sample_id_seq to app;
 
-insert into samples (sample_name, sample_description, sample_keywords, sample_owner) values ('T1', 'desc1', 'CNT', 'colnio');
-insert into samples (sample_name, sample_description, sample_keywords, sample_owner) values ('T2', 'desc2', 'Gr', 'colnio');
-insert into samples (sample_name, sample_description, sample_keywords, sample_owner) values ('T3', 'desc3', 'MAC', 'colnio');
-insert into samples (sample_name, sample_description, sample_keywords, sample_owner) values ('T4', 'desc4', 'MoS2', 'colnio');
-
-
-CREATE TABLE if not exists attachments (
+CREATE TABLE IF NOT EXISTS attachments (
     attachment_id SERIAL PRIMARY KEY,
     sample_id INT REFERENCES samples(sample_id) ON DELETE CASCADE,
     attachment_address VARCHAR(255) NOT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-grant all on schema public to app;
-grant all on attachments to app;
-grant all on attachments_attachment_id_seq to app;
-
--- Wiki related tables
-CREATE TABLE articles (
+-- Wiki
+CREATE TABLE IF NOT EXISTS articles (
     article_id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL UNIQUE,
     content TEXT NOT NULL,
@@ -52,7 +45,7 @@ CREATE TABLE articles (
     last_modified_by INT REFERENCES users(user_id)
 );
 
-CREATE TABLE article_attachments (
+CREATE TABLE IF NOT EXISTS article_attachments (
     attachment_id SERIAL PRIMARY KEY,
     article_id INT REFERENCES articles(article_id) ON DELETE CASCADE,
     attachment_address VARCHAR(255) NOT NULL,
@@ -61,8 +54,8 @@ CREATE TABLE article_attachments (
     uploaded_by INT REFERENCES users(user_id)
 );
 
--- Booking system related tables
-CREATE TABLE equipment (
+-- Equipment booking
+CREATE TABLE IF NOT EXISTS equipment (
     equipment_id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
@@ -70,7 +63,7 @@ CREATE TABLE equipment (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE user_equipment_permissions (
+CREATE TABLE IF NOT EXISTS user_equipment_permissions (
     user_id INT REFERENCES users(user_id),
     equipment_id INT REFERENCES equipment(equipment_id),
     granted_by INT REFERENCES users(user_id),
@@ -80,54 +73,29 @@ CREATE TABLE user_equipment_permissions (
 
 CREATE TABLE IF NOT EXISTS bookings (
     booking_id SERIAL PRIMARY KEY,
-    equipment_id INTEGER REFERENCES equipment(equipment_id),
-    user_id INTEGER REFERENCES users(user_id),
-    start_time  TIMESTAMP with time zone NOT NULL,
-    end_time  TIMESTAMP  with time zone NOT NULL,
+    equipment_id INT REFERENCES equipment(equipment_id),
+    user_id INT REFERENCES users(user_id),
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
     purpose TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT valid_time_range CHECK (end_time > start_time)
 );
 
-
-CREATE INDEX IF NOT EXISTS idx_bookings_time_range 
+CREATE INDEX IF NOT EXISTS idx_bookings_time_range
 ON bookings (equipment_id, start_time, end_time);
 
-grant all on bookings to app;
-
--- Grant necessary permissions
-GRANT ALL ON articles TO app;
-GRANT ALL ON article_attachments TO app;
-GRANT ALL ON equipment TO app;
-GRANT ALL ON user_equipment_permissions TO app;
-GRANT ALL ON bookings TO app;
-
-GRANT ALL ON SEQUENCE articles_article_id_seq TO app;
-GRANT ALL ON SEQUENCE article_attachments_attachment_id_seq TO app;
-GRANT ALL ON SEQUENCE equipment_equipment_id_seq TO app;
-
-grant all on samples to app with grant option;
-alter table samples owner to app;
-grant all on users to app with grant option;
-alter table users owner to app;
-grant all on attachments to app with grant option;
-alter table attachments owner to app;
-grant all on articles to app with grant option;
-alter table articles owner to app;
-grant all on article_attachments to app with grant option;
-alter table article_attachments owner to app;
-grant all on equipment to app with grant option;
-alter table equipment owner to app;
-grant all on user_equipment_permissions to app with grant option;
-alter table user_equipment_permissions owner to app;
-grant all on bookings to app with grant option;
-alter table bookings owner to app;
--- Create extension for time range exclusion
--- CREATE EXTENSION IF NOT EXISTS btree_gist;
-
--- Insert some sample equipment
+-- Idempotent seed data
 INSERT INTO equipment (name, description, location) VALUES
     ('SEM', 'Scanning Electron Microscope', 'Room 101'),
     ('TEM', 'Transmission Electron Microscope', 'Room 102'),
     ('XRD', 'X-Ray Diffractometer', 'Room 103'),
-    ('AFM', 'Atomic Force Microscope', 'Room 104');
+    ('AFM', 'Atomic Force Microscope', 'Room 104')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO groups (name)
+SELECT DISTINCT btrim("group")
+FROM users
+WHERE "group" IS NOT NULL
+  AND btrim("group") <> ''
+ON CONFLICT (name) DO NOTHING;
