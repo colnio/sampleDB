@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -72,6 +74,70 @@ var loc *time.Location
 
 var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
 
+type AppConfig struct {
+	Addr         string
+	RedirectAddr string
+	DatabaseURL  string
+	TLSCertFile  string
+	TLSKeyFile   string
+	PublicHost   string
+	TLSPort      string
+	UseTLS       bool
+}
+
+func loadConfig() AppConfig {
+	cfg := AppConfig{
+		Addr:         getEnv("APP_ADDR", ":8010"),
+		RedirectAddr: os.Getenv("APP_HTTP_REDIRECT_ADDR"),
+		DatabaseURL:  getEnv("DATABASE_URL", "postgres://app:app@localhost:5432/sampledb"),
+		TLSCertFile:  os.Getenv("TLS_CERT_FILE"),
+		TLSKeyFile:   os.Getenv("TLS_KEY_FILE"),
+		PublicHost:   os.Getenv("PUBLIC_HOST"),
+	}
+
+	cfg.UseTLS = cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
+	if cfg.UseTLS && cfg.Addr == ":8010" {
+		cfg.Addr = ":8443"
+	}
+
+	cfg.TLSPort = extractPort(cfg.Addr)
+
+	if cfg.PublicHost == "" {
+		if cfg.UseTLS && cfg.TLSPort != "" && cfg.TLSPort != "443" {
+			cfg.PublicHost = fmt.Sprintf("localhost:%s", cfg.TLSPort)
+		} else {
+			cfg.PublicHost = "localhost"
+		}
+	}
+
+	return cfg
+}
+
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func extractPort(addr string) string {
+	if addr == "" {
+		return ""
+	}
+	if strings.HasPrefix(addr, ":") {
+		return strings.TrimPrefix(addr, ":")
+	}
+
+	_, port, err := net.SplitHostPort(addr)
+	if err == nil {
+		return port
+	}
+
+	// net.SplitHostPort requires an address with a port. If the provided value
+	// did not include a port, fall back to empty string so callers can decide.
+	return ""
+}
+
 // Add this function to booking.go
 func initLocation() {
 	var err error
@@ -129,12 +195,53 @@ func setDownloadHeaders(w http.ResponseWriter, filename string) {
 			safeName, url.PathEscape(filename)))
 }
 
+func securityHeaders(next http.Handler, enableHSTS bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer-when-downgrade")
+		if enableHSTS {
+			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := publicHost
+		if host == "" {
+			host = r.Host
+		}
+		if tlsPort != "" && tlsPort != "443" {
+			if strings.Contains(host, ":") {
+				if h, _, err := net.SplitHostPort(host); err == nil {
+					host = net.JoinHostPort(h, tlsPort)
+				}
+			} else {
+				host = net.JoinHostPort(host, tlsPort)
+			}
+		} else if strings.Contains(host, ":") {
+			if h, _, err := net.SplitHostPort(host); err == nil {
+				host = h
+			}
+		}
+		target := &url.URL{
+			Scheme:   "https",
+			Host:     host,
+			Path:     r.URL.Path,
+			RawQuery: r.URL.RawQuery,
+		}
+		http.Redirect(w, r, target.String(), http.StatusPermanentRedirect)
+	})
+}
+
 func main() {
 	initLocation()
-	// Connect to PostgreSQL
+	cfg := loadConfig()
+
 	var err error
-	dbURL := "postgres://app:app@localhost:5432/sampledb"
-	dbPool, err = pgxpool.New(context.Background(), dbURL)
+	dbPool, err = pgxpool.New(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -145,53 +252,93 @@ func main() {
 	}
 
 	authManager := auth.NewManager(dbPool)
+	if cfg.UseTLS {
+		authManager.SetCookieSecure(true)
+	}
+
+	mux := http.NewServeMux()
 
 	// Set up static file serving
 	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Auth routes
-	http.HandleFunc("/login", authManager.LoginHandler())
-	http.HandleFunc("/register", authManager.RegisterHandler())
-	http.HandleFunc("/logout", authManager.RequireAuth(authManager.LogoutHandler()))
+	mux.HandleFunc("/login", authManager.LoginHandler())
+	mux.HandleFunc("/register", authManager.RegisterHandler())
+	mux.HandleFunc("/logout", authManager.RequireAuth(authManager.LogoutHandler()))
 
 	// Sample management routes
 	withAuth := authManager.RequireAuth
-	http.HandleFunc("/", withAuth(mainPageHandler))
-	http.HandleFunc("/samples/new", withAuth(newSampleHandler))
-	http.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
-	http.HandleFunc("/samples/", withAuth(handleSample))
-	http.HandleFunc("/attachment/", withAuth(handleAttachment))
-	http.HandleFunc("/booking", withAuth(handleBooking))
-	http.HandleFunc("/api/bookings", withAuth(handleGetBookings))
-	http.HandleFunc("/booking/delete", withAuth(handleDeleteBooking))
-	// Wiki routes
-	http.HandleFunc("/wiki", withAuth(handleWiki))
-	http.HandleFunc("/wiki/", withAuth(handleWiki))                      // This will handle all wiki subpaths
-	http.HandleFunc("/wiki/attachment/", withAuth(handleAttachmentWiki)) // This will handle all wiki subpaths
+	mux.HandleFunc("/", withAuth(mainPageHandler))
+	mux.HandleFunc("/samples/new", withAuth(newSampleHandler))
+	mux.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
+	mux.HandleFunc("/samples/", withAuth(handleSample))
+	mux.HandleFunc("/attachment/", withAuth(handleAttachment))
+	mux.HandleFunc("/booking", withAuth(handleBooking))
+	mux.HandleFunc("/api/bookings", withAuth(handleGetBookings))
+	mux.HandleFunc("/booking/delete", withAuth(handleDeleteBooking))
 
-	http.HandleFunc("/admin", withAuth(requireAdmin(handleAdminPage)))
-	http.HandleFunc("/admin/update-access", withAuth(requireAdmin(handleUpdateAccess)))
-	http.HandleFunc("/admin/set-admin", withAuth(requireAdmin(handleSetAdmin)))
-	http.HandleFunc("/admin/add-equipment", withAuth(requireAdmin(handleAddEquipment)))
-	http.HandleFunc("/admin/delete-equipment/", withAuth(requireAdmin(handleDeleteEquipment))) // Note the trailing slash
-	http.HandleFunc("/admin/add-group", withAuth(requireAdmin(handleAddGroup)))
-	http.HandleFunc("/admin/delete-group/", withAuth(requireAdmin(handleDeleteGroup)))
-	http.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
-	// Create uploads directory if it doesn't exist
-	err = os.MkdirAll("uploads", 0755)
-	if err != nil {
+	// Wiki routes
+	mux.HandleFunc("/wiki", withAuth(handleWiki))
+	mux.HandleFunc("/wiki/", withAuth(handleWiki))                      // Handles all wiki subpaths
+	mux.HandleFunc("/wiki/attachment/", withAuth(handleAttachmentWiki)) // Handles wiki attachments
+
+	// Admin routes
+	mux.HandleFunc("/admin", withAuth(requireAdmin(handleAdminPage)))
+	mux.HandleFunc("/admin/update-access", withAuth(requireAdmin(handleUpdateAccess)))
+	mux.HandleFunc("/admin/set-admin", withAuth(requireAdmin(handleSetAdmin)))
+	mux.HandleFunc("/admin/add-equipment", withAuth(requireAdmin(handleAddEquipment)))
+	mux.HandleFunc("/admin/delete-equipment/", withAuth(requireAdmin(handleDeleteEquipment))) // Note trailing slash
+	mux.HandleFunc("/admin/add-group", withAuth(requireAdmin(handleAddGroup)))
+	mux.HandleFunc("/admin/delete-group/", withAuth(requireAdmin(handleDeleteGroup)))
+	mux.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
+
+	// Ensure required directories exist
+	if err = os.MkdirAll("uploads", 0755); err != nil {
 		log.Fatalf("Error creating uploads directory: %v\n", err)
 	}
 
-	// Create static directory if it doesn't exist
-	err = os.MkdirAll("static/css", 0755)
-	if err != nil {
+	if err = os.MkdirAll("static/css", 0755); err != nil {
 		log.Fatalf("Error creating static directories: %v\n", err)
 	}
 
-	fmt.Println("Server started at :8010")
-	log.Fatal(http.ListenAndServe(":8010", nil))
+	handler := securityHeaders(mux, cfg.UseTLS)
+	server := &http.Server{
+		Addr:         cfg.Addr,
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	if cfg.UseTLS {
+		server.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+
+		if cfg.RedirectAddr != "" {
+			go func() {
+				redirectServer := &http.Server{
+					Addr:         cfg.RedirectAddr,
+					Handler:      redirectToHTTPS(cfg.PublicHost, cfg.TLSPort),
+					ReadTimeout:  5 * time.Second,
+					WriteTimeout: 5 * time.Second,
+					IdleTimeout:  10 * time.Second,
+				}
+				log.Printf("HTTP redirect server listening on %s", cfg.RedirectAddr)
+				if err := redirectServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					log.Printf("HTTP redirect server error: %v", err)
+				}
+			}()
+		}
+
+		log.Printf("HTTPS server listening on %s", cfg.Addr)
+		log.Fatal(server.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile))
+		return
+	}
+
+	log.Printf("HTTP server listening on %s", cfg.Addr)
+	log.Fatal(server.ListenAndServe())
 }
 
 func parseTemplates(files ...string) (*template.Template, error) {
