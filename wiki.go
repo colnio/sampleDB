@@ -450,7 +450,7 @@ func deleteAttachmentWiki(attachmentID string) (string, error) {
 	}
 
 	// Delete file from filesystem
-	if removeErr := os.Remove(filepath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+	if removeErr := os.Remove(resolveAppPath(filepath)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
 		return "", removeErr
 	}
 
@@ -475,5 +475,5 @@ func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request, attac
 	}
 
 	// Serve the file
-	http.ServeFile(w, r, filepath)
+	http.ServeFile(w, r, resolveAppPath(filepath))
 }

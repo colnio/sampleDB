@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -74,6 +75,8 @@ var loc *time.Location
 
 var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
 
+var appConfig AppConfig
+
 type AppConfig struct {
 	Addr         string
 	RedirectAddr string
@@ -82,6 +85,10 @@ type AppConfig struct {
 	TLSKeyFile   string
 	PublicHost   string
 	TLSPort      string
+	BaseDir      string
+	TemplatesDir string
+	StaticDir    string
+	UploadsDir   string
 	UseTLS       bool
 }
 
@@ -99,6 +106,11 @@ func loadConfig() AppConfig {
 	if cfg.UseTLS && cfg.Addr == ":8010" {
 		cfg.Addr = ":8443"
 	}
+
+	cfg.BaseDir = determineBaseDir()
+	cfg.TemplatesDir = getEnv("TEMPLATES_DIR", filepath.Join(cfg.BaseDir, "templates"))
+	cfg.StaticDir = getEnv("STATIC_DIR", filepath.Join(cfg.BaseDir, "static"))
+	cfg.UploadsDir = getEnv("UPLOADS_DIR", filepath.Join(cfg.BaseDir, "uploads"))
 
 	cfg.TLSPort = extractPort(cfg.Addr)
 
@@ -118,6 +130,28 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func determineBaseDir() string {
+	if base := os.Getenv("APP_BASE_DIR"); base != "" {
+		if abs, err := filepath.Abs(base); err == nil {
+			return abs
+		}
+	}
+
+	if exe, err := os.Executable(); err == nil {
+		if abs, err := filepath.Abs(filepath.Dir(exe)); err == nil {
+			return abs
+		}
+	}
+
+	if wd, err := os.Getwd(); err == nil {
+		if abs, err := filepath.Abs(wd); err == nil {
+			return abs
+		}
+	}
+
+	return "."
 }
 
 func extractPort(addr string) string {
@@ -195,6 +229,30 @@ func setDownloadHeaders(w http.ResponseWriter, filename string) {
 			safeName, url.PathEscape(filename)))
 }
 
+func resolveAppPath(path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	clean := filepath.Clean(path)
+	if appConfig.BaseDir == "" {
+		return clean
+	}
+	return filepath.Join(appConfig.BaseDir, clean)
+}
+
+func resolveTemplatePath(path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+
+	clean := strings.TrimPrefix(path, "templates/")
+	clean = strings.TrimPrefix(clean, "templates\\")
+	clean = strings.TrimPrefix(clean, string(os.PathSeparator))
+	clean = filepath.Clean(clean)
+
+	return filepath.Join(appConfig.TemplatesDir, clean)
+}
+
 func securityHeaders(next http.Handler, enableHSTS bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -239,6 +297,7 @@ func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
 func main() {
 	initLocation()
 	cfg := loadConfig()
+	appConfig = cfg
 
 	var err error
 	dbPool, err = pgxpool.New(context.Background(), cfg.DatabaseURL)
@@ -255,11 +314,12 @@ func main() {
 	if cfg.UseTLS {
 		authManager.SetCookieSecure(true)
 	}
+	authManager.SetTemplateDir(cfg.TemplatesDir)
 
 	mux := http.NewServeMux()
 
 	// Set up static file serving
-	fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(http.Dir(cfg.StaticDir))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Auth routes
@@ -294,11 +354,11 @@ func main() {
 	mux.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
 
 	// Ensure required directories exist
-	if err = os.MkdirAll("uploads", 0755); err != nil {
+	if err = os.MkdirAll(cfg.UploadsDir, 0755); err != nil {
 		log.Fatalf("Error creating uploads directory: %v\n", err)
 	}
 
-	if err = os.MkdirAll("static/css", 0755); err != nil {
+	if err = os.MkdirAll(filepath.Join(cfg.StaticDir, "css"), 0755); err != nil {
 		log.Fatalf("Error creating static directories: %v\n", err)
 	}
 
@@ -343,12 +403,16 @@ func main() {
 
 func parseTemplates(files ...string) (*template.Template, error) {
 	// Always include base and header templates
-	files = append([]string{
-		"templates/base.html",
-		"templates/header.html",
-	}, files...)
+	baseTemplates := []string{"templates/base.html", "templates/header.html"}
+	resolved := make([]string, 0, len(files)+len(baseTemplates))
+	for _, f := range baseTemplates {
+		resolved = append(resolved, resolveTemplatePath(f))
+	}
+	for _, f := range files {
+		resolved = append(resolved, resolveTemplatePath(f))
+	}
 
-	return template.ParseFiles(files...)
+	return template.ParseFiles(resolved...)
 }
 
 // mainPageHandler serves the main page and handles search functionality
@@ -483,26 +547,40 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 // searchSamples queries the database for samples by name or keywords
 func searchSamples(query string) ([]Sample, error) {
-	// Split the query into individual keywords
-	keywords := strings.FieldsFunc(query, func(r rune) bool {
+	trimmedQuery := strings.TrimSpace(query)
+
+	rawKeywords := strings.FieldsFunc(query, func(r rune) bool {
 		return r == ' ' || r == ',' || r == ';'
 	})
+
+	var keywords []string
+	for _, keyword := range rawKeywords {
+		cleaned := strings.TrimSpace(keyword)
+		if cleaned == "" {
+			continue
+		}
+		keywords = append(keywords, strings.ToLower(cleaned))
+	}
 
 	// Construct the SQL query with `ANY` and `string_to_array`
 	var whereClauses []string
 	var args []interface{}
 	for i, keyword := range keywords {
 		whereClauses = append(whereClauses, fmt.Sprintf("$%d = ANY(string_to_array(lower(sample_keywords), ','))", i+1))
-		args = append(args, strings.ToLower(keyword))
+		args = append(args, keyword)
 	}
-	whereClause := strings.Join(whereClauses, " OR ")
 
 	// Also match the full query string in `sample_name`
+	nameParamIndex := len(args) + 1
+	args = append(args, "%"+trimmedQuery+"%")
+
 	queryText := fmt.Sprintf(`
         SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner
         FROM samples
-        WHERE sample_name ILIKE $%d OR %s`, len(args)+1, whereClause)
-	args = append(args, "%"+query+"%")
+        WHERE sample_name ILIKE $%d`, nameParamIndex)
+	if len(whereClauses) > 0 {
+		queryText = fmt.Sprintf(`%s OR %s`, queryText, strings.Join(whereClauses, " OR "))
+	}
 
 	// Execute the query
 	rows, err := dbPool.Query(context.Background(), queryText, args...)
@@ -731,7 +809,10 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 // saveUploadedFile saves the file to disk and returns the file path
 func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 	// Create uploads directory if it doesn't exist
-	uploadDir := "uploads"
+	uploadDir := appConfig.UploadsDir
+	if uploadDir == "" {
+		uploadDir = "uploads"
+	}
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		return "", err
 	}
@@ -742,10 +823,10 @@ func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 		return "", err
 	}
 
-	filepath := filepath.Join(uploadDir, filename)
+	fullPath := filepath.Join(uploadDir, filename)
 
 	// Create new file
-	dst, err := os.Create(filepath)
+	dst, err := os.Create(fullPath)
 	if err != nil {
 		return "", err
 	}
@@ -756,7 +837,13 @@ func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 		return "", err
 	}
 
-	return filepath, nil
+	if appConfig.BaseDir != "" {
+		if rel, err := filepath.Rel(appConfig.BaseDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel), nil
+		}
+	}
+
+	return fullPath, nil
 }
 
 // getAttachments retrieves all attachments for a sample
@@ -817,8 +904,10 @@ func deleteAttachment(attachmentID string) error {
 	}
 
 	// Delete file from filesystem
-	return os.Remove(filepath)
-
+	if removeErr := os.Remove(resolveAppPath(filepath)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+		return removeErr
+	}
+	return nil
 }
 
 // isImage checks if a file is an image based on its content type
@@ -902,7 +991,7 @@ func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	original := originalFilenameFromPath(filepath)
 	setDownloadHeaders(w, original)
 	// Serve the file
-	http.ServeFile(w, r, filepath)
+	http.ServeFile(w, r, resolveAppPath(filepath))
 }
 
 func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {

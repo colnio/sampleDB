@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,6 +28,7 @@ type Manager struct {
 	sessions     map[string]Session
 	mu           sync.RWMutex
 	cookieSecure bool
+	templateDir  string
 }
 
 type contextKey string
@@ -70,10 +73,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 				IsRegister: false,
 			}
 
-			tmpl, err := template.ParseFiles(
-				"templates/auth_base.html",
-				"templates/login.html",
-			)
+			tmpl, err := template.ParseFiles(m.templatePath("auth_base.html"), m.templatePath("login.html"))
 			if err != nil {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return
@@ -139,10 +139,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 				IsRegister: true,
 			}
 
-			tmpl, err := template.ParseFiles(
-				"templates/auth_base.html",
-				"templates/login.html",
-			)
+			tmpl, err := template.ParseFiles(m.templatePath("auth_base.html"), m.templatePath("login.html"))
 			if err != nil {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return
@@ -219,6 +216,26 @@ func (m *Manager) LogoutHandler() http.HandlerFunc {
 
 func (m *Manager) SetCookieSecure(enable bool) {
 	m.cookieSecure = enable
+}
+
+func (m *Manager) SetTemplateDir(dir string) {
+	m.templateDir = dir
+}
+
+func (m *Manager) templatePath(name string) string {
+	if filepath.IsAbs(name) {
+		return name
+	}
+
+	clean := strings.TrimPrefix(name, "templates/")
+	clean = strings.TrimPrefix(clean, "templates\\")
+	clean = filepath.Clean(clean)
+
+	if m.templateDir != "" {
+		return filepath.Join(m.templateDir, clean)
+	}
+
+	return filepath.Join("templates", clean)
 }
 
 func SessionFromContext(ctx context.Context) (Session, bool) {

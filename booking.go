@@ -131,13 +131,17 @@ func parseTemplatesBooking(files ...string) (*template.Template, error) {
 	tmpl := template.New("").Funcs(funcMap)
 
 	// Always include base and header templates
-	files = append([]string{
-		"templates/base.html",
-		"templates/header.html",
-	}, files...)
+	baseTemplates := []string{"templates/base.html", "templates/header.html"}
+	resolved := make([]string, 0, len(files)+len(baseTemplates))
+	for _, f := range baseTemplates {
+		resolved = append(resolved, resolveTemplatePath(f))
+	}
+	for _, f := range files {
+		resolved = append(resolved, resolveTemplatePath(f))
+	}
 
 	// Parse all template files
-	return tmpl.ParseFiles(files...)
+	return tmpl.ParseFiles(resolved...)
 }
 
 func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
@@ -169,8 +173,17 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isAdmin, err := isUserAdmin(session.UserID)
+	if err != nil {
+		log.Printf("booking: unable to determine admin status for user %d: %v", session.UserID, err)
+	}
+
 	hasPermission := make(map[int]bool)
 	for _, eq := range equipment {
+		if isAdmin {
+			hasPermission[eq.ID] = true
+			continue
+		}
 		permitted, err := checkUserPermission(session.UserID, eq.ID)
 		if err != nil {
 			continue
@@ -196,12 +209,8 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		userBookings = make([]Booking, 0)
 	}
 
-	rows := dbPool.QueryRow(context.Background(), `SELECT admin
-	FROM users
-	WHERE username = $1`, session.Username)
-
 	data := BookingPageData{
-		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: false},
+		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
 		Equipment:     equipment,
 		Bookings:      bookings,
 		UserBookings:  userBookings,
@@ -212,10 +221,6 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		WeekOffset:    weekOffset,
 		Error:         r.URL.Query().Get("error"),
 		Success:       r.URL.Query().Get("success"),
-	}
-
-	if err := rows.Scan(&data.BasePageData.IsAdmin); err != nil {
-		log.Printf("booking: unable to load admin flag for %s: %v", session.Username, err)
 	}
 
 	tmpl, err := parseTemplatesBooking("templates/booking.html")
@@ -260,6 +265,12 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isAdmin, err := isUserAdmin(session.UserID)
+	if err != nil {
+		http.Redirect(w, r, "/booking?error=Unable+to+verify+permissions", http.StatusSeeOther)
+		return
+	}
+
 	// Basic validation
 	if endTime.Before(startTime) {
 		http.Redirect(w, r, "/booking?error=End+time+must+be+after+start+time", http.StatusSeeOther)
@@ -286,6 +297,18 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 	if purpose == "" {
 		http.Redirect(w, r, "/booking?error=Purpose+is+required", http.StatusSeeOther)
 		return
+	}
+
+	if !isAdmin {
+		permitted, err := checkUserPermission(session.UserID, equipmentID)
+		if err != nil {
+			http.Redirect(w, r, "/booking?error=Unable+to+verify+permissions", http.StatusSeeOther)
+			return
+		}
+		if !permitted {
+			http.Redirect(w, r, "/booking?error=You+do+not+have+access+to+this+equipment", http.StatusSeeOther)
+			return
+		}
 	}
 
 	// Create booking
@@ -339,6 +362,14 @@ func checkUserPermission(userID, equipmentID int) (bool, error) {
             WHERE user_id = $1 AND equipment_id = $2
         )`, userID, equipmentID).Scan(&exists)
 	return exists, err
+}
+
+func isUserAdmin(userID int) (bool, error) {
+	var isAdmin bool
+	err := dbPool.QueryRow(context.Background(),
+		`SELECT admin FROM users WHERE user_id = $1`,
+		userID).Scan(&isAdmin)
+	return isAdmin, err
 }
 
 func getBookingsForWeek(start, end time.Time) ([]Booking, error) {
