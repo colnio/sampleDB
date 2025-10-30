@@ -139,10 +139,10 @@ ON CONFLICT (name) DO NOTHING;`
 const seedEquipment = `
 INSERT INTO equipment (name, description, location)
 VALUES
-    ('SEM', 'Scanning Electron Microscope', 'Room 101'),
-    ('TEM', 'Transmission Electron Microscope', 'Room 102'),
-    ('XRD', 'X-Ray Diffractometer', 'Room 103'),
-    ('AFM', 'Atomic Force Microscope', 'Room 104')
+    ('AFM', 'Atomic Force Microscope', 'E3A L7'),
+    ('XeCl', 'XeCl MAC LCVD system', 'Laser Lab S12'),
+    ('ICP', 'MAC growth system', 'Laser Lab S12'),
+    ('Probe Station', 'Probe Station', 'Meeting room S13')
 ON CONFLICT (name) DO NOTHING;`
 
 const backfillDeleted = `
