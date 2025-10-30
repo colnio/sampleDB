@@ -47,26 +47,28 @@
             {{$equipment := .}}
             <div class="equipment-row">
                 <div class="equipment-name">{{.Name}}</div>
-                {{range $i := iterate 0 7}}
-                    {{$currentDay := $.WeekStart.AddDate 0 0 $i}}
-                    <div class="day-column" data-label="{{formatDayName $currentDay}} {{formatDateShort $currentDay}}">
-                        {{if index $.HasPermission $equipment.ID}}
-                            {{range $.TimeSlots}}
-                                {{$slotTime := combineDatetime $currentDay .}}
-                                <div class="time-slot" 
-                                     data-equipment="{{$equipment.ID}}"
-                                     data-date="{{formatDateISO $currentDay}}"
-                                     data-time="{{formatTime24 .}}"
-                                     data-datetime="{{formatDateTimeISO $slotTime}}"
-                                     onclick="handleTimeSlotClick(this)">
-                                    {{formatTime24 .}}
-                                </div>
+                <div class="equipment-day-scroll">
+                    {{range $i := iterate 0 7}}
+                        {{$currentDay := $.WeekStart.AddDate 0 0 $i}}
+                        <div class="day-column" data-label="{{formatDayName $currentDay}} {{formatDateShort $currentDay}}">
+                            {{if index $.HasPermission $equipment.ID}}
+                                {{range $.TimeSlots}}
+                                    {{$slotTime := combineDatetime $currentDay .}}
+                                    <div class="time-slot" 
+                                         data-equipment="{{$equipment.ID}}"
+                                         data-date="{{formatDateISO $currentDay}}"
+                                         data-time="{{formatTime24 .}}"
+                                         data-datetime="{{formatDateTimeISO $slotTime}}"
+                                         onclick="handleTimeSlotClick(this)">
+                                        {{formatTime24 .}}
+                                    </div>
+                                {{end}}
+                            {{else}}
+                                <div class="no-permission">No access</div>
                             {{end}}
-                        {{else}}
-                            <div class="no-permission">No access</div>
-                        {{end}}
-                    </div>
-                {{end}}
+                        </div>
+                    {{end}}
+                </div>
             </div>
         {{end}}
     </div>
@@ -182,6 +184,10 @@
 
 .equipment-row {
     display: table-row;
+}
+
+.equipment-day-scroll {
+    display: contents;
 }
 
 .equipment-name {
@@ -367,6 +373,7 @@
     .equipment-row {
         display: flex;
         flex-direction: column;
+        gap: var(--space-md);
         border-bottom: 1px solid var(--neutral-200);
         padding: var(--space-md) var(--space-sm);
         background: var(--surface-default);
@@ -380,20 +387,38 @@
         background: none;
         border-bottom: none;
         padding: 0;
-        margin-bottom: var(--space-md);
         font-size: var(--font-size-lg);
     }
 
-    .day-column {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    .equipment-day-scroll {
+        display: flex;
         gap: var(--space-sm);
-        padding: 0;
-        border: none;
+        overflow-x: auto;
+        padding: 0 var(--space-sm) var(--space-sm);
+        margin: 0 calc(var(--space-sm) * -1);
+        scroll-snap-type: x proximity;
     }
 
-    .day-column + .day-column {
-        margin-top: var(--space-md);
+    .equipment-day-scroll::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .equipment-day-scroll::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.4);
+        border-radius: 9999px;
+    }
+
+    .day-column {
+        flex: 0 0 160px;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        padding: var(--space-sm);
+        border: 1px solid var(--neutral-200);
+        border-radius: var(--radius-sm);
+        background: var(--surface-subtle);
+        scroll-snap-align: start;
+        min-height: 100%;
     }
 
     .day-column::before {
@@ -401,7 +426,6 @@
         font-weight: 600;
         color: var(--text-muted);
         font-size: var(--font-size-sm);
-        grid-column: 1 / -1;
     }
 
     .time-slot,

@@ -514,9 +514,13 @@ h1 a:hover {
     display: flex;
     gap: var(--space-md);
     margin-bottom: var(--space-xl);
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     flex-wrap: wrap;
+}
+
+.controls > .button {
+    flex-shrink: 0;
 }
 
 .page-heading {
@@ -530,7 +534,6 @@ h1 a:hover {
 
 .search-container {
     flex-grow: 1;
-    margin-right: var(--space-md);
     min-width: min(18rem, 100%);
 }
 
@@ -539,7 +542,18 @@ h1 a:hover {
     gap: var(--space-sm);
     align-items: center;
     max-width: 600px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+}
+
+.search-form input[type="text"] {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 220px;
+}
+
+.search-form .button {
+    flex: 0 0 auto;
+    min-height: 2.75rem;
 }
 
 /* Form Elements */
@@ -946,6 +960,11 @@ label {
         gap: var(--space-sm);
     }
 
+    .search-form input[type="text"],
+    .search-form .button {
+        width: 100%;
+    }
+
     input[type="text"],
     input[type="email"],
     input[type="password"],
@@ -1164,8 +1183,27 @@ label {
 }
 
 .user-card__actions .account-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
     width: 100%;
-    align-items: flex-start;
+    align-items: stretch;
+}
+
+.user-card__actions .account-actions > .button,
+.user-card__actions .account-actions > button,
+.user-card__actions .account-actions .inline-form {
+    width: 100%;
+}
+
+.user-card__actions .account-actions .inline-form {
+    display: flex;
+}
+
+.user-card__actions .account-actions .inline-form .button,
+.user-card__actions .account-actions > .button,
+.user-card__actions .account-actions > button {
+    justify-content: center;
 }
 
 .field-label {
