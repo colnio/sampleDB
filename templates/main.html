@@ -3,22 +3,22 @@
 {{define "content"}}
 <div class="controls">
     <div class="search-container">
-        <form action="/" method="GET">
+        <form action="/" method="GET" class="search-form">
             <input type="text" name="query" value="{{.Query}}" placeholder="Search samples...">
-            <button type="submit" class="button">Search</button>
+            <button type="submit" class="button button--secondary">Search</button>
         </form>
     </div>
-    <a href="/samples/new"><button>Add New Sample</button></a>
+    <a href="/samples/new" class="button button--primary">Add New Sample</a>
 </div>
 
 <div id="samples">
     {{range .Samples}}
-    <div class="tile">
+    <article class="card tile">
         <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>
         <p><strong>Description:</strong> {{.Description}}</p>
         <p><strong>Keywords:</strong> {{.Keywords}}</p>
         <p><strong>Owner:</strong> {{.Owner}}</p>
-    </div>
+    </article>
     {{end}}
 </div>
 {{end}}

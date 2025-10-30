@@ -142,7 +142,11 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 		Success:      r.URL.Query().Get("success"),
 	}
 
-	tmpl, err := parseTemplates("templates/admin.html")
+	tmpl, err := parseTemplates(
+		"templates/admin.html",
+		"templates/admin/groups.html",
+		"templates/admin/users.html",
+	)
 	if err != nil {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return

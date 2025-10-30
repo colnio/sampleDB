@@ -8,11 +8,19 @@
 {{define "content"}}
 <div class="wiki-article">
     <div class="article-header">
+        <span class="section-label">
+            <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <rect x="4.5" y="5" width="8" height="14" rx="1.75" ry="1.75" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+                <path d="M12.5 5.75H17a1.75 1.75 0 011.75 1.75v11.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M7.25 9h3.25m-3.25 3h2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+            </svg>
+            <span>Wiki</span>
+        </span>
         <h1>{{.Article.Title}}</h1>
         <div class="article-actions">
-            <a href="/wiki/edit/{{.Article.Title}}" class="button">Edit</a>
+            <a href="/wiki/edit/{{.Article.Title}}" class="button button--primary">Edit</a>
             <form action="/wiki/delete/{{.Article.Title}}" method="POST" class="inline-form">
-                <button type="submit" class="button button-danger" onclick="return confirm('Are you sure you want to delete this article?')">Delete</button>
+                <button type="submit" class="button button--destructive" onclick="return confirm('Are you sure you want to delete this article?')">Delete</button>
             </form>
         </div>
     </div>
@@ -47,9 +55,9 @@
                 <figcaption class="attachment-info">
                     <div class="attachment-name" title="{{.OriginalName}}">{{.OriginalName}}</div>
                     <div class="attachment-actions">
-                        <a href="/wiki/attachment/{{.ID}}" class="button button-small" {{if not .IsImage}}download="{{.OriginalName}}"{{end}}>Download</a>
+                        <a href="/wiki/attachment/{{.ID}}" class="button button--secondary button--small" {{if not .IsImage}}download="{{.OriginalName}}"{{end}}>Download</a>
                         <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
-                            <button type="submit" class="button button-small button-danger" onclick="return confirm('Delete this attachment?')">Delete</button>
+                            <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
                         </form>
                     </div>
                 </figcaption>
@@ -63,7 +71,7 @@
         <h3>Add Attachment</h3>
         <form action="/wiki/upload/{{.Article.ID}}" method="POST" enctype="multipart/form-data">
             <input type="file" name="file" required>
-            <button type="submit" class="button">Upload</button>
+            <button type="submit" class="button button--primary">Upload</button>
         </form>
     </div>
 
@@ -140,48 +148,67 @@
 </script>
 
 <style>
-/* Article container */
 .wiki-article {
     max-width: 1000px;
     margin: 0 auto;
-    padding: 20px;
+    padding: var(--space-xl) var(--space-lg);
 }
 
-/* Article header */
 .article-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
 }
 
 .article-header h1 {
-    color: #333;
-    font-size: 2em;
+    margin: 0;
+    font-size: var(--font-size-3xl);
+    line-height: var(--line-height-heading);
 }
 
-/* Article metadata */
 .article-meta {
-    color: #666;
-    font-size: 0.9rem;
-    margin-bottom: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-xl);
 }
 
-/* Article content */
 .article-content {
-    background: white;
-    padding: 2rem;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 2rem;
+    background: var(--surface-default);
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+    margin-bottom: var(--space-xl);
 }
 
-/* Override markdown-body styles for better visibility */
 .markdown-body {
-    color: #24292f !important; /* Darker text color */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    line-height: 1.6;
+    color: var(--text-strong) !important;
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-body);
+}
+
+.markdown-body > *:first-child {
+    margin-top: 0;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.markdown-body pre,
+.markdown-body table {
+    margin-bottom: var(--space-md);
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    padding-left: var(--space-xl);
 }
 
 .markdown-body h1,
@@ -190,75 +217,64 @@
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-    color: #24292f !important;
-    margin-top: 24px;
-    margin-bottom: 16px;
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
     font-weight: 600;
-    line-height: 1.25;
+    line-height: var(--line-height-heading);
+    color: var(--text-strong) !important;
 }
 
-.markdown-body h1 { font-size: 2em !important; }
-.markdown-body h2 { font-size: 1.5em !important; }
-.markdown-body h3 { font-size: 1.25em !important; }
-.markdown-body h4 { font-size: 1em !important; }
-
-.markdown-body p {
-    color: #24292f !important;
-    margin-top: 0;
-    margin-bottom: 16px;
+.markdown-body h1 { font-size: var(--font-size-3xl) !important; }
+.markdown-body h2 { font-size: var(--font-size-2xl) !important; }
+.markdown-body h3 { font-size: var(--font-size-xl) !important; }
+.markdown-body h4 { font-size: var(--font-size-lg) !important; }
+.markdown-body h5 { font-size: var(--font-size-base) !important; }
+.markdown-body h6 {
+    font-size: var(--font-size-sm) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .markdown-body a {
-    color: #0366d6 !important;
+    color: var(--color-primary) !important;
     text-decoration: none;
 }
 
 .markdown-body a:hover {
     text-decoration: underline;
+    color: var(--color-primary-active) !important;
 }
 
 .markdown-body strong {
-    color: #24292f !important;
     font-weight: 600;
 }
 
 .markdown-body code {
     padding: 0.2em 0.4em;
-    margin: 0;
-    font-size: 85%;
-    background-color: rgba(27,31,35,0.05);
-    border-radius: 3px;
-    color: #24292f !important;
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85em;
+    background-color: rgba(27, 31, 35, 0.05);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family-mono);
+    color: var(--text-strong) !important;
 }
 
 .markdown-body pre {
-    background-color: #f6f8fa;
-    border-radius: 4px;
-    padding: 16px;
+    background-color: var(--surface-subtle);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
     overflow: auto;
 }
 
 .markdown-body pre code {
-    color: #24292f !important;
     background: none;
     padding: 0;
+    color: var(--text-strong) !important;
 }
 
 .markdown-body blockquote {
-    padding: 0 1em;
-    color: #57606a !important;
-    border-left: 0.25em solid #d0d7de;
-}
-
-.markdown-body ul,
-.markdown-body ol {
-    color: #24292f !important;
-    padding-left: 2em;
-}
-
-.markdown-body li {
-    color: #24292f !important;
+    padding: 0 var(--space-md);
+    border-left: 0.25em solid var(--neutral-200);
+    color: var(--neutral-600) !important;
 }
 
 .markdown-body table {
@@ -272,65 +288,37 @@
 
 .markdown-body table th,
 .markdown-body table td {
-    padding: 6px 13px;
-    border: 1px solid #d0d7de;
-    color: #24292f !important;
+    padding: calc(var(--space-sm) - 2px) var(--space-sm);
+    border: 1px solid var(--neutral-200);
 }
 
 .markdown-body table th {
     font-weight: 600;
-    background-color: #f6f8fa;
-}
-
-.markdown-body table tr:nth-child(2n) {
-    background-color: #f6f8fa;
+    background-color: var(--surface-subtle);
 }
 
 .markdown-body img {
     max-width: 100%;
-    box-sizing: border-box;
-    background-color: #fff;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-default);
 }
 
-.markdown-body table {
-    border-spacing: 0;
-    border-collapse: collapse;
-    display: block;
-    width: max-content;
-    max-width: 100%;
-    overflow: auto;
-}
-
-.markdown-body table th,
-.markdown-body table td {
-    padding: 6px 13px;
-    border: 1px solid #d0d7de;
-}
-
-.markdown-body table tr:nth-child(2n) {
-    background-color: #f6f8fa;
-}
-
-/* Attachments */
 .attachments-container {
-    background: white;
-    padding: 2rem;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-xl);
 }
 
 .attachments-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
 }
 
 figure.attachment-preview {
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
     overflow: hidden;
     margin: 0;
 }
@@ -340,9 +328,10 @@ figure.attachment-preview {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 1rem;
+    gap: var(--space-sm);
+    padding: var(--space-md);
     width: 100%;
-    background: #f8f9fa;
+    background: var(--surface-subtle);
     border: none;
     cursor: pointer;
 }
@@ -355,24 +344,23 @@ figure.attachment-preview {
 
 .attachment-file {
     text-decoration: none;
-    color: #333;
-    gap: 0.75rem;
+    color: var(--text-strong);
     font-weight: 500;
 }
 
 .file-icon {
     font-size: 3rem;
-    color: #666;
+    color: var(--text-muted);
 }
 
 .attachment-info {
-    padding: 0.5rem;
-    border-top: 1px solid #ddd;
+    padding: var(--space-sm);
+    border-top: 1px solid var(--neutral-200);
 }
 
 .attachment-name {
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-xs);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -380,23 +368,23 @@ figure.attachment-preview {
 
 .attachment-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-sm);
 }
 
-/* Upload form */
 .upload-form {
-    background: white;
-    padding: 2rem;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 2rem;
+    background: var(--surface-default);
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+    margin-bottom: var(--space-xl);
 }
 
 .upload-form form {
     display: flex;
-    gap: 1rem;
+    gap: var(--space-md);
     align-items: center;
-    margin-top: 1rem;
+    flex-wrap: wrap;
+    margin-top: var(--space-md);
 }
 
 .image-lightbox {
@@ -422,9 +410,9 @@ figure.attachment-preview {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #111827;
-    padding: 24px;
-    border-radius: 12px;
+    background: var(--neutral-900);
+    padding: var(--space-lg);
+    border-radius: var(--radius-md);
     max-width: min(90vw, 680px);
     width: 100%;
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
@@ -434,38 +422,77 @@ figure.attachment-preview {
     width: 100%;
     max-height: 70vh;
     object-fit: contain;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-md);
 }
 
 .lightbox-panel p {
     margin: 0;
-    color: #f9fafb;
+    color: var(--surface-subtle);
     text-align: center;
-    font-size: 0.95rem;
+    font-size: var(--font-size-sm);
 }
 
 .lightbox-close {
     position: absolute;
-    top: 10px;
-    right: 12px;
+    top: var(--space-sm);
+    right: var(--space-sm);
     background: transparent;
     border: none;
-    color: #f9fafb;
-    font-size: 2rem;
+    color: var(--surface-muted);
+    font-size: var(--font-size-2xl);
     cursor: pointer;
     line-height: 1;
 }
 
-/* Utility classes */
-.inline-form {
-    display: inline;
-}
+@media (max-width: 768px) {
+    .wiki-article {
+        padding: var(--space-lg) var(--space-md);
+    }
 
-.button-small {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
+    .article-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-md);
+    }
+
+    .article-actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .article-actions .button,
+    .article-actions .inline-form .button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .article-content,
+    .upload-form {
+        padding: var(--space-lg);
+    }
+
+    .attachments-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .attachment-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .upload-form form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+    }
+
+    .upload-form form .button {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 {{end}}

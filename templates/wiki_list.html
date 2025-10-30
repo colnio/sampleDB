@@ -3,19 +3,26 @@
 {{define "content"}}
 <div class="wiki-container">
     <div class="wiki-header">
-        <h1>Wiki Articles</h1>
-        <a href="/wiki/new" class="button">Create New Article</a>
+        <h1 class="heading-with-icon">
+            <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <rect x="4.5" y="5" width="8" height="14" rx="1.75" ry="1.75" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+                <path d="M12.5 5.75H17a1.75 1.75 0 011.75 1.75v11.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M7.25 9h3.25m-3.25 3h2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+            </svg>
+            <span>Wiki Articles</span>
+        </h1>
+        <a href="/wiki/new" class="button button--primary">Create New Article</a>
     </div>
 
     {{if .Articles}}
         <div class="wiki-articles">
             {{range .Articles}}
-                <div class="article-tile">
+                <article class="card article-tile">
                     <h2><a href="/wiki/{{.Title}}">{{.Title}}</a></h2>
                     <div class="article-meta">
                         Created: {{.CreatedAt.Format "Jan 02, 2006 15:04"}}
                     </div>
-                </div>
+                </article>
             {{end}}
         </div>
     {{else}}

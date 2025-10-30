@@ -2,6 +2,16 @@
 
 {{define "content"}}
 <div class="admin-page">
+    <header class="page-heading">
+        <h1 class="heading-with-icon">
+            <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M12 3l7 3v6c0 4.23-2.86 8.09-7 9-4.14-.91-7-4.77-7-9V6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path>
+                <path d="M12 10.5a3.25 3.25 0 110 6.5 3.25 3.25 0 010-6.5z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+                <circle cx="12" cy="13" r="1.4" fill="currentColor"></circle>
+            </svg>
+            <span>Admin Panel</span>
+        </h1>
+    </header>
     <div class="flash-region">
         {{with .Error}}
         <div class="alert alert-error">{{.}}</div>
@@ -12,184 +22,56 @@
     </div>
 
     <div class="admin-grid">
-        <section class="card">
-            <div class="card-header">
-                <div>
-                    <h2>User Groups</h2>
-                    <p class="card-subtitle">Organise users into research teams or labs for quick filtering.</p>
-                </div>
-                <form action="/admin/add-group" method="POST" class="inline-form add-inline">
-                    <input type="text" name="name" placeholder="New group name" required>
-                    <button type="submit" class="btn btn-primary btn-small">Add</button>
-                </form>
-            </div>
-            <div class="table-scroll">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th class="col-actions">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{if .Groups}}
-                            {{range .Groups}}
-                            <tr>
-                                <td>{{.Name}}</td>
-                                <td class="col-actions">
-                                    <form action="/admin/delete-group/{{.ID}}" method="POST" class="inline-form"
-                                          onsubmit="return confirm('Remove group {{.Name}}? Users will be unassigned.');">
-                                        <button type="submit" class="btn btn-small btn-danger">Remove</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {{end}}
-                        {{else}}
-                            <tr>
-                                <td colspan="2" class="empty-state">No groups yet. Add your first group to get started.</td>
-                            </tr>
-                        {{end}}
-                    </tbody>
-                </table>
-            </div>
-        </section>
+        {{template "admin/groups" .}}
 
-        <section class="card">
+        <section class="card admin-section equipment-card">
             <div class="card-header">
                 <div>
-                    <h2>Equipment Catalogue</h2>
+                    <h2 class="heading-with-icon heading-with-icon--sm">
+                        <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                            <rect x="4.5" y="8" width="15" height="8.5" rx="1.8" ry="1.8" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+                            <path d="M9 8V6.5a1 1 0 011-1h4a1 1 0 011 1V8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                            <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                        </svg>
+                        <span>Equipment Catalogue</span>
+                    </h2>
                     <p class="card-subtitle">Manage bookable equipment and usage reports.</p>
                 </div>
-                <button onclick="showEquipmentModal()" class="btn btn-primary btn-small">Add Equipment</button>
+                <button onclick="showEquipmentModal()" class="button button--primary button--small">Add Equipment</button>
             </div>
-            <div class="table-scroll">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th class="col-actions">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{if .Equipment}}
-                            {{range .Equipment}}
+            <div class="card-body card-body--flush">
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
                             <tr>
-                                <td>{{.Name}}</td>
-                                <td class="col-actions">
-                                    <button onclick="showReportModal({{.ID}}, '{{.Name}}')" class="btn btn-small">Usage</button>
-                                    <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" class="btn btn-small btn-danger">Remove</button>
-                                </td>
+                                <th>Name</th>
+                                <th class="col-actions">Actions</th>
                             </tr>
+                        </thead>
+                        <tbody>
+                            {{if .Equipment}}
+                                {{range .Equipment}}
+                                <tr>
+                                    <td>{{.Name}}</td>
+                                    <td class="col-actions">
+                                        <button onclick="showReportModal({{.ID}}, '{{.Name}}')" class="button button--secondary button--small">Usage</button>
+                                        <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" class="button button--destructive button--small">Remove</button>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="2" class="empty-state">No equipment registered yet.</td>
+                                </tr>
                             {{end}}
-                        {{else}}
-                            <tr>
-                                <td colspan="2" class="empty-state">No equipment registered yet.</td>
-                            </tr>
-                        {{end}}
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
     </div>
 
-    <section class="card">
-        <div class="card-header column">
-            <div>
-                <h2>User Management</h2>
-                <p class="card-subtitle">Approve access, assign groups, and grant equipment permissions.</p>
-            </div>
-        </div>
-        <div class="table-scroll">
-            <table class="data-table users-table">
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Group</th>
-                        <th>Status</th>
-                        <th>Equipment Access</th>
-                        <th class="col-actions">Account</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{if .Users}}
-                        {{range .Users}}
-                        {{$user := .}}
-                        <tr data-user-id="{{$user.UserID}}" data-username="{{$user.Username}}">
-                            <td>
-                                <div class="user-meta">
-                                    <strong>{{$user.Username}}</strong>
-                                    {{if $user.GroupName}}<span class="badge">{{$user.GroupName}}</span>{{end}}
-                                </div>
-                            </td>
-                            <td>
-                                <select class="group-select" onchange="updateAccess({{$user.UserID}})">
-                                    <option value="">No group</option>
-                                    {{range $group := $.Groups}}
-                                    <option value="{{$group.Name}}" {{if eq $user.GroupName $group.Name}}selected{{end}}>{{$group.Name}}</option>
-                                    {{end}}
-                                </select>
-                            </td>
-                            <td>
-                                <label class="toggle">
-                                    <input type="checkbox" class="approved-toggle"
-                                           {{if $user.Approved}}checked{{end}}
-                                           onchange="updateAccess({{$user.UserID}})">
-                                    <span>{{if $user.Approved}}Approved{{else}}Pending{{end}}</span>
-                                </label>
-                            </td>
-                            <td>
-                                <div class="equipment-access">
-                                    <select multiple class="equipment-select"
-                                            aria-label="Equipment access for {{.Username}}"
-                                            onchange="updateAccess({{$user.UserID}})">
-                                        {{range $equipment := $.Equipment}}
-                                        <option value="{{$equipment.ID}}"
-                                                {{range $user.EquipmentAccess}}
-                                                    {{if eq .ID $equipment.ID}}selected{{end}}
-                                                {{end}}>
-                                            {{$equipment.Name}}
-                                        </option>
-                                        {{end}}
-                                    </select>
-                                    <small class="hint">Hold Ctrl/⌘ to toggle multiple items</small>
-                                </div>
-                            </td>
-                            <td class="col-actions">
-                                <div class="account-actions">
-                                    <form action="/admin/set-admin" method="POST" class="inline-form">
-                                        <input type="hidden" name="user_id" value="{{$user.UserID}}">
-                                        {{if not $user.Admin}}
-                                            <button type="submit" name="is_admin" value="true"
-                                                    class="btn btn-small">Make Admin</button>
-                                        {{else}}
-                                            <button type="submit" name="is_admin" value="false"
-                                                    class="btn btn-small btn-danger">Remove Admin</button>
-                                        {{end}}
-                                    </form>
-                                    <button type="button"
-                                            class="btn btn-small"
-                                            onclick="resetPassword({{$user.UserID}})">
-                                        Reset Password
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-small btn-danger remove-user-btn"
-                                            onclick="confirmRemoveUser({{$user.UserID}})"
-                                            {{if eq $user.UserID $.BasePageData.UserID}}disabled title="You cannot remove your own account"{{end}}>
-                                        Remove User
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {{end}}
-                    {{else}}
-                        <tr>
-                            <td colspan="5" class="empty-state">No users found.</td>
-                        </tr>
-                    {{end}}
-                </tbody>
-            </table>
-        </div>
-    </section>
+    {{template "admin/users" .}}
 
     <!-- Add Equipment Modal -->
     <div id="equipment-modal" class="modal">
@@ -198,14 +80,14 @@
                 <h3>Add New Equipment</h3>
                 <span class="close" onclick="closeEquipmentModal()">&times;</span>
             </div>
-            <form action="/admin/add-equipment" method="POST">
+            <form action="/admin/add-equipment" method="POST" class="stacked-form">
                 <div class="form-group">
                     <label for="equipment_name">Equipment Name</label>
                     <input type="text" id="equipment_name" name="name" placeholder="e.g. Confocal Microscope" required>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Add Equipment</button>
-                    <button type="button" class="btn" onclick="closeEquipmentModal()">Cancel</button>
+                    <button type="submit" class="button button--primary">Add Equipment</button>
+                    <button type="button" class="button button--secondary" onclick="closeEquipmentModal()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -218,30 +100,32 @@
                 <h3>Download Usage Report</h3>
                 <span class="close" onclick="closeReportModal()">&times;</span>
             </div>
-            <div class="form-group">
-                <label for="start_date">Start Date</label>
-                <input type="date" id="start_date" required>
-            </div>
-            <div class="form-group">
-                <label for="end_date">End Date</label>
-                <input type="date" id="end_date" required>
-            </div>
-            <div class="form-actions">
-                <button onclick="downloadReport()" class="btn btn-primary">Download</button>
-                <button onclick="closeReportModal()" class="btn">Cancel</button>
-            </div>
+            <form class="stacked-form">
+                <div class="form-group">
+                    <label for="start_date">Start Date</label>
+                    <input type="date" id="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="end_date">End Date</label>
+                    <input type="date" id="end_date" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="downloadReport()" class="button button--primary">Download</button>
+                    <button type="button" onclick="closeReportModal()" class="button button--secondary">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <style>
 .admin-page {
-    padding: 24px;
+    padding: var(--space-lg);
     max-width: 1280px;
-    margin: 0 auto 60px;
+    margin: 0 auto calc(var(--space-2xl) + var(--space-md));
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: var(--space-xl);
 }
 
 .flash-region .alert {
@@ -251,24 +135,20 @@
 .admin-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 24px;
+    gap: var(--space-lg);
 }
 
 .card {
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.08);
-    border: 1px solid rgba(17, 24, 39, 0.06);
-    padding: 0;
+    --card-padding: 0;
 }
 
 .card-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+    padding: calc(var(--space-md) + var(--space-xs)) var(--space-lg);
+    border-bottom: 1px solid var(--neutral-200);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--space-md);
 }
 
 .card-header.column {
@@ -277,20 +157,21 @@
 
 .card-header h2 {
     margin: 0;
-    font-size: 1.35rem;
-    color: #1f2937;
+    font-size: var(--font-size-xl);
+    color: var(--color-primary);
 }
 
 .card-subtitle {
-    margin: 4px 0 0;
-    color: #6b7280;
-    font-size: 0.9rem;
+    margin: var(--space-xs) 0 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
 }
 
 .add-inline {
     display: flex;
-    gap: 12px;
+    gap: calc(var(--space-sm) + var(--space-xs));
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .add-inline input {
@@ -309,18 +190,18 @@
 
 .data-table thead th {
     text-align: left;
-    padding: 14px 24px;
-    font-size: 0.85rem;
+    padding: calc(var(--space-sm) + var(--space-xs)) var(--space-lg);
+    font-size: var(--font-size-sm);
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    color: #6b7280;
-    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
-    background: #f9fafb;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--neutral-200);
+    background: var(--surface-subtle);
 }
 
 .data-table tbody td {
-    padding: 16px 24px;
-    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--border-subtle);
     vertical-align: top;
 }
 
@@ -335,15 +216,15 @@
 
 .inline-form {
     display: inline-flex;
-    gap: 8px;
+    gap: var(--space-sm);
     align-items: center;
 }
 
 .account-actions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    align-items: flex-end;
+    gap: var(--space-sm);
+    align-items: flex-start;
 }
 
 .account-actions .inline-form {
@@ -359,48 +240,12 @@
     min-width: 0;
 }
 
-.btn {
-    background: #4f46e5;
-    color: #fff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-    font-size: 0.9rem;
-}
-
-.btn:hover {
-    background: #4338ca;
-}
-
-.btn-small {
-    padding: 6px 12px;
-    font-size: 0.85rem;
-}
-
-.btn-danger {
-    background: #dc2626;
-}
-
-.btn-danger:hover {
-    background: #b91c1c;
-}
-
-.btn-primary {
-    background: #2563eb;
-}
-
-.btn-primary:hover {
-    background: #1d4ed8;
-}
-
 .toggle {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: #374151;
+    gap: var(--space-sm);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-700);
 }
 
 .toggle input[type="checkbox"] {
@@ -414,10 +259,10 @@ input[type="text"],
 input[type="date"],
 textarea,
 select {
-    border: 1px solid rgba(17, 24, 39, 0.12);
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 0.9rem;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
+    padding: var(--space-sm) calc(var(--space-sm) + var(--space-xs));
+    font-size: var(--font-size-sm);
     width: 100%;
     transition: border 0.2s ease, box-shadow 0.2s ease;
 }
@@ -428,8 +273,8 @@ input:focus,
 textarea:focus,
 select:focus {
     outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .equipment-access select {
@@ -438,20 +283,20 @@ select:focus {
 
 .hint {
     display: inline-block;
-    margin-top: 6px;
-    color: #9ca3af;
+    margin-top: calc(var(--space-sm) - var(--space-xs));
+    color: var(--neutral-400);
     font-size: 0.75rem;
 }
 
 .badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: 2px var(--space-sm);
     border-radius: 9999px;
-    background: rgba(99, 102, 241, 0.1);
-    color: #4338ca;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--color-primary-active);
     font-size: 0.75rem;
-    margin-left: 6px;
+    margin-left: calc(var(--space-sm) - var(--space-xs));
 }
 
 .user-meta {
@@ -461,9 +306,9 @@ select:focus {
 
 .empty-state {
     text-align: center;
-    color: #9ca3af;
+    color: var(--neutral-400);
     font-style: italic;
-    padding: 32px 16px;
+    padding: var(--space-xl) var(--space-md);
 }
 
 .modal {
@@ -480,9 +325,9 @@ select:focus {
 }
 
 .modal-content {
-    background: #fff;
-    border-radius: 12px;
-    padding: 24px;
+    background: var(--surface-default);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
     width: min(420px, 90%);
     box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
 }
@@ -491,55 +336,100 @@ select:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-md);
 }
 
 .modal-header h3 {
     margin: 0;
-    font-size: 1.2rem;
-    color: #1f2937;
+    font-size: var(--font-size-xl);
+    color: var(--text-strong);
 }
 
 .modal .close {
     font-size: 1.5rem;
     cursor: pointer;
-    color: #6b7280;
+    color: var(--neutral-600);
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 16px;
+    gap: calc(var(--space-sm) - var(--space-xs));
+    margin-bottom: var(--space-md);
 }
 
 .form-group label {
     font-weight: 600;
-    color: #374151;
+    color: var(--neutral-700);
 }
 
 .form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: calc(var(--space-sm) + var(--space-xs));
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 @media (max-width: 768px) {
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+
     .card-header {
         flex-direction: column;
         align-items: stretch;
+        gap: var(--space-sm);
+    }
+
+    .add-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .add-inline input,
+    .add-inline .button {
+        width: 100%;
     }
 
     .col-actions {
         width: auto;
         text-align: left;
     }
+
+    .form-actions {
+        justify-content: stretch;
+    }
+
+    .form-actions .button {
+        width: 100%;
+    }
+
+    .account-actions {
+        width: 100%;
+    }
+
+    .account-actions .inline-form {
+        width: 100%;
+        justify-content: flex-start;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+    }
+
+    .account-actions .inline-form .button,
+    .account-actions .button {
+        width: 100%;
+    }
 }
 </style>
 
 <script>
 function updateAccess(userId) {
-    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    const row = document.querySelector(`.user-card[data-user-id="${userId}"]`);
+    if (!row) {
+        return;
+    }
     const approvedToggle = row.querySelector('.approved-toggle');
     const equipmentSelect = row.querySelector('.equipment-select');
     const groupSelect = row.querySelector('.group-select');
@@ -633,7 +523,7 @@ function confirmDeleteEquipment(equipmentId, equipmentName) {
 let currentEquipmentId = null;
 
 function resetPassword(userId) {
-    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    const row = document.querySelector(`.user-card[data-user-id="${userId}"]`);
     const username = row?.dataset.username ?? 'this user';
 
     if (!confirm(`Reset password for ${username}? They will need to change it after signing in.`)) {
@@ -692,7 +582,7 @@ function resetPassword(userId) {
 }
 
 function confirmRemoveUser(userId) {
-    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    const row = document.querySelector(`.user-card[data-user-id="${userId}"]`);
     const username = row?.dataset.username ?? 'this user';
 
     if (!confirm(`Remove ${username}? They will no longer be able to sign in.`)) {

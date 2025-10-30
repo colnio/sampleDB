@@ -1,0 +1,100 @@
+{{define "admin/users"}}
+<section class="admin-section card users-card">
+    <header class="card-header column">
+        <div>
+            <h2 class="heading-with-icon heading-with-icon--sm">
+                <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <rect x="7" y="5.5" width="10" height="13" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+                    <path d="M9.5 5.5V4a1 1 0 011-1h3a1 1 0 011 1v1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                    <path d="M9.5 11h5m-5 3h3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                </svg>
+                <span>User Management</span>
+            </h2>
+            <p class="card-subtitle">Approve access, assign groups, and grant equipment permissions.</p>
+        </div>
+    </header>
+    <div class="card-body">
+        {{if .Users}}
+        <div class="users-collection">
+            {{range .Users}}
+            {{$user := .}}
+            <article class="user-card" data-user-id="{{$user.UserID}}" data-username="{{$user.Username}}">
+                <header class="user-card__header">
+                    <div class="user-meta">
+                        <strong>{{$user.Username}}</strong>
+                        {{if $user.GroupName}}<span class="badge">{{$user.GroupName}}</span>{{end}}
+                    </div>
+                </header>
+                <div class="user-card__grid">
+                    <div class="user-card__field">
+                        <span class="field-label">Group</span>
+                        <select class="group-select" onchange="updateAccess({{$user.UserID}})">
+                            <option value="">No group</option>
+                            {{range $group := $.Groups}}
+                            <option value="{{$group.Name}}" {{if eq $user.GroupName $group.Name}}selected{{end}}>{{$group.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="user-card__field">
+                        <span class="field-label">Status</span>
+                        <label class="toggle">
+                            <input type="checkbox" class="approved-toggle"
+                                   {{if $user.Approved}}checked{{end}}
+                                   onchange="updateAccess({{$user.UserID}})">
+                            <span>{{if $user.Approved}}Approved{{else}}Pending{{end}}</span>
+                        </label>
+                    </div>
+                    <div class="user-card__field user-card__field--equipment">
+                        <span class="field-label">Equipment Access</span>
+                        <div class="equipment-access">
+                            <select multiple class="equipment-select"
+                                    aria-label="Equipment access for {{$user.Username}}"
+                                    onchange="updateAccess({{$user.UserID}})">
+                                {{range $equipment := $.Equipment}}
+                                <option value="{{$equipment.ID}}"
+                                        {{range $user.EquipmentAccess}}
+                                            {{if eq .ID $equipment.ID}}selected{{end}}
+                                        {{end}}>
+                                    {{$equipment.Name}}
+                                </option>
+                                {{end}}
+                            </select>
+                            <small class="hint">Hold Ctrl/⌘ to toggle multiple items</small>
+                        </div>
+                    </div>
+                    <div class="user-card__field user-card__actions">
+                        <span class="field-label">Account</span>
+                        <div class="account-actions">
+                            <form action="/admin/set-admin" method="POST" class="inline-form">
+                                <input type="hidden" name="user_id" value="{{$user.UserID}}">
+                                {{if not $user.Admin}}
+                                    <button type="submit" name="is_admin" value="true"
+                                            class="button button--primary button--small">Make Admin</button>
+                                {{else}}
+                                    <button type="submit" name="is_admin" value="false"
+                                            class="button button--destructive button--small">Remove Admin</button>
+                                {{end}}
+                            </form>
+                            <button type="button"
+                                    class="button button--secondary button--small"
+                                    onclick="resetPassword({{$user.UserID}})">
+                                Reset Password
+                            </button>
+                            <button type="button"
+                                    class="button button--destructive button--small remove-user-btn"
+                                    onclick="confirmRemoveUser({{$user.UserID}})"
+                                    {{if eq $user.UserID $.BasePageData.UserID}}disabled title="You cannot remove your own account"{{end}}>
+                                Remove User
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">No users found.</div>
+        {{end}}
+    </div>
+</section>
+{{end}}

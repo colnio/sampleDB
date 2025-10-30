@@ -2,11 +2,22 @@
 
 {{define "content"}}
 <div class="booking-container">
+    <header class="page-heading">
+        <h1 class="heading-with-icon">
+            <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <rect x="3.75" y="5.5" width="16.5" height="14.5" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+                <path d="M8 3.75v3.5m8-3.5v3.5M3.75 10.5h16.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                <path d="M15.75 14.5h2.5v2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                <circle cx="16" cy="15.5" r="1.6" fill="currentColor"></circle>
+            </svg>
+            <span>Equipment Booking</span>
+        </h1>
+    </header>
     <!-- Week Navigation -->
     <div class="week-nav">
-        <a href="/booking?week={{subtract .WeekOffset 1}}" class="nav-btn">&lt; Previous Week</a>
+        <a href="/booking?week={{subtract .WeekOffset 1}}" class="button button--secondary week-nav__button">&lt; Previous Week</a>
         <h2>Week of {{formatDate .WeekStart}}</h2>
-        <a href="/booking?week={{add .WeekOffset 1}}" class="nav-btn">Next Week &gt;</a>
+        <a href="/booking?week={{add .WeekOffset 1}}" class="button button--secondary week-nav__button">Next Week &gt;</a>
     </div>
 {{with .Error}}
 <div class="alert alert-error">{{.}}</div>
@@ -38,7 +49,7 @@
                 <div class="equipment-name">{{.Name}}</div>
                 {{range $i := iterate 0 7}}
                     {{$currentDay := $.WeekStart.AddDate 0 0 $i}}
-                    <div class="day-column">
+                    <div class="day-column" data-label="{{formatDayName $currentDay}} {{formatDateShort $currentDay}}">
                         {{if index $.HasPermission $equipment.ID}}
                             {{range $.TimeSlots}}
                                 {{$slotTime := combineDatetime $currentDay .}}
@@ -70,7 +81,7 @@
             <h3>New Booking</h3>
             <span class="close" onclick="closeModal()">&times;</span>
         </div>
-        <form id="booking-form" action="/booking" method="POST">
+        <form id="booking-form" action="/booking" method="POST" class="stacked-form">
             <input type="hidden" name="equipment_id" id="equipment_id">
             <div class="form-group">
                 <label for="start_time">Start Time:</label>
@@ -85,8 +96,8 @@
                 <textarea id="purpose" name="purpose" required></textarea>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Book</button>
-                <button type="button" class="btn" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="button button--primary">Book</button>
+                <button type="button" class="button button--secondary" onclick="closeModal()">Cancel</button>
             </div>
         </form>
     </div>
@@ -102,32 +113,32 @@
 
 .week-nav {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding: 10px;
-    background: #f5f5f5;
-    border-radius: 4px;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface-default);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
 }
 
-.nav-btn {
-    padding: 8px 16px;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #333;
+.week-nav h2 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--text-strong);
 }
 
-.nav-btn:hover {
-    background: #f0f0f0;
+.week-nav__button {
+    flex-shrink: 0;
 }
 
 .calendar-wrapper {
     overflow-x: auto;
     margin-bottom: 30px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
 }
 
 .calendar-grid {
@@ -139,7 +150,7 @@
 
 .calendar-header {
     display: table-row;
-    background: #f8f9fa;
+    background: var(--surface-subtle);
 }
 
 .time-column-header,
@@ -147,7 +158,7 @@
     display: table-cell;
     padding: 10px;
     text-align: center;
-    border-bottom: 2px solid #ddd;
+    border-bottom: 2px solid var(--neutral-200);
     font-weight: bold;
 }
 
@@ -161,12 +172,12 @@
 
 .day-name {
     font-size: 1.1em;
-    color: #333;
+    color: var(--text-strong);
 }
 
 .date {
     font-size: 0.9em;
-    color: #666;
+    color: var(--text-muted);
 }
 
 .equipment-row {
@@ -176,8 +187,8 @@
 .equipment-name {
     display: table-cell;
     padding: 10px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #ddd;
+    background: var(--surface-subtle);
+    border-bottom: 1px solid var(--neutral-200);
     font-weight: 500;
     vertical-align: top;
 }
@@ -185,37 +196,42 @@
 .day-column {
     display: table-cell;
     padding: 5px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--neutral-200);
     vertical-align: top;
 }
 
 .time-slot {
     padding: 8px;
     margin: 2px 0;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    background: var(--surface-default);
+    border: 1px solid var(--neutral-200);
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
     text-align: center;
+    font-weight: 500;
 }
 
 .time-slot:hover {
-    background: #f5f5f5;
-    border-color: #aaa;
+    background: var(--surface-subtle);
+    border-color: var(--neutral-400);
 }
 
 .time-slot.booked {
-    background: #f0f0f0;
-    color: #666;
+    background: var(--surface-muted);
+    color: var(--text-muted);
     cursor: not-allowed;
-    border-color: #ddd;
+    border-color: var(--neutral-200);
 }
 
 .no-permission {
     padding: 20px;
     text-align: center;
-    color: #666;
+    color: var(--text-muted);
     font-style: italic;
 }
 
@@ -233,7 +249,7 @@
 
 .modal-content {
     position: relative;
-    background-color: #fff;
+    background-color: var(--surface-default);
     margin: 10% auto;
     padding: 20px;
     width: 90%;
@@ -248,7 +264,7 @@
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--neutral-200);
 }
 
 .modal-header h3 {
@@ -258,103 +274,147 @@
 .close {
     font-size: 24px;
     font-weight: bold;
-    color: #666;
+    color: var(--neutral-600);
     cursor: pointer;
 }
 
 .close:hover {
-    color: #333;
+    color: var(--neutral-900);
 }
 
 .form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-}
-
-.form-group input,
-.form-group textarea {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-sm) - 0.1rem);
+    margin-bottom: var(--space-md);
 }
 
 .form-group textarea {
-    height: 100px;
+    min-height: 140px;
     resize: vertical;
 }
 
 .form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.btn {
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    border: 1px solid #ddd;
-    background: #ee6060;
-}
-
-.btn-primary {
-    background: #007bff;
-    color: white;
-    border-color: #0056b3;
-}
-
-.btn-primary:hover {
-    background: #0056b3;
-}
-
-.btn:hover {
-    background: #fa0a0a;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+    margin-top: var(--space-md);
 }
 
 .alert {
     padding: 12px 16px;
     margin-bottom: 20px;
     border-radius: 4px;
+    border: 1px solid transparent;
 }
 
 .alert-error {
-    background: #fee;
-    color: #c00;
-    border: 1px solid #fcc;
+    background: var(--color-destructive-bg);
+    color: var(--color-destructive-active);
+    border-color: var(--color-destructive-border);
 }
 
 .alert-success {
-    background: #efe;
-    color: #0a0;
-    border: 1px solid #cfc;
+    background: var(--color-success-bg);
+    color: var(--color-success);
+    border-color: var(--color-success-border);
 }
 
 .time-slot {
-    padding: 8px;
-    margin: 2px 0;
     font-family: monospace; /* Better alignment for 24-hour time */
 }
 
 .time-slot.booked {
-    background: #e0e0e0;
+    background: var(--surface-muted);
+    color: var(--text-muted);
 }
 
 .time-slot.own-booking {
-    background: #ffd7d7; /* Light red for own bookings */
+    background: var(--color-destructive-bg); /* Light red for own bookings */
     cursor: pointer;
 }
 
 .time-slot.own-booking:hover {
-    background: #ffbdbd;
+    background: var(--color-destructive-border);
+}
+
+@media (max-width: 900px) {
+    .week-nav {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .week-nav__button {
+        width: 100%;
+    }
+
+    .calendar-wrapper {
+        overflow-x: visible;
+    }
+
+    .calendar-grid {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .calendar-header {
+        display: none;
+    }
+
+    .equipment-row {
+        display: flex;
+        flex-direction: column;
+        border-bottom: 1px solid var(--neutral-200);
+        padding: var(--space-md) var(--space-sm);
+        background: var(--surface-default);
+    }
+
+    .equipment-row:last-child {
+        border-bottom: none;
+    }
+
+    .equipment-name {
+        background: none;
+        border-bottom: none;
+        padding: 0;
+        margin-bottom: var(--space-md);
+        font-size: var(--font-size-lg);
+    }
+
+    .day-column {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: var(--space-sm);
+        padding: 0;
+        border: none;
+    }
+
+    .day-column + .day-column {
+        margin-top: var(--space-md);
+    }
+
+    .day-column::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+        grid-column: 1 / -1;
+    }
+
+    .time-slot,
+    .no-permission {
+        width: 100%;
+    }
+
+    .no-permission {
+        padding: var(--space-md);
+        border: 1px dashed var(--neutral-200);
+        border-radius: var(--radius-sm);
+        background: rgba(148, 163, 184, 0.12);
+    }
 }
 
 </style>

@@ -4,9 +4,16 @@
 {{end}}
 {{define "content"}}
 <div class="wiki-edit">
-    <h1>{{if .Article}}Edit Article{{else}}Create New Article{{end}}</h1>
+    <h1 class="heading-with-icon">
+        <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <rect x="4.5" y="5" width="8" height="14" rx="1.75" ry="1.75" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+            <path d="M12.5 5.75H17a1.75 1.75 0 011.75 1.75v11.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M7.25 9h3.25m-3.25 3h2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg>
+        <span>{{if .Article}}Edit Article{{else}}Create New Article{{end}}</span>
+    </h1>
 
-    <form action="{{if .Article}}/wiki/edit/{{.Article.Title}}{{else}}/wiki/new{{end}}" method="POST" class="form-container" onsubmit="return validateForm()">
+    <form action="{{if .Article}}/wiki/edit/{{.Article.Title}}{{else}}/wiki/new{{end}}" method="POST" class="form-container stacked-form" onsubmit="return validateForm()">
         <div class="form-group">
             <label for="title">Title</label>
             <input type="text" id="title" name="title" value="{{if .Article}}{{.Article.Title}}{{end}}" {{if .Article}}readonly{{else}}required{{end}}>
@@ -19,8 +26,8 @@
         </div>
 
         <div class="button-row">
-            <button type="submit" class="button">{{if .Article}}Save Changes{{else}}Create Article{{end}}</button>
-            <a href="{{if .Article}}/wiki/{{.Article.Title}}{{else}}/wiki{{end}}" class="button button-secondary">Cancel</a>
+            <button type="submit" class="button button--primary">{{if .Article}}Save Changes{{else}}Create Article{{end}}</button>
+            <a href="{{if .Article}}/wiki/{{.Article.Title}}{{else}}/wiki{{end}}" class="button button--secondary">Cancel</a>
         </div>
     </form>
 </div>
@@ -123,8 +130,8 @@
 .editor-toolbar {
     display: flex !important;
     opacity: 1 !important;
-    border: 1px solid #ddd;
-    background-color: #000000;
+    border: 1px solid var(--neutral-200);
+    background-color: var(--surface-default);
     padding: 5px;
 }
 
@@ -137,26 +144,28 @@
     height: 30px;
     margin: 0 2px;
     padding: 3px;
-    color: #666 !important;
+    color: var(--neutral-600) !important;
     border: 1px solid transparent;
     border-radius: 3px;
     text-decoration: none !important;
 }
 
 .editor-toolbar a:hover {
-    background-color: #e9ecef;
-    border-color: #ddd;
+    background-color: var(--surface-subtle);
+    border-color: var(--neutral-200);
+    color: var(--color-primary) !important;
 }
 
 .editor-toolbar a.active {
-    background-color: #012f5d;
-    border-color: #ddd;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary-active);
+    color: var(--text-on-accent) !important;
 }
 
 /* Style the editor area */
 .CodeMirror {
     height: 500px !important;
-    border: 1px solid #ddd;
+    border: 1px solid var(--neutral-200);
     border-top: none;
 }
 
@@ -166,15 +175,15 @@
     width: 1px;
     height: 20px;
     margin: 0 5px;
-    background-color: #ddd;
+    background-color: var(--neutral-200);
 }
 
 /* Style the status bar */
 .editor-statusbar {
     padding: 8px;
-    color: #666;
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
+    color: var(--text-muted);
+    background-color: var(--surface-subtle);
+    border: 1px solid var(--neutral-200);
     border-top: none;
 }
 </style>

@@ -1,0 +1,39 @@
+{{define "admin/groups"}}
+<section class="admin-section card groups-card">
+    <header class="card-header">
+        <div>
+            <h2 class="heading-with-icon heading-with-icon--sm">
+                <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <circle cx="8.5" cy="9" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+                    <path d="M3.8 16.2c.35-2.18 2.12-3.7 4.7-3.7s4.36 1.52 4.7 3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                    <circle cx="16.5" cy="11" r="2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+                    <path d="M13.2 16.5c.3-1.5 1.6-2.6 3.3-2.6 1.7 0 3 1.1 3.3 2.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                </svg>
+                <span>User Groups</span>
+            </h2>
+            <p class="card-subtitle">Organise users into research teams or labs for quick filtering.</p>
+        </div>
+        <form action="/admin/add-group" method="POST" class="inline-form add-inline">
+            <input type="text" name="name" placeholder="New group name" required>
+            <button type="submit" class="button button--primary button--small">Add</button>
+        </form>
+    </header>
+    <div class="card-body">
+        {{if .Groups}}
+        <div class="groups-list">
+            {{range .Groups}}
+            <div class="groups-row">
+                <span class="group-name">{{.Name}}</span>
+                <form action="/admin/delete-group/{{.ID}}" method="POST" class="inline-form"
+                      onsubmit="return confirm('Remove group {{.Name}}? Users will be unassigned.');">
+                    <button type="submit" class="button button--destructive button--small">Remove</button>
+                </form>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">No groups yet. Add your first group to get started.</div>
+        {{end}}
+    </div>
+</section>
+{{end}}
