@@ -180,10 +180,10 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 
 	hasPermission := make(map[int]bool)
 	for _, eq := range equipment {
-		if isAdmin {
-			hasPermission[eq.ID] = true
-			continue
-		}
+		// if isAdmin {
+		// 	hasPermission[eq.ID] = true
+		// 	continue
+		// }
 		permitted, err := checkUserPermission(session.UserID, eq.ID)
 		if err != nil {
 			continue
