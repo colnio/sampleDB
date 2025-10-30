@@ -481,6 +481,7 @@ func main() {
 	mux.HandleFunc("/admin", withAuth(requireAdmin(handleAdminPage)))
 	mux.HandleFunc("/admin/update-access", withAuth(requireAdmin(handleUpdateAccess)))
 	mux.HandleFunc("/admin/set-admin", withAuth(requireAdmin(handleSetAdmin)))
+	mux.HandleFunc("/admin/reset-password", withAuth(requireAdmin(handleResetPassword)))
 	mux.HandleFunc("/admin/add-equipment", withAuth(requireAdmin(handleAddEquipment)))
 	mux.HandleFunc("/admin/delete-equipment/", withAuth(requireAdmin(handleDeleteEquipment))) // Note trailing slash
 	mux.HandleFunc("/admin/add-group", withAuth(requireAdmin(handleAddGroup)))

@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"sampleDB/internal/auth"
 )
@@ -356,6 +360,81 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/admin?success=User+removed", http.StatusSeeOther)
+}
+
+func handleResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		UserID int `json:"user_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if payload.UserID <= 0 {
+		http.Error(w, "User id required", http.StatusBadRequest)
+		return
+	}
+
+	password, err := generateNumericPassword(8)
+	if err != nil {
+		http.Error(w, "Failed to generate password", http.StatusInternalServerError)
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Failed to secure password", http.StatusInternalServerError)
+		return
+	}
+
+	cmdTag, err := dbPool.Exec(context.Background(),
+		`UPDATE users
+         SET password_hash = $1
+         WHERE user_id = $2
+           AND COALESCE(deleted, false) = false`,
+		string(hashed), payload.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	if authManagerInstance != nil {
+		authManagerInstance.RevokeUserSessions(payload.UserID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"password": password})
+}
+
+func generateNumericPassword(length int) (string, error) {
+	if length <= 0 {
+		return "", fmt.Errorf("invalid password length")
+	}
+
+	const digits = "0123456789"
+
+	result := make([]byte, length)
+	for i := range result {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(digits))))
+		if err != nil {
+			return "", err
+		}
+		result[i] = digits[n.Int64()]
+	}
+
+	return string(result), nil
 }
 
 func handleAddEquipment(w http.ResponseWriter, r *http.Request) {
