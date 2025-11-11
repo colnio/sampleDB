@@ -1,75 +1,216 @@
-{{define "title"}}Sample Tracker{{end}}
+{{define "title"}}{{.Sample.Name}} · Sample Tracker{{end}}
+
 {{define "content"}}
+<a href="/" class="back-link back-link--quiet">← Back to samples</a>
 
-<!-- <div class="content"> -->
-<h1>{{.Sample.Name}}</h1>
+<section class="sample-detail">
+    <header class="sample-detail__header">
+        <div>
+            <h1>{{.Sample.Name}}</h1>
+            <p class="sample-detail__meta">
+                <span><strong>Owner:</strong> {{if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unknown{{end}}</span>
+                <span><strong>Keywords:</strong> {{if .Sample.Keywords}}{{.Sample.Keywords}}{{else}}—{{end}}</span>
+            </p>
+        </div>
+    </header>
 
-<div class="attachments-container">
-    <h2>Attachments</h2>
-    {{range .Sample.Attachments}}
-    <div class="attachment-preview">
-        {{if .IsImage}}
-        <a href="/attachment/{{.ID}}" target="_blank">
-            <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}">
-        </a>
-        {{else}}
-        <a href="/attachment/{{.ID}}" download="{{.OriginalName}}">
-            <div class="file-icon">📄</div>
-        </a>
-        {{end}}
-        <div class="attachment-name">{{.OriginalName}}</div>
-        <form action="/attachment/{{.ID}}/delete" method="POST" class="inline-form">
-            <button type="submit" class="button button--destructive button--small">Delete</button>
-        </form>
-    </div>
-    {{end}}
-    
-    <div class="upload-form">
-        <!-- <h5>Upload New Attachment</h5> -->
-        <form action="/samples/{{.Sample.ID}}/upload" method="POST" enctype="multipart/form-data" class="inline-form">
-            <input type="file" name="file" required>
+    {{template "sample_attachments" .}}
+
+    {{template "sample_prep_panel" .}}
+
+    {{template "sample_edit_form" .}}
+
+    <a href="/" class="back-link">← Back to samples</a>
+</section>
+{{end}}
+
+{{define "sample_attachments"}}
+<section id="attachments-panel" class="attachments-container card" aria-labelledby="attachments-heading">
+    <header class="attachments-header">
+        <div>
+            <h2 id="attachments-heading">Attachments</h2>
+            <p class="section-hint">Add reference images, reports, or raw data. Updates stream in without leaving the page.</p>
+        </div>
+        <form action="/samples/{{.Sample.ID}}/upload"
+              method="POST"
+              enctype="multipart/form-data"
+              class="inline-form upload-inline"
+              hx-post="/samples/{{.Sample.ID}}/upload"
+              hx-target="#attachments-panel"
+              hx-select="#attachments-panel"
+              hx-swap="outerHTML"
+              hx-encoding="multipart/form-data"
+              hx-indicator="#attachment-upload-indicator">
+            <label class="sr-only" for="attachment-file">Attachment</label>
+            <input id="attachment-file" type="file" name="file" required>
             <button type="submit" class="button button--primary button--small">Upload</button>
+            <div id="attachment-upload-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
+                <span class="spinner"></span>
+            </div>
         </form>
-    </div>
-</div>
+    </header>
 
-<div class="form-container">
-    <h2>Edit Sample Details</h2>
-    <form action="/samples/edit/{{.Sample.ID}}" method="POST" class="stacked-form">
-        <div class="form-group">
-            <label>Name</label>
-            <input type="text" name="name" value="{{.Sample.Name}}" required>
+    {{with .Flash}}
+    <div class="alert alert-success">{{.}}</div>
+    {{end}}
+    {{with .Error}}
+    <div class="alert alert-error">{{.}}</div>
+    {{end}}
+
+    <div class="attachment-grid">
+        {{if .Sample.Attachments}}
+            {{range .Sample.Attachments}}
+            <article class="attachment-preview">
+                {{if .IsImage}}
+                <a href="/attachment/{{.ID}}" target="_blank" rel="noopener" class="attachment-preview__thumb">
+                    <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}">
+                </a>
+                {{else}}
+                <a href="/attachment/{{.ID}}" download="{{.OriginalName}}" class="attachment-preview__thumb">
+                    <div class="file-icon">📄</div>
+                </a>
+                {{end}}
+                <div class="attachment-preview__body">
+                    <p class="attachment-name">{{.OriginalName}}</p>
+                    <div class="attachment-actions">
+                        <a href="/attachment/{{.ID}}" target="_blank" class="button button--ghost button--small">Open</a>
+                        <form action="/attachment/{{.ID}}/delete"
+                              method="POST"
+                              class="inline-form"
+                              hx-post="/attachment/{{.ID}}/delete"
+                              hx-target="#attachments-panel"
+                              hx-select="#attachments-panel"
+                              hx-swap="outerHTML"
+                              hx-confirm="Delete this attachment?">
+                            <button type="submit" class="button button--destructive button--small">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+            {{end}}
+        {{else}}
+            <div class="empty-state">
+                <p>No attachments yet.</p>
+                <p class="empty-state__hint">Upload your first file to keep everything in one place.</p>
+            </div>
+        {{end}}
+    </div>
+</section>
+{{end}}
+
+{{define "sample_prep_panel"}}
+<section id="sample-prep-panel" class="card sample-prep">
+    <header class="sample-prep__header">
+        <div>
+            <h2>Sample Preparation</h2>
+            <p class="section-hint">Supports GitHub-flavored Markdown for headings, code, and tables.</p>
         </div>
-        
+        {{if .EditingPrep}}
+        <button class="button button--ghost button--small"
+                type="button"
+                hx-get="/samples/prep/{{.Sample.ID}}"
+                hx-target="#sample-prep-panel"
+                hx-select="#sample-prep-panel"
+                hx-swap="outerHTML">Cancel</button>
+        {{else}}
+        <button class="button button--ghost button--small"
+                type="button"
+                hx-get="/samples/prep/{{.Sample.ID}}/edit"
+                hx-target="#sample-prep-panel"
+                hx-select="#sample-prep-panel"
+                hx-swap="outerHTML">Edit</button>
+        {{end}}
+    </header>
+    <div class="sample-prep__body">
+        {{with .Flash}}
+        <div class="alert alert-success">{{.}}</div>
+        {{end}}
+        {{with .Error}}
+        <div class="alert alert-error">{{.}}</div>
+        {{end}}
+        {{if .EditingPrep}}
+        <form action="/samples/prep/{{.Sample.ID}}"
+              method="POST"
+              class="stacked-form"
+              hx-post="/samples/prep/{{.Sample.ID}}"
+              hx-target="#sample-prep-panel"
+              hx-select="#sample-prep-panel"
+              hx-swap="outerHTML"
+              hx-indicator="#sample-prep-indicator">
+            <textarea id="sample-prep-editor" name="sample_prep">{{.Sample.Sample_prep}}</textarea>
+            <div class="form-actions">
+                <button type="submit" class="button button--primary button--small">Save</button>
+                <button type="button"
+                        class="button button--secondary button--small"
+                        hx-get="/samples/prep/{{.Sample.ID}}"
+                        hx-target="#sample-prep-panel"
+                        hx-select="#sample-prep-panel"
+                        hx-swap="outerHTML">Cancel</button>
+                <div id="sample-prep-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
+                    <span class="spinner"></span>
+                </div>
+            </div>
+        </form>
+        {{else}}
+            {{if .Sample.SamplePrepHTML}}
+            <article class="markdown-body markdown-body--card">
+                {{.Sample.SamplePrepHTML}}
+            </article>
+            {{else}}
+            <div class="empty-state markdown-body--card">
+                <p>No preparation notes yet.</p>
+                <p class="empty-state__hint">Use the editor to add Markdown-formatted instructions.</p>
+            </div>
+            {{end}}
+        {{end}}
+    </div>
+</section>
+{{end}}
+
+{{define "sample_edit_form"}}
+<section class="form-container card" id="sample-form-wrapper">
+    <header>
+        <h2>Edit Sample Details</h2>
+        <p class="section-hint">Changes save instantly and the list view updates on refresh.</p>
+    </header>
+    {{with .Flash}}
+    <div class="alert alert-success">{{.}}</div>
+    {{end}}
+    {{with .Error}}
+    <div class="alert alert-error">{{.}}</div>
+    {{end}}
+    <form action="/samples/edit/{{.Sample.ID}}"
+          method="POST"
+          class="stacked-form"
+          hx-post="/samples/edit/{{.Sample.ID}}"
+          hx-target="#sample-form-wrapper"
+          hx-select="#sample-form-wrapper"
+          hx-swap="outerHTML"
+          hx-indicator="#sample-edit-indicator">
         <div class="form-group">
-            <label>Description</label>
-            <textarea name="description">{{.Sample.Description}}</textarea>
+            <label for="sample-name">Name</label>
+            <input id="sample-name" type="text" name="name" value="{{.Sample.Name}}" required>
         </div>
-        
         <div class="form-group">
-            <label>Sample Preparation</label>
-            <textarea name="sample_prep">{{.Sample.Sample_prep}}</textarea>
+            <label for="sample-description">Description</label>
+            <textarea id="sample-description" name="description">{{.Sample.Description}}</textarea>
         </div>
-        
         <div class="form-group">
-            <label>Keywords</label>
-            <input type="text" name="keywords" value="{{.Sample.Keywords}}">
+            <label for="sample-keywords">Keywords</label>
+            <input id="sample-keywords" type="text" name="keywords" value="{{.Sample.Keywords}}">
         </div>
-        
         <div class="form-group">
-            <label>Owner</label>
-            <input type="text" name="owner" value="{{.Sample.Owner}}">
+            <label for="sample-owner">Owner</label>
+            <input id="sample-owner" type="text" name="owner" value="{{.Sample.Owner}}">
         </div>
-        
         <div class="form-actions">
             <button type="submit" class="button button--primary button--block">Save Changes</button>
+            <div id="sample-edit-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
+                <span class="spinner"></span>
+            </div>
         </div>
     </form>
-</div>
-
-<a href="/" class="back-link">← Back to main page</a>
-<!-- </div> -->
-
+</section>
 {{end}}
 
 {{template "base" .}}

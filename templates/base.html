@@ -1,18 +1,29 @@
 {{define "base"}}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{template "title" .}}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css" integrity="sha512-Ya9H+OPj8NgcQk34nCrbehaA0atbzGdZCI2uCbqVRELgnlrh8vQ2INMnkadVMSniC54HChLIh5htabVuKJww8g==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="/static/css/easymde.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12" crossorigin="anonymous" defer></script>
+    <script src="/static/js/easymde.min.js"></script>
     {{block "additional_styles" .}}{{end}}
 </head>
-<body>
+<body hx-boost="true" hx-target="#page-root" hx-select="#page-root" hx-indicator="#page-indicator">
     {{template "header" .}}
-    <div class="content">
+    <main id="page-root" class="content" role="main">
         {{template "content" .}}
+    </main>
+    <div id="page-indicator" class="htmx-indicator" role="status" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="sr-only">Loading</span>
     </div>
+    <script src="/static/js/sample-prep.js" defer></script>
+    {{block "footer_scripts" .}}{{end}}
 </body>
 </html>
 {{end}}

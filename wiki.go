@@ -13,9 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/html"
-	"github.com/gomarkdown/markdown/parser"
 	"github.com/jackc/pgx/v5"
 
 	"sampleDB/internal/auth"
@@ -43,12 +40,14 @@ type ArticleAttachment struct {
 }
 
 type WikiPageData struct {
-	Username string
-	Articles []Article
-	Article  *Article
-	Error    string
-	Success  string
-	IsAdmin  bool
+	Username       string
+	Articles       []Article
+	Article        *Article
+	Error          string
+	Success        string
+	IsAdmin        bool
+	EditingContent bool
+	IsPartial      bool
 }
 
 type ArticleContent struct {
@@ -127,13 +126,10 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl.ExecuteTemplate(w, "base", data)
 }
 
-func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
-	session := auth.MustSessionFromContext(r.Context())
-	title := strings.TrimPrefix(r.URL.Path, "/wiki/")
-
+func loadArticleData(ctx context.Context, session auth.Session, title string) (*Article, error) {
 	var article Article
 	var rawContent string
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		`SELECT article_id, title, content, created_at, created_by,
 		        COALESCE(last_modified_at, created_at) AS last_modified_at,
 		        COALESCE(last_modified_by, created_by) AS last_modified_by
@@ -141,8 +137,7 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 		&article.ID, &article.Title, &rawContent, &article.CreatedAt, &article.CreatedBy,
 		&article.LastModifiedAt, &article.LastModifiedBy)
 	if err != nil {
-		http.Error(w, "Article not found", http.StatusNotFound)
-		return
+		return nil, err
 	}
 
 	// Set both raw content and rendered HTML
@@ -152,7 +147,7 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get attachments
-	rows, err := dbPool.Query(context.Background(),
+	rows, err := dbPool.Query(ctx,
 		`SELECT attachment_id, original_name, attachment_address, uploaded_at 
          FROM article_attachments WHERE article_id = $1`, article.ID)
 	if err == nil {
@@ -166,8 +161,36 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	return &article, nil
+}
+
+func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
+	session := auth.MustSessionFromContext(r.Context())
+	title := strings.TrimPrefix(r.URL.Path, "/wiki/")
+
+	// Check if this is an HTMX request specifically targeting the content panel
+	// (not a full page load via hx-boost)
+	if isHTMXRequest(r) && r.Method == http.MethodGet {
+		target := r.Header.Get("HX-Target")
+		// Only render just the panel if explicitly targeting it
+		// HTMX boost will target "page-root" for full page loads
+		if target == "article-content-panel" {
+			renderArticleContentPanel(w, r, session, title, "", "", false)
+			return
+		}
+		// For hx-boost requests targeting page-root, we need to render the full page
+		// So we continue to the full page rendering below
+	}
+
+	article, err := loadArticleData(r.Context(), session, title)
+	if err != nil {
+		http.Error(w, "Article not found", http.StatusNotFound)
+		return
+	}
+
 	isAdmin := false
-	if err := dbPool.QueryRow(context.Background(),
+	if err := dbPool.QueryRow(r.Context(),
 		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		session.UserID).Scan(&isAdmin); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -180,10 +203,12 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		BasePageData
-		Article *Article
+		Article        *Article
+		EditingContent bool
 	}{
-		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
-		Article:      &article,
+		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		Article:         article,
+		EditingContent: false,
 	}
 
 	tmpl, err := parseTemplates("templates/wiki_view.html")
@@ -193,6 +218,43 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl.ExecuteTemplate(w, "base", data)
+}
+
+func renderArticleContentPanel(w http.ResponseWriter, r *http.Request, session auth.Session, title, flash, errMsg string, editing bool) {
+	article, err := loadArticleData(r.Context(), session, title)
+	if err != nil {
+		http.Error(w, "Article not found", http.StatusNotFound)
+		return
+	}
+
+	isAdmin := false
+	if err := dbPool.QueryRow(r.Context(),
+		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+		session.UserID).Scan(&isAdmin); err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("wiki: unable to load admin status for user %d: %v", session.UserID, err)
+		}
+	}
+
+	data := struct {
+		BasePageData
+		Article        *Article
+		EditingContent bool
+		IsPartial      bool
+		Flash          string
+		Error          string
+	}{
+		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		Article:        article,
+		EditingContent: editing,
+		IsPartial:      true,
+		Flash:          flash,
+		Error:          errMsg,
+	}
+
+	if err := renderTemplateSection(w, "templates/wiki_view.html", "article_content_panel", data); err != nil {
+		http.Error(w, "Error rendering article content", http.StatusInternalServerError)
+	}
 }
 
 func newArticleHandler(w http.ResponseWriter, r *http.Request) {
@@ -235,14 +297,20 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 
 func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 3 {
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/wiki/edit/"), "/")
+	if len(pathParts) < 1 || pathParts[0] == "" {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	title := parts[3]
+	title := pathParts[0]
 
 	if r.Method == http.MethodGet {
+		// Check if this is an HTMX request for inline editing
+		if isHTMXRequest(r) {
+			renderArticleContentPanel(w, r, session, title, "", "", true)
+			return
+		}
+
 		var article Article
 		var rawContent string
 		err := dbPool.QueryRow(context.Background(),
@@ -274,13 +342,31 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle POST request
+	if err := r.ParseForm(); err != nil {
+		if isHTMXRequest(r) {
+			renderArticleContentPanel(w, r, session, title, "", "Invalid form submission.", true)
+			return
+		}
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
+	}
+
 	content := r.FormValue("content")
 	_, err := dbPool.Exec(context.Background(),
 		`UPDATE articles SET content = $1, last_modified_at = NOW(), 
          last_modified_by = $2 WHERE title = $3`,
 		content, session.UserID, title)
 	if err != nil {
+		if isHTMXRequest(r) {
+			renderArticleContentPanel(w, r, session, title, "", "Failed to update article content.", true)
+			return
+		}
 		http.Error(w, "Error updating article", http.StatusInternalServerError)
+		return
+	}
+
+	if isHTMXRequest(r) {
+		renderArticleContentPanel(w, r, session, title, "Content updated", "", false)
 		return
 	}
 
@@ -355,44 +441,6 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
-}
-
-func renderMarkdown(md string) template.HTML {
-	// Create markdown parser with extensions
-	extensions := parser.CommonExtensions |
-		parser.AutoHeadingIDs |
-		parser.NoEmptyLineBeforeBlock |
-		parser.Tables |
-		parser.FencedCode |
-		parser.Autolink |
-		parser.Strikethrough |
-		parser.SpaceHeadings |
-		parser.HeadingIDs |
-		parser.BackslashLineBreak |
-		parser.DefinitionLists |
-		parser.Footnotes
-
-	p := parser.NewWithExtensions(extensions)
-
-	// Parse markdown
-	doc := p.Parse([]byte(md))
-
-	// Create HTML renderer with options
-	opts := html.RendererOptions{
-		Flags: html.CommonFlags |
-			html.HrefTargetBlank |
-			html.LazyLoadImages |
-			html.TOC |
-			html.UseXHTML |
-			html.FootnoteReturnLinks,
-		CSS: "",
-	}
-	renderer := html.NewRenderer(opts)
-
-	// Render HTML
-	html := markdown.Render(doc, renderer)
-
-	return template.HTML(html)
 }
 
 func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {

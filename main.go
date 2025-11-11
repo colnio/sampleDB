@@ -46,13 +46,14 @@ type BasePageData struct {
 
 // Sample represents a sample record in the database
 type Sample struct {
-	ID          int
-	Name        string
-	Description string
-	Keywords    string
-	Owner       string
-	Sample_prep string
-	Attachments []Attachment
+	ID             int
+	Name           string
+	Description    string
+	Keywords       string
+	Owner          string
+	Sample_prep    string
+	SamplePrepHTML template.HTML
+	Attachments    []Attachment
 }
 
 type User struct {
@@ -64,9 +65,18 @@ type User struct {
 }
 
 type MainPageData struct {
-	Samples  []Sample
-	Username string
-	Query    string
+	BasePageData
+	Samples []Sample
+	Query   string
+}
+
+type SampleDetailPageData struct {
+	BasePageData
+	Sample      Sample
+	Flash       string
+	Error       string
+	IsPartial   bool
+	EditingPrep bool
 }
 
 type ChangePasswordPageData struct {
@@ -179,6 +189,22 @@ func extractPort(addr string) string {
 	// net.SplitHostPort requires an address with a port. If the provided value
 	// did not include a port, fall back to empty string so callers can decide.
 	return ""
+}
+
+func isHTMXRequest(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
+}
+
+func hxTargetIs(r *http.Request, target string) bool {
+	return isHTMXRequest(r) && r.Header.Get("HX-Target") == target
+}
+
+func renderTemplateSection(w http.ResponseWriter, templatePath, section string, data interface{}) error {
+	tmpl, err := parseTemplates(templatePath)
+	if err != nil {
+		return err
+	}
+	return tmpl.ExecuteTemplate(w, section, data)
 }
 
 // Add this function to booking.go
@@ -466,6 +492,7 @@ func main() {
 	mux.HandleFunc("/", withAuth(mainPageHandler))
 	mux.HandleFunc("/samples/new", withAuth(newSampleHandler))
 	mux.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
+	mux.HandleFunc("/samples/prep/", withAuth(samplePrepHandler))
 	mux.HandleFunc("/samples/", withAuth(handleSample))
 	mux.HandleFunc("/attachment/", withAuth(handleAttachment))
 	mux.HandleFunc("/booking", withAuth(handleBooking))
@@ -583,12 +610,8 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	WHERE username = $1
 	  AND COALESCE(deleted, false) = false`, session.Username)
 
-	data := struct {
-		BasePageData
-		Samples []Sample
-		Query   string
-	}{
-		BasePageData: BasePageData{Username: session.Username, IsAdmin: false},
+	data := MainPageData{
+		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: false},
 		Samples:      samples,
 		Query:        query,
 	}
@@ -603,6 +626,13 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := parseTemplates("templates/main.html")
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+
+	if hxTargetIs(r, "samples-panel") {
+		if err := tmpl.ExecuteTemplate(w, "samples_panel", data); err != nil {
+			http.Error(w, "Error rendering samples", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -643,6 +673,8 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+
 	// Get sample ID from URL (/samples/{id}/upload)
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/samples/"), "/")
 	if len(pathParts) != 2 || pathParts[1] != "upload" {
@@ -654,12 +686,20 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse multipart form
 	err := r.ParseMultipartForm(10 << 20) // 10 MB max
 	if err != nil {
+		if isHTMXRequest(r) {
+			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Unable to read the upload form.")
+			return
+		}
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
+		if isHTMXRequest(r) {
+			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Please choose a file to upload.")
+			return
+		}
 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
 		return
 	}
@@ -668,6 +708,10 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Save file and get filepath
 	filepath, err := saveUploadedFile(file, header.Filename)
 	if err != nil {
+		if isHTMXRequest(r) {
+			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Unable to save the file. Try again.")
+			return
+		}
 		http.Error(w, "Error saving file", http.StatusInternalServerError)
 		return
 	}
@@ -675,8 +719,16 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Add to database
 	err = addAttachment(sampleID, filepath)
 	if err != nil {
-		fmt.Println(err)
+		if isHTMXRequest(r) {
+			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Could not store attachment metadata.")
+			return
+		}
 		http.Error(w, "Error storing attachment info", http.StatusInternalServerError)
+		return
+	}
+
+	if isHTMXRequest(r) {
+		renderSampleAttachmentsSection(w, r, session, sampleID, "Attachment uploaded", "")
 		return
 	}
 
@@ -796,25 +848,14 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 	sampleID := strings.TrimPrefix(r.URL.Path, "/samples/")
 
-	sample, err := getSampleByID(sampleID)
+	data, err := loadSampleDetailData(r.Context(), session, sampleID)
 	if err != nil {
-		http.Error(w, "Sample not found", http.StatusNotFound)
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error loading sample", http.StatusInternalServerError)
+		}
 		return
-	}
-
-	data := struct {
-		BasePageData
-		Sample Sample
-	}{
-		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID},
-		Sample:       sample,
-	}
-
-	if err := dbPool.QueryRow(context.Background(),
-		"SELECT admin FROM users WHERE user_id = $1",
-		session.UserID,
-	).Scan(&data.BasePageData.IsAdmin); err != nil {
-		log.Printf("main: failed to load admin flag for user %d: %v", session.UserID, err)
 	}
 
 	tmpl, err := parseTemplates("templates/sample_detail.html")
@@ -839,7 +880,81 @@ func getSampleByID(sampleID string) (Sample, error) {
 
 	// Fetch attachments
 	sample.Attachments, err = getAttachments(sampleID)
-	return sample, err
+	if err != nil {
+		return sample, err
+	}
+
+	sample.SamplePrepHTML = renderMarkdown(sample.Sample_prep)
+	return sample, nil
+}
+
+func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID string) (SampleDetailPageData, error) {
+	sample, err := getSampleByID(sampleID)
+	if err != nil {
+		return SampleDetailPageData{}, err
+	}
+
+	data := SampleDetailPageData{
+		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID},
+		Sample:       sample,
+	}
+
+	if err := dbPool.QueryRow(ctx,
+		"SELECT admin FROM users WHERE user_id = $1",
+		session.UserID,
+	).Scan(&data.BasePageData.IsAdmin); err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return SampleDetailPageData{}, err
+		}
+	}
+
+	return data, nil
+}
+
+func renderSampleAttachmentsSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string) {
+	data, err := loadSampleDetailData(r.Context(), session, sampleID)
+	if err != nil {
+		http.Error(w, "Sample not found", http.StatusNotFound)
+		return
+	}
+	data.Flash = flash
+	data.Error = errMsg
+	data.IsPartial = true
+
+	if err := renderTemplateSection(w, "templates/sample_detail.html", "sample_attachments", data); err != nil {
+		http.Error(w, "Error rendering attachments", http.StatusInternalServerError)
+	}
+}
+
+func renderSampleEditSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string) {
+	data, err := loadSampleDetailData(r.Context(), session, sampleID)
+	if err != nil {
+		http.Error(w, "Sample not found", http.StatusNotFound)
+		return
+	}
+	data.Flash = flash
+	data.Error = errMsg
+	data.IsPartial = true
+
+	if err := renderTemplateSection(w, "templates/sample_detail.html", "sample_edit_form", data); err != nil {
+		http.Error(w, "Error rendering form", http.StatusInternalServerError)
+	}
+}
+
+func renderSamplePrepSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string, editing bool) {
+	data, err := loadSampleDetailData(r.Context(), session, sampleID)
+	if err != nil {
+		http.Error(w, "Sample not found", http.StatusNotFound)
+		return
+	}
+	data.Flash = flash
+	data.Error = errMsg
+	data.IsPartial = true
+	data.EditingPrep = editing
+
+	if err := renderTemplateSection(w, "templates/sample_detail.html", "sample_prep_panel", data); err != nil {
+		http.Error(w, "Error rendering sample prep", http.StatusInternalServerError)
+	}
 }
 
 // editSampleHandler updates a sample's details in the database
@@ -849,12 +964,18 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+
 	// Extract sample ID from URL by removing "/samples/edit/"
 	sampleID := strings.TrimPrefix(r.URL.Path, "/samples/edit/")
 
 	// Parse form data
 	err := r.ParseForm()
 	if err != nil {
+		if isHTMXRequest(r) {
+			renderSampleEditSection(w, r, session, sampleID, "", "Unable to read the form submission.")
+			return
+		}
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
@@ -863,16 +984,35 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	description := r.FormValue("description")
 	keywords := r.FormValue("keywords")
 	owner := r.FormValue("owner")
+	hasSamplePrep := r.Form.Has("sample_prep")
 	sample_prep := r.FormValue("sample_prep")
 
-	// fmt.Println(name, description, keywords, owner, sample_prep)
-	// Update sample in the database
-	_, err = dbPool.Exec(context.Background(),
-		"UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, sample_prep=$6 WHERE sample_id=$5",
-		name, description, keywords, owner, sampleID, sample_prep)
+	var (
+		query string
+		args  []interface{}
+	)
+
+	if hasSamplePrep {
+		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, sample_prep=$6 WHERE sample_id=$5"
+		args = []interface{}{name, description, keywords, owner, sampleID, sample_prep}
+	} else {
+		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4 WHERE sample_id=$5"
+		args = []interface{}{name, description, keywords, owner, sampleID}
+	}
+
+	_, err = dbPool.Exec(context.Background(), query, args...)
 	if err != nil {
+		if isHTMXRequest(r) {
+			renderSampleEditSection(w, r, session, sampleID, "", "Failed to update the sample.")
+			return
+		}
 		fmt.Println(err)
 		http.Error(w, "Error updating sample", http.StatusInternalServerError)
+		return
+	}
+
+	if isHTMXRequest(r) {
+		renderSampleEditSection(w, r, session, sampleID, "Changes saved", "")
 		return
 	}
 
@@ -1139,6 +1279,8 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+
 	// Get attachment ID from URL
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 3 {
@@ -1154,6 +1296,14 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		attachmentID,
 	).Scan(&sampleID)
 	if err != nil {
+		if isHTMXRequest(r) {
+			http.Error(w, "Attachment not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "Attachment not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "Error getting sample ID", http.StatusInternalServerError)
 		return
 	}
@@ -1161,7 +1311,16 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Delete the attachment
 	err = deleteAttachment(attachmentID)
 	if err != nil {
+		if isHTMXRequest(r) {
+			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Failed to remove attachment.")
+			return
+		}
 		http.Error(w, "Error deleting attachment", http.StatusInternalServerError)
+		return
+	}
+
+	if isHTMXRequest(r) {
+		renderSampleAttachmentsSection(w, r, session, sampleID, "Attachment removed", "")
 		return
 	}
 

@@ -18,9 +18,23 @@
         </span>
         <h1>{{.Article.Title}}</h1>
         <div class="article-actions">
-            <a href="/wiki/edit/{{.Article.Title}}" class="button button--primary">Edit</a>
+            {{if .EditingContent}}
+            <button class="button button--ghost button--small"
+                    type="button"
+                    hx-get="/wiki/{{.Article.Title}}"
+                    hx-target="#article-content-panel"
+                    hx-select="#article-content-panel"
+                    hx-swap="outerHTML">Cancel</button>
+            {{else}}
+            <button class="button button--primary button--small"
+                    type="button"
+                    hx-get="/wiki/edit/{{.Article.Title}}"
+                    hx-target="#article-content-panel"
+                    hx-select="#article-content-panel"
+                    hx-swap="outerHTML">Edit</button>
+            {{end}}
             <form action="/wiki/delete/{{.Article.Title}}" method="POST" class="inline-form">
-                <button type="submit" class="button button--destructive" onclick="return confirm('Are you sure you want to delete this article?')">Delete</button>
+                <button type="submit" class="button button--destructive button--small" onclick="return confirm('Are you sure you want to delete this article?')">Delete</button>
             </form>
         </div>
     </div>
@@ -32,9 +46,7 @@
         {{end}}
     </div>
 
-    <div class="article-content markdown-body">
-        {{.Article.Content.HTML}}
-    </div>
+    {{template "article_content_panel" .}}
 
     {{if .Article.Attachments}}
     <div class="attachments-container">
@@ -184,6 +196,25 @@
     border-radius: var(--radius-md);
     box-shadow: var(--card-shadow);
     margin-bottom: var(--space-xl);
+}
+
+.article-content-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.article-content-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.article-content-panel__body {
+    padding-top: var(--space-sm);
 }
 
 .markdown-body {
@@ -495,4 +526,58 @@ figure.attachment-preview {
     }
 }
 </style>
+{{end}}
+
+{{define "article_content_panel"}}
+<section id="article-content-panel" class="card article-content-panel">
+    <header class="article-content-panel__header">
+        <div>
+            <h2>Content</h2>
+            <p class="section-hint">Supports GitHub-flavored Markdown for headings, code, and tables.</p>
+        </div>
+    </header>
+    <div class="article-content-panel__body">
+        {{with .Flash}}
+        <div class="alert alert-success">{{.}}</div>
+        {{end}}
+        {{with .Error}}
+        <div class="alert alert-error">{{.}}</div>
+        {{end}}
+        {{if .EditingContent}}
+        <form action="/wiki/edit/{{.Article.Title}}"
+              method="POST"
+              class="stacked-form"
+              hx-post="/wiki/edit/{{.Article.Title}}"
+              hx-target="#article-content-panel"
+              hx-select="#article-content-panel"
+              hx-swap="outerHTML"
+              hx-indicator="#article-content-indicator">
+            <textarea id="wiki-content-editor" name="content">{{.Article.Content.Raw}}</textarea>
+            <div class="form-actions">
+                <button type="submit" class="button button--primary button--small">Save</button>
+                <button type="button"
+                        class="button button--secondary button--small"
+                        hx-get="/wiki/{{.Article.Title}}"
+                        hx-target="#article-content-panel"
+                        hx-select="#article-content-panel"
+                        hx-swap="outerHTML">Cancel</button>
+                <div id="article-content-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
+                    <span class="spinner"></span>
+                </div>
+            </div>
+        </form>
+        {{else}}
+            {{if .Article.Content.HTML}}
+            <article class="markdown-body markdown-body--card">
+                {{.Article.Content.HTML}}
+            </article>
+            {{else}}
+            <div class="empty-state markdown-body--card">
+                <p>No content yet.</p>
+                <p class="empty-state__hint">Use the editor to add Markdown-formatted content.</p>
+            </div>
+            {{end}}
+        {{end}}
+    </div>
+</section>
 {{end}}

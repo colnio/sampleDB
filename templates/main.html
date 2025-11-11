@@ -1,26 +1,66 @@
 {{define "title"}}Sample Tracker{{end}}
 
 {{define "content"}}
+<section class="page-heading">
+    <h1>Samples</h1>
+    <p class="page-subtitle">Search, preview, and jump into any record without leaving the page.</p>
+</section>
 <div class="controls">
     <div class="search-container">
-        <form action="/" method="GET" class="search-form">
-            <input type="text" name="query" value="{{.Query}}" placeholder="Search samples...">
+        <form id="samples-search"
+              action="/"
+              method="GET"
+              class="search-form"
+              hx-get="/"
+              hx-target="#samples-panel"
+              hx-select="#samples-panel"
+              hx-trigger="submit, keyup changed delay:300ms from:#samples-query"
+              hx-indicator="#samples-search-indicator"
+              hx-push-url="true">
+            <input id="samples-query"
+                   type="search"
+                   name="query"
+                   value="{{.Query}}"
+                   placeholder="Search samples by name, keywords, or owner"
+                   autocomplete="off">
             <button type="submit" class="button button--secondary">Search</button>
+            <div id="samples-search-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
+                <span class="spinner"></span>
+            </div>
         </form>
     </div>
     <a href="/samples/new" class="button button--primary">Add New Sample</a>
 </div>
 
-<div id="samples">
-    {{range .Samples}}
-    <article class="card tile">
-        <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>
-        <p><strong>Description:</strong> {{.Description}}</p>
-        <p><strong>Keywords:</strong> {{.Keywords}}</p>
-        <p><strong>Owner:</strong> {{.Owner}}</p>
-    </article>
+{{template "samples_panel" .}}
+{{end}}
+
+{{define "samples_panel"}}
+<section id="samples-panel" class="samples-panel" aria-live="polite">
+    {{if .Samples}}
+        <div class="samples-grid">
+            {{range .Samples}}
+            <article class="card tile sample-card">
+                <header class="sample-card__header">
+                    <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>
+                    <p class="sample-card__owner">{{.Owner}}</p>
+                </header>
+                <p class="sample-card__description">{{if .Description}}{{.Description}}{{else}}<em>No description</em>{{end}}</p>
+                <p class="sample-card__keywords">
+                    <span>Keywords:</span>
+                    {{if .Keywords}}{{.Keywords}}{{else}}<em>—</em>{{end}}
+                </p>
+                <a href="/samples/{{.ID}}" class="button button--ghost" aria-label="Open {{.Name}} details">Open</a>
+            </article>
+            {{end}}
+        </div>
+    {{else}}
+        <div class="empty-state">
+            <p>No samples found{{if .Query}} for “{{.Query}}”{{end}}.</p>
+            <p class="empty-state__hint">Try a different keyword or add a new sample.</p>
+        </div>
     {{end}}
-</div>
+</section>
 {{end}}
 
 {{template "base" .}}
