@@ -1,7 +1,7 @@
 {{define "title"}}Equipment Booking{{end}}
 
 {{define "content"}}
-<div class="booking-container">
+<div class="booking-page">
     <header class="page-heading">
         <h1 class="heading-with-icon">
             <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -13,235 +13,377 @@
             <span>Equipment Booking</span>
         </h1>
     </header>
-    <!-- Week Navigation -->
-    <div class="week-nav">
-        <a href="/booking?week={{subtract .WeekOffset 1}}" class="button button--secondary week-nav__button">&lt; Previous Week</a>
-        <h2>Week of {{formatDate .WeekStart}}</h2>
-        <a href="/booking?week={{add .WeekOffset 1}}" class="button button--secondary week-nav__button">Next Week &gt;</a>
+
+    <div class="booking-toolbar">
+        <div class="toolbar-section">
+            <a href="/booking?date={{formatDateISO (addDays .SelectedDate -1)}}" class="nav-chip">&laquo; Prev Day</a>
+        </div>
+        <div class="toolbar-section toolbar-section--search">
+            <span class="toolbar-label">Search</span>
+            <form class="toolbar-search" action="/booking" method="GET">
+                <input type="date" name="date" value="{{formatDateISO .SelectedDate}}" aria-label="Select date">
+                <button class="button button--primary" type="submit">Find</button>
+            </form>
+        </div>
+        <div class="toolbar-section">
+            <a href="/booking?date={{formatDateISO (addDays .SelectedDate 1)}}" class="nav-chip">Next Day &raquo;</a>
+        </div>
     </div>
-{{with .Error}}
-<div class="alert alert-error">{{.}}</div>
-{{end}}
 
-{{with .Success}}
-<div class="alert alert-success">{{.}}</div>
-{{end}}
+    {{with .Error}}
+    <div class="alert alert-error">{{.}}</div>
+    {{end}}
 
-<!-- Calendar Grid -->
-<div class="calendar-wrapper">
-    <div class="calendar-grid">
-        <!-- Days header -->
-        <div class="calendar-header">
-            <div class="time-column-header">Equipment</div>
-            {{range $i := iterate 0 7}}
-                {{$day := $.WeekStart.AddDate 0 0 $i}}
-                <div class="day-header">
-                    <div class="day-name">{{formatDayName $day}}</div>
-                    <div class="date">{{formatDateShort $day}}</div>
+    {{with .Success}}
+    <div class="alert alert-success">{{.}}</div>
+    {{end}}
+
+    <div class="day-banner">
+        <div class="day-banner__day">{{formatDayName .SelectedDate}}</div>
+        <div class="day-banner__date">{{formatDateNumeric .SelectedDate}}</div>
+    </div>
+
+    <div class="timeline-shell">
+        <div class="timeline-header">
+            <div class="timeline-equipment-col">Equipment</div>
+            <div class="timeline-hours">
+                {{range .Hours}}
+                <div class="timeline-hour"><span>{{formatTime .}}</span></div>
+                {{end}}
+            </div>
+        </div>
+        <div class="timeline-body">
+            {{range .Equipment}}
+            {{$equipment := .}}
+            <div class="timeline-row">
+                <div class="timeline-equipment">
+                    <div class="equipment-title">{{$equipment.Name}}</div>
+                    <div class="equipment-meta">
+                        <a class="equipment-link" href="#" aria-disabled="true">Rules</a>
+                    </div>
                 </div>
+                {{if index $.HasPermission $equipment.ID}}
+                <div class="timeline-lane" data-equipment="{{$equipment.ID}}">
+                    <div class="lane-grid">
+                        {{range $.TimeSlots}}
+                        <div class="lane-cell"
+                             data-equipment="{{$equipment.ID}}"
+                             data-datetime="{{formatDateTimeISO (combineDatetime $.SelectedDate .)}}"
+                             onclick="handleLaneCellClick(this)"></div>
+                        {{end}}
+                    </div>
+                </div>
+                {{else}}
+                <div class="timeline-lane timeline-lane--locked">
+                    <span>No access</span>
+                </div>
+                {{end}}
+            </div>
             {{end}}
         </div>
+    </div>
 
-        <!-- Equipment rows -->
-        {{range .Equipment}}
-            {{$equipment := .}}
-            <div class="equipment-row">
-                <div class="equipment-name">{{.Name}}</div>
-                <div class="equipment-day-scroll">
-                    {{range $i := iterate 0 7}}
-                        {{$currentDay := $.WeekStart.AddDate 0 0 $i}}
-                        <div class="day-column" data-label="{{formatDayName $currentDay}} {{formatDateShort $currentDay}}">
-                            {{if index $.HasPermission $equipment.ID}}
-                                {{range $.TimeSlots}}
-                                    {{$slotTime := combineDatetime $currentDay .}}
-                                    <div class="time-slot" 
-                                         data-equipment="{{$equipment.ID}}"
-                                         data-date="{{formatDateISO $currentDay}}"
-                                         data-time="{{formatTime24 .}}"
-                                         data-datetime="{{formatDateTimeISO $slotTime}}"
-                                         onclick="handleTimeSlotClick(this)">
-                                        {{formatTime24 .}}
-                                    </div>
-                                {{end}}
-                            {{else}}
-                                <div class="no-permission">No access</div>
-                            {{end}}
-                        </div>
-                    {{end}}
+    <div id="booking-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>New Booking</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="booking-form" action="/booking" method="POST" class="stacked-form">
+                <input type="hidden" name="equipment_id" id="equipment_id">
+                <div class="form-group">
+                    <label for="start_time">Start Time:</label>
+                    <input type="datetime-local" id="start_time" name="start_time" required>
                 </div>
-            </div>
-        {{end}}
-    </div>
-</div>
-
-
-
-<!-- Modal -->
-<div id="booking-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>New Booking</h3>
-            <span class="close" onclick="closeModal()">&times;</span>
+                <div class="form-group">
+                    <label for="end_time">End Time:</label>
+                    <input type="datetime-local" id="end_time" name="end_time" required>
+                </div>
+                <div class="form-group">
+                    <label for="purpose">Purpose:</label>
+                    <textarea id="purpose" name="purpose" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button button--primary">Book</button>
+                    <button type="button" class="button button--secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
         </div>
-        <form id="booking-form" action="/booking" method="POST" class="stacked-form">
-            <input type="hidden" name="equipment_id" id="equipment_id">
-            <div class="form-group">
-                <label for="start_time">Start Time:</label>
-                <input type="datetime-local" id="start_time" name="start_time" required>
-            </div>
-            <div class="form-group">
-                <label for="end_time">End Time:</label>
-                <input type="datetime-local" id="end_time" name="end_time" required>
-            </div>
-            <div class="form-group">
-                <label for="purpose">Purpose:</label>
-                <textarea id="purpose" name="purpose" required></textarea>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="button button--primary">Book</button>
-                <button type="button" class="button button--secondary" onclick="closeModal()">Cancel</button>
-            </div>
-        </form>
     </div>
-</div>
 </div>
 
 <style>
-.booking-container {
-    padding: 20px;
-    max-width: 1400px;
+.booking-page {
+    --equipment-col-width: 240px;
+    --hour-width: 88px;
+    --slots-per-hour: 4;
+    --slot-width: calc(var(--hour-width) / var(--slots-per-hour));
+    --total-slots: 96;
+    --lane-width: calc(var(--slot-width) * var(--total-slots));
+    --lane-height: 72px;
+    --grid-border: #cbd5e1;
+    padding: var(--space-md);
+    max-width: 1800px;
     margin: 0 auto;
 }
 
-.week-nav {
+.booking-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-md);
-    margin-bottom: var(--space-lg);
-    padding: var(--space-sm) var(--space-md);
-    background: var(--surface-default);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
+    gap: var(--space-sm);
     flex-wrap: wrap;
-}
-
-.week-nav h2 {
-    margin: 0;
-    font-size: var(--font-size-xl);
-    color: var(--text-strong);
-}
-
-.week-nav__button {
-    flex-shrink: 0;
-}
-
-.calendar-wrapper {
-    overflow-x: auto;
-    margin-bottom: 30px;
-    border: 1px solid var(--neutral-200);
-    border-radius: var(--radius-sm);
-}
-
-.calendar-grid {
-    min-width: 1000px;
-    display: table;
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.calendar-header {
-    display: table-row;
-    background: var(--surface-subtle);
-}
-
-.time-column-header,
-.day-header {
-    display: table-cell;
-    padding: 10px;
-    text-align: center;
-    border-bottom: 2px solid var(--neutral-200);
-    font-weight: bold;
-}
-
-.time-column-header {
-    min-width: 150px;
-}
-
-.day-header {
-    min-width: 150px;
-}
-
-.day-name {
-    font-size: 1.1em;
-    color: var(--text-strong);
-}
-
-.date {
-    font-size: 0.9em;
-    color: var(--text-muted);
-}
-
-.equipment-row {
-    display: table-row;
-}
-
-.equipment-day-scroll {
-    display: contents;
-}
-
-.equipment-name {
-    display: table-cell;
-    padding: 10px;
-    background: var(--surface-subtle);
-    border-bottom: 1px solid var(--neutral-200);
-    font-weight: 500;
-    vertical-align: top;
-}
-
-.day-column {
-    display: table-cell;
-    padding: 5px;
-    border: 1px solid var(--neutral-200);
-    vertical-align: top;
-}
-
-.time-slot {
-    padding: 8px;
-    margin: 2px 0;
+    padding: 12px 16px;
     background: var(--surface-default);
-    border: 1px solid var(--neutral-200);
-    border-radius: 6px;
-    cursor: pointer;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.toolbar-section--search {
+    flex: 1;
+}
+
+.toolbar-label {
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.toolbar-search {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+.toolbar-search input[type="date"] {
+    border: 1px solid var(--grid-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.toolbar-section--actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.nav-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--grid-border);
+    background: #f8fafc;
+    color: var(--neutral-800);
+    font-weight: 700;
+    text-decoration: none;
     transition: all 0.2s ease;
+}
+
+.nav-chip:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+.button--positive {
+    background: #22a565;
+    border-color: #1f9a5e;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(34, 165, 101, 0.22);
+}
+
+.button--positive:hover {
+    background: #1b8b55;
+}
+
+.day-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: 16px 0 8px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.day-banner__day {
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #1f3b57;
+    color: #ffffff;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.day-banner__date {
+    font-size: 1.05rem;
+}
+
+.timeline-shell {
+    overflow-x: auto;
+    border: 1px solid var(--grid-border);
+    border-radius: 12px;
+    background: var(--surface-default);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.timeline-header {
+    display: flex;
+    min-width: calc(var(--equipment-col-width) + var(--lane-width));
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.timeline-equipment-col {
+    width: var(--equipment-col-width);
+    min-width: var(--equipment-col-width);
+    background: #1f3b57;
+    color: #ffffff;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 2.75rem;
-    text-align: center;
-    font-weight: 500;
+    padding: 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.time-slot:hover {
-    background: var(--surface-subtle);
-    border-color: var(--neutral-400);
+.timeline-hours {
+    display: grid;
+    grid-template-columns: repeat(24, var(--hour-width));
+    min-width: calc(var(--hour-width) * 24);
+    background: #f2f6fb;
+    border-left: 1px solid var(--grid-border);
 }
 
-.time-slot.booked {
-    background: var(--surface-muted);
+.timeline-hour {
+    border-left: 1px solid var(--grid-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px;
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.95rem;
+}
+
+.timeline-body {
+    display: flex;
+    flex-direction: column;
+    min-width: calc(var(--equipment-col-width) + var(--lane-width));
+}
+
+.timeline-row {
+    display: flex;
+    min-width: calc(var(--equipment-col-width) + var(--lane-width));
+}
+
+.timeline-equipment {
+    width: var(--equipment-col-width);
+    min-width: var(--equipment-col-width);
+    background: #e5edf7;
+    border-right: 1px solid var(--grid-border);
+    border-bottom: 1px solid var(--grid-border);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.equipment-title {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.equipment-link {
+    color: #1f7cd6;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.timeline-lane {
+    position: relative;
+    width: var(--lane-width);
+    min-width: var(--lane-width);
+    height: var(--lane-height);
+    border-bottom: 1px solid var(--grid-border);
+    overflow: hidden;
+    flex: 1 0 auto;
+}
+
+.timeline-lane:not(.timeline-lane--locked) {
+    background: linear-gradient(to right, #eef2f7 0%, #f5f7fb 100%);
+}
+
+.timeline-lane--locked {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-muted);
-    cursor: not-allowed;
-    border-color: var(--neutral-200);
+    background: repeating-linear-gradient(-45deg, #f8fafc 0, #f8fafc 12px, #e2e8f0 12px, #e2e8f0 24px);
+    border-left: 1px solid var(--grid-border);
 }
 
-.no-permission {
-    padding: 20px;
-    text-align: center;
-    color: var(--text-muted);
-    font-style: italic;
+.lane-grid {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(96, var(--slot-width));
+    grid-auto-rows: 1fr;
+    background:
+        repeating-linear-gradient(-45deg, rgba(255, 119, 119, 0.12) 0, rgba(255, 119, 119, 0.12) 12px, transparent 12px, transparent 24px),
+        repeating-linear-gradient(to right, #d7dee6 0, #d7dee6 1px, transparent 1px, transparent calc(var(--hour-width)));
 }
 
-/* Modal Styles */
+.lane-cell {
+    height: 100%;
+    border-right: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.lane-cell:first-child {
+    border-left: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.lane-cell:hover {
+    background: rgba(37, 99, 235, 0.12);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.booking-block {
+    position: absolute;
+    top: 10px;
+    height: calc(var(--lane-height) - 20px);
+    border-radius: 6px;
+    background: #1f7cd6;
+    color: #ffffff;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.25);
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 2;
+}
+
+.booking-block--own {
+    background: #d92525;
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -256,12 +398,12 @@
 .modal-content {
     position: relative;
     background-color: var(--surface-default);
-    margin: 10% auto;
+    margin: 8% auto;
     padding: 20px;
     width: 90%;
-    max-width: 500px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 520px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header {
@@ -308,245 +450,123 @@
     margin-top: var(--space-md);
 }
 
-.alert {
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    border: 1px solid transparent;
-}
-
-.alert-error {
-    background: var(--color-destructive-bg);
-    color: var(--color-destructive-active);
-    border-color: var(--color-destructive-border);
-}
-
-.alert-success {
-    background: var(--color-success-bg);
-    color: var(--color-success);
-    border-color: var(--color-success-border);
-}
-
-.time-slot {
-    font-family: monospace; /* Better alignment for 24-hour time */
-}
-
-.time-slot.booked {
-    background: var(--surface-muted);
-    color: var(--text-muted);
-}
-
-.time-slot.own-booking {
-    background: var(--color-destructive-bg); /* Light red for own bookings */
-    cursor: pointer;
-}
-
-.time-slot.own-booking:hover {
-    background: var(--color-destructive-border);
-}
-
-@media (max-width: 900px) {
-    .week-nav {
-        flex-direction: column;
-        align-items: stretch;
-        text-align: center;
+@media (max-width: 1200px) {
+    .booking-page {
+        --hour-width: 72px;
     }
 
-    .week-nav__button {
+    .booking-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .toolbar-section--actions {
         width: 100%;
+        justify-content: flex-start;
     }
+}
 
-    .calendar-wrapper {
-        overflow-x: visible;
-    }
-
-    .calendar-grid {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-    }
-
-    .calendar-header {
-        display: none;
-    }
-
-    .equipment-row {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-        border-bottom: 1px solid var(--neutral-200);
-        padding: var(--space-md) var(--space-sm);
-        background: var(--surface-default);
-    }
-
-    .equipment-row:last-child {
-        border-bottom: none;
-    }
-
-    .equipment-name {
-        background: none;
-        border-bottom: none;
-        padding: 0;
-        font-size: var(--font-size-lg);
-    }
-
-    .equipment-day-scroll {
-        display: flex;
-        gap: var(--space-sm);
-        overflow-x: auto;
-        padding: 0 var(--space-sm) var(--space-sm);
-        margin: 0 calc(var(--space-sm) * -1);
-        scroll-snap-type: x proximity;
-    }
-
-    .equipment-day-scroll::-webkit-scrollbar {
-        height: 6px;
-    }
-
-    .equipment-day-scroll::-webkit-scrollbar-thumb {
-        background: rgba(148, 163, 184, 0.4);
-        border-radius: 9999px;
-    }
-
-    .day-column {
-        flex: 0 0 160px;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-xs);
+@media (max-width: 768px) {
+    .booking-page {
+        --hour-width: 60px;
         padding: var(--space-sm);
-        border: 1px solid var(--neutral-200);
-        border-radius: var(--radius-sm);
-        background: var(--surface-subtle);
-        scroll-snap-align: start;
-        min-height: 100%;
     }
 
-    .day-column::before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: var(--text-muted);
-        font-size: var(--font-size-sm);
+    .timeline-equipment-col,
+    .timeline-equipment {
+        --equipment-col-width: 180px;
     }
 
-    .time-slot,
-    .no-permission {
-        width: 100%;
-    }
-
-    .no-permission {
-        padding: var(--space-md);
-        border: 1px dashed var(--neutral-200);
-        border-radius: var(--radius-sm);
-        background: rgba(148, 163, 184, 0.12);
+    .toolbar-search {
+        flex-wrap: wrap;
     }
 }
-
 </style>
 
 <script>
-    // Helper function to parse local datetime string
-    function parseLocalDateTime(dateStr, timeStr) {
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        return new Date(year, month - 1, day, hours, minutes);
+    var bookings = {{toJSON .Bookings}};
+    var currentUserId = {{.BasePageData.UserID}};
+    var selectedDateStr = '{{formatDateISO .SelectedDate}}';
+    var dayStart = new Date(selectedDateStr + 'T00:00:00');
+    var dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    function formatLocalInputValue(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
-    
-    function updateBookingSlots() {
-        const bookings = {{toJSON .Bookings}};
-        const currentUserId = {{.BasePageData.UserID}};
-        if (!bookings || !bookings.length) return;
-    
-        document.querySelectorAll('.time-slot').forEach(slot => {
-            const dateStr = slot.dataset.date;
-            const timeStr = slot.dataset.time;
-            const slotTime = parseLocalDateTime(dateStr, timeStr);
-            const slotEquipment = slot.dataset.equipment;
-            
-            bookings.forEach(booking => {
-                const startTime = new Date(booking.start_time);
-                const endTime = new Date(booking.end_time);
-                
-                if (booking.equipment_id == slotEquipment && 
-                    slotTime >= startTime && slotTime < endTime) {
-                    
-                    slot.classList.add('booked');
-                    
-                    let bookingInfo = `Booked by: ${booking.username}\n`;
-                    bookingInfo += `Purpose: ${booking.purpose}\n`;
-                    bookingInfo += `Time: ${formatTime24(startTime)} - ${formatTime24(endTime)}`;
-                    
-                    if (booking.user_id === currentUserId) {
-                        bookingInfo += '\n\nClick to delete your booking';
-                        slot.classList.add('own-booking');
-                        slot.onclick = () => confirmDeleteBooking(booking.id);
-                    } else {
-                        slot.onclick = null;
-                    }
-                    
-                    slot.title = bookingInfo;
-                }
-            });
-        });
-    }
-    
-    function formatTime24(date) {
-        return date.toLocaleTimeString('en-GB', { 
-            hour: '2-digit', 
+
+    function formatDisplayTime(date) {
+        return date.toLocaleTimeString([], {
+            hour: '2-digit',
             minute: '2-digit',
-            hour12: false
+            hour12: true
         });
     }
-    
-    function handleTimeSlotClick(element) {
+
+    function formatTimeRange(start, end) {
+        return `${formatDisplayTime(start)} - ${formatDisplayTime(end)}`;
+    }
+
+    function handleLaneCellClick(element) {
         if (element.classList.contains('booked')) {
             return;
         }
-    
-        const modal = document.getElementById('booking-modal');
-        const form = document.getElementById('booking-form');
-        const equipmentIdInput = document.getElementById('equipment_id');
-        const startTimeInput = document.getElementById('start_time');
-        const endTimeInput = document.getElementById('end_time');
-    
-        if (!modal || !form || !equipmentIdInput || !startTimeInput || !endTimeInput) {
-            console.error('Required elements not found');
+
+        const equipmentId = element.dataset.equipment;
+        const startDate = new Date(element.dataset.datetime);
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+        openModalWithValues(equipmentId, startDate, endDate);
+    }
+
+    function openQuickBooking() {
+        const firstLane = document.querySelector('.timeline-lane[data-equipment]');
+        if (!firstLane) {
             return;
         }
-    
-        try {
-            equipmentIdInput.value = element.dataset.equipment;
-            
-            // Use the datetime attribute directly
-            startTimeInput.value = element.dataset.datetime;
-            
-            // Calculate end time (1 hour later)
-            const startDate = new Date(element.dataset.datetime);
-            const endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
-            endTimeInput.value = endDate.toISOString().slice(0, 16);
-    
-            modal.style.display = 'block';
-        } catch (error) {
-            console.error('Error in handleTimeSlotClick:', error);
-        }
+
+        const startDate = new Date(dayStart.getTime());
+        startDate.setHours(9, 0, 0, 0);
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+        openModalWithValues(firstLane.dataset.equipment, startDate, endDate);
     }
-    
+
+    function openModalWithValues(equipmentId, startDate, endDate) {
+        const modal = document.getElementById('booking-modal');
+        const equipmentInput = document.getElementById('equipment_id');
+        const startInput = document.getElementById('start_time');
+        const endInput = document.getElementById('end_time');
+
+        if (!modal || !equipmentInput || !startInput || !endInput) {
+            return;
+        }
+
+        equipmentInput.value = equipmentId;
+        startInput.value = formatLocalInputValue(startDate);
+        endInput.value = formatLocalInputValue(endDate);
+        modal.style.display = 'block';
+    }
+
     function confirmDeleteBooking(bookingId) {
         if (confirm('Are you sure you want to delete this booking?')) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/booking/delete';
-            
+
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'booking_id';
             input.value = bookingId;
-            
+
             form.appendChild(input);
             document.body.appendChild(form);
             form.submit();
         }
     }
-    
+
     function closeModal() {
         const modal = document.getElementById('booking-modal');
         if (modal) {
@@ -557,46 +577,115 @@
             }
         }
     }
-    
-    // Close modal when clicking outside
+
     window.onclick = function(event) {
         const modal = document.getElementById('booking-modal');
         if (event.target === modal) {
             closeModal();
         }
     }
-    
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        updateBookingSlots();
-    
-        // Form validation
-        const form = document.getElementById('booking-form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                const startTime = new Date(document.getElementById('start_time').value);
-                const endTime = new Date(document.getElementById('end_time').value);
-                const purpose = document.getElementById('purpose').value;
-    
-                if (endTime <= startTime) {
-                    e.preventDefault();
-                    alert('End time must be after start time');
-                    return;
-                }
-    
-                // if (startTime < new Date()) {
-                //     e.preventDefault();
-                //     alert('Cannot book in the past');
-                //     return;
-                // }
-    
-                if (!purpose.trim()) {
-                    e.preventDefault();
-                    alert('Purpose is required');
-                    return;
-                }
-            });
+
+    function renderBookings() {
+        if (!bookings || !bookings.length) {
+            return;
         }
-    });
-    </script>
+
+        const minutesInDay = 24 * 60;
+
+        document.querySelectorAll('.timeline-lane').forEach(lane => {
+            if (!lane.dataset.equipment) {
+                return;
+            }
+
+            lane.querySelectorAll('.booking-block').forEach(el => el.remove());
+
+            const equipmentId = Number(lane.dataset.equipment);
+            const equipmentBookings = bookings.filter(b => b.equipment_id === equipmentId);
+
+            equipmentBookings.forEach(booking => {
+                const bookingStart = new Date(booking.start_time);
+                const bookingEnd = new Date(booking.end_time);
+
+                if (bookingEnd <= dayStart || bookingStart >= dayEnd) {
+                    return;
+                }
+
+                const startMs = Math.max(bookingStart.getTime(), dayStart.getTime());
+                const endMs = Math.min(bookingEnd.getTime(), dayEnd.getTime());
+
+                if (endMs <= startMs) {
+                    return;
+                }
+
+                const start = new Date(startMs);
+                const end = new Date(endMs);
+                const startMinutes = start.getHours() * 60 + start.getMinutes();
+                const endMinutes = end.getHours() * 60 + end.getMinutes();
+                const duration = Math.max(endMinutes - startMinutes, 10);
+
+                const left = (startMinutes / minutesInDay) * 100;
+                let width = (duration / minutesInDay) * 100;
+                if (left + width > 100) {
+                    width = 100 - left;
+                }
+                width = Math.max(width, 1.5);
+
+                const block = document.createElement('div');
+                block.className = 'booking-block' + (booking.user_id === currentUserId ? ' booking-block--own' : '');
+                block.style.left = `${left}%`;
+                block.style.width = `${width}%`;
+                block.title = `${booking.username} • ${formatTimeRange(bookingStart, bookingEnd)}\n${booking.purpose}`;
+                block.textContent = booking.username.toUpperCase();
+
+                if (booking.user_id === currentUserId) {
+                    block.onclick = () => confirmDeleteBooking(booking.id);
+                }
+
+                lane.appendChild(block);
+            });
+        });
+    }
+
+    function bindFormValidation() {
+        const form = document.getElementById('booking-form');
+        if (!form || form.dataset.bound === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', function(e) {
+            const startTime = new Date(document.getElementById('start_time').value);
+            const endTime = new Date(document.getElementById('end_time').value);
+            const purpose = document.getElementById('purpose').value;
+
+            if (endTime <= startTime) {
+                e.preventDefault();
+                alert('End time must be after start time');
+                return;
+            }
+
+            if (!purpose.trim()) {
+                e.preventDefault();
+                alert('Purpose is required');
+                return;
+            }
+        });
+
+        form.dataset.bound = 'true';
+    }
+
+    function initializeBookingPage() {
+        renderBookings();
+        bindFormValidation();
+    }
+
+    initializeBookingPage();
+
+    if (window.htmx) {
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail && evt.detail.target && evt.detail.target.id === 'page-root') {
+                initializeBookingPage();
+            }
+        });
+    }
+</script>
 {{end}}

@@ -38,9 +38,11 @@ type BookingPageData struct {
 	UserBookings  []Booking
 	HasPermission map[int]bool
 	TimeSlots     []time.Time
+	Hours         []time.Time
 	WeekStart     time.Time
 	WeekEnd       time.Time
 	WeekOffset    int
+	SelectedDate  time.Time
 	Error         string
 	Success       string
 }
@@ -75,6 +77,9 @@ func parseTemplatesBooking(files ...string) (*template.Template, error) {
 		},
 		"formatDateShort": func(t time.Time) string {
 			return t.Format("Jan 2")
+		},
+		"formatDateNumeric": func(t time.Time) string {
+			return t.Format("01/02/2006")
 		},
 		"formatDateISO": func(t time.Time) string {
 			return t.Format("2006-01-02")
@@ -125,6 +130,9 @@ func parseTemplatesBooking(files ...string) (*template.Template, error) {
 		"formatDateTimeISO": func(t time.Time) string {
 			return t.Format("2006-01-02T15:04")
 		},
+		"addDays": func(t time.Time, days int) time.Time {
+			return t.AddDate(0, 0, days)
+		},
 	}
 
 	// Create new template with function map
@@ -147,23 +155,36 @@ func parseTemplatesBooking(files ...string) (*template.Template, error) {
 func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
+	now := time.Now().In(loc)
+	selectedDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+
+	if dateStr := r.URL.Query().Get("date"); dateStr != "" {
+		if parsed, err := time.ParseInLocation("2006-01-02", dateStr, loc); err == nil {
+			selectedDate = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, loc)
+		}
+	}
+
 	// Parse week offset
 	weekOffset := 0
 	if offsetStr := r.URL.Query().Get("week"); offsetStr != "" {
 		weekOffset, _ = strconv.Atoi(offsetStr)
+		selectedDate = selectedDate.AddDate(0, 0, weekOffset*7)
 	}
 
-	// Calculate week boundaries using local timezone
-	now := time.Now().In(loc)
-	weekStart := now.AddDate(0, 0, weekOffset*7-int(now.Weekday()))
+	// Calculate week boundaries using local timezone around selected date
+	weekStart := selectedDate.AddDate(0, 0, -int(selectedDate.Weekday()))
 	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, loc)
 	weekEnd := weekStart.AddDate(0, 0, 7)
 
-	// Generate time slots in local timezone
-	timeSlots := make([]time.Time, 24) // 8 AM to 5 PM
-	baseTime := time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, loc)
+	// Generate hourly time slots in local timezone
+	timeSlots := make([]time.Time, 96) // 15-minute slots
+	hours := make([]time.Time, 24)
+	baseTime := time.Date(selectedDate.Year(), selectedDate.Month(), selectedDate.Day(), 0, 0, 0, 0, loc)
 	for i := range timeSlots {
-		timeSlots[i] = baseTime.Add(time.Duration(i) * time.Hour)
+		timeSlots[i] = baseTime.Add(time.Duration(i*15) * time.Minute)
+		if i%4 == 0 {
+			hours[i/4] = baseTime.Add(time.Duration(i/4) * time.Hour)
+		}
 	}
 
 	// Get equipment and other data...
@@ -216,9 +237,11 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		UserBookings:  userBookings,
 		HasPermission: hasPermission,
 		TimeSlots:     timeSlots,
+		Hours:         hours,
 		WeekStart:     weekStart,
 		WeekEnd:       weekEnd,
 		WeekOffset:    weekOffset,
+		SelectedDate:  selectedDate,
 		Error:         r.URL.Query().Get("error"),
 		Success:       r.URL.Query().Get("success"),
 	}
