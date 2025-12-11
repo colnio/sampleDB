@@ -27,7 +27,7 @@
 
         <div class="button-row">
             <button type="submit" class="button button--primary">{{if .Article}}Save Changes{{else}}Create Article{{end}}</button>
-            <a href="{{if .Article}}/wiki/{{.Article.Title}}{{else}}/wiki{{end}}" class="button button--secondary">Cancel</a>
+            <a href="{{if .Article}}/wiki/view/{{.Article.Title}}{{else}}/wiki{{end}}" class="button button--secondary">Cancel</a>
         </div>
     </form>
 </div>

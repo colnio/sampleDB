@@ -76,8 +76,15 @@ func handleWiki(w http.ResponseWriter, r *http.Request) {
 		deleteArticleHandler(w, r)
 	case "upload":
 		uploadArticleAttachmentHandler(w, r)
+	case "view":
+		if len(pathParts) < 2 || pathParts[1] == "" {
+			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			return
+		}
+		viewArticleHandler(w, r, pathParts[1])
 	default:
-		viewArticleHandler(w, r)
+		// Backward compatibility: /wiki/{title} -> /wiki/view/{title}
+		http.Redirect(w, r, "/wiki/view/"+pathParts[0], http.StatusSeeOther)
 	}
 }
 
@@ -165,9 +172,8 @@ func loadArticleData(ctx context.Context, session auth.Session, title string) (*
 	return &article, nil
 }
 
-func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
+func viewArticleHandler(w http.ResponseWriter, r *http.Request, title string) {
 	session := auth.MustSessionFromContext(r.Context())
-	title := strings.TrimPrefix(r.URL.Path, "/wiki/")
 
 	// Check if this is an HTMX request specifically targeting the content panel
 	// (not a full page load via hx-boost)
@@ -205,9 +211,11 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 		BasePageData
 		Article        *Article
 		EditingContent bool
+		Flash          string
+		Error          string
 	}{
 		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
-		Article:         article,
+		Article:        article,
 		EditingContent: false,
 	}
 
@@ -217,7 +225,10 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl.ExecuteTemplate(w, "base", data)
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		log.Printf("wiki: error rendering view template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 func renderArticleContentPanel(w http.ResponseWriter, r *http.Request, session auth.Session, title, flash, errMsg string, editing bool) {
@@ -292,7 +303,7 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/wiki/"+title, http.StatusSeeOther)
+	http.Redirect(w, r, "/wiki/view/"+title, http.StatusSeeOther)
 }
 
 func editArticleHandler(w http.ResponseWriter, r *http.Request) {
@@ -370,7 +381,7 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/wiki/"+title, http.StatusSeeOther)
+	http.Redirect(w, r, "/wiki/view/"+title, http.StatusSeeOther)
 }
 
 func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
@@ -465,7 +476,7 @@ func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
 		redirect := r.Header.Get("Referer")
 		if redirect == "" {
 			if articleTitle != "" {
-				redirect = "/wiki/" + url.PathEscape(articleTitle)
+				redirect = "/wiki/view/" + url.PathEscape(articleTitle)
 			} else {
 				redirect = "/wiki"
 			}

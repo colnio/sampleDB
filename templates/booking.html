@@ -265,7 +265,7 @@
 }
 
 .timeline-hour {
-    border-left: 1px solid var(--grid-border);
+    border-right: 1px solid var(--grid-border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -273,6 +273,12 @@
     font-weight: 700;
     color: #0f172a;
     font-size: 0.95rem;
+}
+.timeline-hour:first-child {
+    border-left: 1px solid var(--grid-border);
+}
+.timeline-hour:last-child {
+    border-right: 1px solid var(--grid-border);
 }
 
 .timeline-body {
@@ -316,6 +322,7 @@
     min-width: var(--lane-width);
     height: var(--lane-height);
     border-bottom: 1px solid var(--grid-border);
+    border-left: 1px solid var(--grid-border);
     overflow: hidden;
     flex: 1 0 auto;
 }
@@ -351,10 +358,6 @@
 .lane-cell {
     height: 100%;
     border-right: 1px solid rgba(15, 23, 42, 0.08);
-}
-
-.lane-cell:first-child {
-    border-left: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .lane-cell:hover {

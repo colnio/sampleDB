@@ -568,6 +568,10 @@ func main() {
 }
 
 func parseTemplates(files ...string) (*template.Template, error) {
+	funcMap := template.FuncMap{
+		"markdown": renderMarkdown,
+	}
+
 	// Always include base and header templates
 	baseTemplates := []string{"templates/base.html", "templates/header.html"}
 	resolved := make([]string, 0, len(files)+len(baseTemplates))
@@ -578,7 +582,7 @@ func parseTemplates(files ...string) (*template.Template, error) {
 		resolved = append(resolved, resolveTemplatePath(f))
 	}
 
-	return template.ParseFiles(resolved...)
+	return template.New("").Funcs(funcMap).ParseFiles(resolved...)
 }
 
 // mainPageHandler serves the main page and handles search functionality
@@ -736,7 +740,7 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/samples/"+sampleID, http.StatusSeeOther)
 }
 
-// searchSamples queries the database for samples by name or keywords
+// searchSamples queries the database for samples by name, owner, or keywords
 func searchSamples(query string) ([]Sample, error) {
 	trimmedQuery := strings.TrimSpace(query)
 
@@ -769,6 +773,12 @@ func searchSamples(query string) ([]Sample, error) {
         SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner
         FROM samples
         WHERE sample_name ILIKE $%d`, nameParamIndex)
+
+	// Match owner name as well
+	ownerParamIndex := len(args) + 1
+	args = append(args, "%"+trimmedQuery+"%")
+	queryText = fmt.Sprintf(`%s OR sample_owner ILIKE $%d`, queryText, ownerParamIndex)
+
 	if len(whereClauses) > 0 {
 		queryText = fmt.Sprintf(`%s OR %s`, queryText, strings.Join(whereClauses, " OR "))
 	}

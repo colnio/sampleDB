@@ -21,7 +21,7 @@
             {{if .EditingContent}}
             <button class="button button--ghost button--small"
                     type="button"
-                    hx-get="/wiki/{{.Article.Title}}"
+                    hx-get="/wiki/view/{{.Article.Title}}"
                     hx-target="#article-content-panel"
                     hx-select="#article-content-panel"
                     hx-swap="outerHTML">Cancel</button>
@@ -568,14 +568,18 @@ figure.attachment-preview {
         </form>
         {{else}}
             {{if .Article.Content.HTML}}
-            <article class="markdown-body markdown-body--card">
-                {{.Article.Content.HTML}}
-            </article>
+                <article class="markdown-body markdown-body--card">
+                    {{.Article.Content.HTML}}
+                </article>
+            {{else if .Article.Content.Raw}}
+                <article class="markdown-body markdown-body--card">
+                    {{markdown .Article.Content.Raw}}
+                </article>
             {{else}}
-            <div class="empty-state markdown-body--card">
-                <p>No content yet.</p>
-                <p class="empty-state__hint">Use the editor to add Markdown-formatted content.</p>
-            </div>
+                <div class="empty-state markdown-body--card">
+                    <p>No content yet.</p>
+                    <p class="empty-state__hint">Use the editor to add Markdown-formatted content.</p>
+                </div>
             {{end}}
         {{end}}
     </div>
