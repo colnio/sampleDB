@@ -20,8 +20,8 @@
         </div>
         <div class="toolbar-section toolbar-section--search">
             <span class="toolbar-label">Search</span>
-            <form class="toolbar-search" action="/booking" method="GET">
-                <input type="date" name="date" value="{{formatDateISO .SelectedDate}}" aria-label="Select date">
+            <form class="toolbar-search" action="/booking" method="GET" autocomplete="off">
+                <input type="date" name="date" value="{{formatDateISO .SelectedDate}}" aria-label="Select date" autocomplete="off">
                 <button class="button button--primary" type="submit">Find</button>
             </form>
         </div>
@@ -89,19 +89,19 @@
                 <h3>New Booking</h3>
                 <span class="close" onclick="closeModal()">&times;</span>
             </div>
-            <form id="booking-form" action="/booking" method="POST" class="stacked-form">
-                <input type="hidden" name="equipment_id" id="equipment_id">
+            <form id="booking-form" action="/booking" method="POST" class="stacked-form" autocomplete="off">
+                <input type="hidden" name="equipment_id" id="equipment_id" autocomplete="off">
                 <div class="form-group">
                     <label for="start_time">Start Time:</label>
-                    <input type="datetime-local" id="start_time" name="start_time" required>
+                    <input type="datetime-local" id="start_time" name="start_time" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="end_time">End Time:</label>
-                    <input type="datetime-local" id="end_time" name="end_time" required>
+                    <input type="datetime-local" id="end_time" name="end_time" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="purpose">Purpose:</label>
-                    <textarea id="purpose" name="purpose" required></textarea>
+                    <textarea id="purpose" name="purpose" required autocomplete="off"></textarea>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="button button--primary">Book</button>
@@ -339,9 +339,13 @@
     display: grid;
     grid-template-columns: repeat(96, var(--slot-width));
     grid-auto-rows: 1fr;
-    background:
-        repeating-linear-gradient(-45deg, rgba(255, 119, 119, 0.12) 0, rgba(255, 119, 119, 0.12) 12px, transparent 12px, transparent 24px),
-        repeating-linear-gradient(to right, #d7dee6 0, #d7dee6 1px, transparent 1px, transparent calc(var(--hour-width)));
+    background: repeating-linear-gradient(
+            to right,
+            #d7dee6 0,
+            #d7dee6 1px,
+            transparent 1px,
+            transparent calc(var(--hour-width))
+        );
 }
 
 .lane-cell {
@@ -468,7 +472,8 @@
 
 @media (max-width: 768px) {
     .booking-page {
-        --hour-width: 60px;
+        --hour-width: 56px;
+        --lane-height: 64px;
         padding: var(--space-sm);
     }
 
@@ -477,8 +482,50 @@
         --equipment-col-width: 180px;
     }
 
-    .toolbar-search {
+    .booking-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+    }
+
+    .toolbar-section {
+        width: 100%;
+        justify-content: space-between;
         flex-wrap: wrap;
+        gap: var(--space-xs);
+    }
+
+    .toolbar-section--search {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-xs);
+    }
+
+    .toolbar-search {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+    }
+
+    .toolbar-search input[type="date"] {
+        width: 100%;
+    }
+
+    .toolbar-search .button,
+    .nav-chip {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .day-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .timeline-hour {
+        font-size: 0.85rem;
+        padding: 8px 2px;
     }
 }
 </style>

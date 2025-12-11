@@ -21,11 +21,14 @@ var schemaStatements = []string{
 	createGroupsTable,
 }
 
-var dataStatements = []string{
+// Data seeding is disabled; keep statements for reference but do not execute.
+var dataStatements = []string{}
+var disabledDataStatements = []string{
 	backfillGroups,
 	seedEquipment,
 	backfillDeleted,
 }
+var _ = disabledDataStatements
 
 const createUsersTable = `
 CREATE TABLE IF NOT EXISTS users (
