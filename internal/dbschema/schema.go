@@ -3,7 +3,7 @@ package dbschema
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"sampleDB/internal/dbiface"
 )
 
 var schemaStatements = []string{
@@ -154,7 +154,7 @@ SET deleted = false
 WHERE deleted IS NULL;`
 
 // Ensure ensures that all schema elements required by the application exist.
-func Ensure(ctx context.Context, pool *pgxpool.Pool) error {
+func Ensure(ctx context.Context, pool dbiface.Pool) error {
 	for _, stmt := range schemaStatements {
 		if _, err := pool.Exec(ctx, stmt); err != nil {
 			return err

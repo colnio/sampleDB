@@ -25,6 +25,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"sampleDB/internal/auth"
+	"sampleDB/internal/dbiface"
 	"sampleDB/internal/dbschema"
 )
 
@@ -86,7 +87,7 @@ type ChangePasswordPageData struct {
 }
 
 // Initialize a global database connection pool
-var dbPool *pgxpool.Pool
+var dbPool dbiface.Pool
 
 var loc *time.Location
 

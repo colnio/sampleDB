@@ -12,8 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	"sampleDB/internal/dbiface"
 )
 
 type Session struct {
@@ -24,7 +25,7 @@ type Session struct {
 }
 
 type Manager struct {
-	db           *pgxpool.Pool
+	db           dbiface.Pool
 	sessions     map[string]Session
 	mu           sync.RWMutex
 	cookieSecure bool
@@ -35,7 +36,7 @@ type contextKey string
 
 const userContextKey contextKey = "auth-user"
 
-func NewManager(db *pgxpool.Pool) *Manager {
+func NewManager(db dbiface.Pool) *Manager {
 	return &Manager{
 		db:       db,
 		sessions: make(map[string]Session),
