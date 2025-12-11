@@ -58,9 +58,9 @@
             <div class="timeline-row">
                 <div class="timeline-equipment">
                     <div class="equipment-title">{{$equipment.Name}}</div>
-                    <div class="equipment-meta">
+                    <!-- <div class="equipment-meta">
                         <a class="equipment-link" href="#" aria-disabled="true">Rules</a>
-                    </div>
+                    </div> -->
                 </div>
                 {{if index $.HasPermission $equipment.ID}}
                 <div class="timeline-lane" data-equipment="{{$equipment.ID}}">
@@ -669,11 +669,12 @@
 
                 const start = new Date(startMs);
                 const end = new Date(endMs);
-                const startMinutes = start.getHours() * 60 + start.getMinutes();
-                const endMinutes = end.getHours() * 60 + end.getMinutes();
-                const duration = Math.max(endMinutes - startMinutes, 10);
+                // Use offsets from the start of the selected day to handle bookings that cross midnight
+                const startOffsetMinutes = (start.getTime() - dayStart.getTime()) / (60 * 1000);
+                const endOffsetMinutes = (end.getTime() - dayStart.getTime()) / (60 * 1000);
+                const duration = Math.max(endOffsetMinutes - startOffsetMinutes, 10);
 
-                const left = (startMinutes / minutesInDay) * 100;
+                const left = (startOffsetMinutes / minutesInDay) * 100;
                 let width = (duration / minutesInDay) * 100;
                 if (left + width > 100) {
                     width = 100 - left;
