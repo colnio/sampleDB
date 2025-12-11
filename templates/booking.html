@@ -366,6 +366,24 @@
     transition: background 0.15s ease;
 }
 
+@media (min-width: 769px) {
+    .timeline-equipment-col,
+    .timeline-equipment {
+        position: sticky;
+        left: 0;
+    }
+
+    .timeline-equipment-col {
+        z-index: 7;
+        box-shadow: 6px 0 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .timeline-equipment {
+        z-index: 6;
+        box-shadow: 4px 0 10px rgba(15, 23, 42, 0.06);
+    }
+}
+
 .booking-block {
     position: absolute;
     top: 10px;
