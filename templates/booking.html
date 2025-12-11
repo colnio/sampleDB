@@ -260,6 +260,8 @@
     display: grid;
     grid-template-columns: repeat(24, var(--hour-width));
     min-width: calc(var(--hour-width) * 24);
+    width: var(--lane-width);
+    flex: 0 0 var(--lane-width);
     background: #f2f6fb;
     border-left: 1px solid var(--grid-border);
 }
@@ -324,7 +326,7 @@
     border-bottom: 1px solid var(--grid-border);
     border-left: 1px solid var(--grid-border);
     overflow: hidden;
-    flex: 1 0 auto;
+    flex: 0 0 var(--lane-width);
 }
 
 .timeline-lane:not(.timeline-lane--locked) {
@@ -495,12 +497,8 @@
     .booking-page {
         --hour-width: 56px;
         --lane-height: 64px;
-        padding: var(--space-sm);
-    }
-
-    .timeline-equipment-col,
-    .timeline-equipment {
         --equipment-col-width: 180px;
+        padding: var(--space-sm);
     }
 
     .booking-toolbar {
@@ -658,6 +656,16 @@
             return;
         }
 
+        const adjustBlockFontSize = (block, widthPercent, lane) => {
+            const laneWidth = lane.getBoundingClientRect().width || 0;
+            const blockWidthPx = (widthPercent / 100) * laneWidth;
+            let size = 14;
+            if (blockWidthPx < 80) size = 12;
+            if (blockWidthPx < 60) size = 10;
+            if (blockWidthPx < 46) size = 9;
+            block.style.fontSize = `${size}px`;
+        };
+
         const minutesInDay = 24 * 60;
 
         document.querySelectorAll('.timeline-lane').forEach(lane => {
@@ -705,6 +713,8 @@
                 block.style.width = `${width}%`;
                 block.title = `${booking.username} • ${formatTimeRange(bookingStart, bookingEnd)}\n${booking.purpose}`;
                 block.textContent = booking.username.toUpperCase();
+
+                adjustBlockFontSize(block, width, lane);
 
                 if (booking.user_id === currentUserId) {
                     block.onclick = () => confirmDeleteBooking(booking.id);
