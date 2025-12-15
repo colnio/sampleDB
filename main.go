@@ -455,20 +455,57 @@ func renderChangePasswordTemplate(w http.ResponseWriter, data ChangePasswordPage
 	}
 }
 
+// ensureDefaultAdmin seeds a single administrator account when the installation is brand new.
+// It leaves existing data untouched once any user records exist.
+func ensureDefaultAdmin(ctx context.Context, pool dbiface.Pool) (bool, error) {
+	var userCount int
+	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&userCount); err != nil {
+		return false, fmt.Errorf("count users: %w", err)
+	}
+
+	if userCount > 0 {
+		return false, nil
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+	if err != nil {
+		return false, fmt.Errorf("hash default admin password: %w", err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO users (username, password_hash, is_approved, admin)
+		VALUES ($1, $2, true, true)
+		ON CONFLICT (username) DO NOTHING`,
+		"admin", string(hash)); err != nil {
+		return false, fmt.Errorf("insert default admin: %w", err)
+	}
+
+	return true, nil
+}
+
 func main() {
 	initLocation()
 	cfg := loadConfig()
 	appConfig = cfg
 
+	ctx := context.Background()
 	var err error
-	dbPool, err = pgxpool.New(context.Background(), cfg.DatabaseURL)
+	dbPool, err = pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
 	defer dbPool.Close()
 
-	if err = dbschema.Ensure(context.Background(), dbPool); err != nil {
+	if err = dbschema.Ensure(ctx, dbPool); err != nil {
 		log.Fatalf("Unable to ensure database schema: %v\n", err)
+	}
+
+	createdAdmin, err := ensureDefaultAdmin(ctx, dbPool)
+	if err != nil {
+		log.Fatalf("Unable to bootstrap default admin user: %v\n", err)
+	}
+	if createdAdmin {
+		log.Println("Created default admin user 'admin' with password 'admin'. Please change this password after first login.")
 	}
 
 	authManagerInstance = auth.NewManager(dbPool)

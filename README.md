@@ -17,6 +17,23 @@ SampleDB is a lightweight lab management portal written in Go. It combines a sea
 - PostgreSQL 13+
 - (Optional) `certbot` or another ACME client if you plan to terminate TLS within the Go process.
 
+## Installation
+
+1. Clone the repository and enter the directory: `git clone <repo> && cd sampleDB`.
+2. Provision PostgreSQL (local or remote) and create a database/user with permission to create/alter tables.
+3. Export `DATABASE_URL` (and other env vars from the table below) so the app can reach your database.
+4. Apply the schema:
+   - Fast start: simply run the binary; `internal/dbschema` will create/upgrade tables automatically on boot.
+   - Manual: `psql "$DATABASE_URL" -f DDL/init.sql` to pre-seed the schema before starting the service.
+5. Build and start the server:
+
+   ```bash
+   go build ./...
+   ./sampleDB
+   ```
+
+6. First boot behavior: when the `users` table is empty, SampleDB seeds a default approved admin account (`admin` / `admin`). Change this password immediately via `/change-password` after signing in. Existing deployments are left untouched; only schema fixes run on startup.
+
 ## Configuration
 
 The application is configured entirely through environment variables:
@@ -54,11 +71,11 @@ export STATIC_DIR="$APP_BASE_DIR/static"
 export UPLOADS_DIR="$APP_BASE_DIR/uploads"
 ```
 
-## Database schema
+## Database schema & migrations
 
-The application keeps the runtime schema in sync at startup via `internal/dbschema`. It now verifies every table the project depends on (users, samples, wiki, attachments, equipment, bookings, and groups), adding missing columns such as `users.deleted` and seeding baseline data where appropriate. The bootstrapped schema matches the `DDL/init.sql` file so you can provision the database manually if you prefer.
-
-> **Note:** Schema verification issues (e.g., lacking privileges to `ALTER TABLE users`) will abort the process on launch. Ensure the configured PostgreSQL role owns the relevant tables or run the statements from `DDL/init.sql` as a superuser beforehand.
+- On every startup, `internal/dbschema.Ensure` brings the schema up to date (tables, columns, and indexes) without dropping data. Keep the configured PostgreSQL role privileged enough to run `CREATE TABLE`/`ALTER TABLE`.
+- The runtime schema matches `DDL/init.sql`, so you can also pre-provision the database with `psql -f DDL/init.sql` if desired.
+- When no users exist, the service creates one default admin (`admin` / `admin`, approved and with admin rights). If users are already present, only schema adjustments are applied—no data changes are made.
 
 ## Running locally
 
