@@ -1093,10 +1093,17 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		session := auth.MustSessionFromContext(r.Context())
+
+		baseData, err := getBasePageData(session)
+		if err != nil {
+			http.Error(w, "Error loading user information", http.StatusInternalServerError)
+			return
+		}
+
 		data := struct {
 			BasePageData
 		}{
-			BasePageData: BasePageData{Username: session.Username},
+			BasePageData: baseData,
 		}
 
 		tmpl, err := parseTemplates("templates/new_sample.html")

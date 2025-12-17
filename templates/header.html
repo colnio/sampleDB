@@ -22,6 +22,12 @@
                     </svg>
                     <span>Wiki</span>
                 </a>
+                <a href="/samples/new" class="nav-item">
+                    <svg class="nav-item__icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                    </svg>
+                    <span>New Sample</span>
+                </a>
                 <a href="/booking" class="nav-item">
                     <svg class="nav-item__icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
                         <rect x="3.75" y="5.5" width="16.5" height="14.5" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
@@ -41,6 +47,15 @@
                 {{end}}
             </div>
             <div class="nav-actions">
+                <button class="theme-toggle" type="button" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode">
+                    <svg class="theme-toggle__icon theme-toggle__icon--sun" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M12 5.5a1 1 0 011 1V9a1 1 0 11-2 0V6.5a1 1 0 011-1zm0 8.5a3 3 0 100-6 3 3 0 000 6zm6.5-3a1 1 0 011 1h2.5a1 1 0 110 2H19.5a1 1 0 01-1-1v-2zm-16 1a1 1 0 01-1 1H1a1 1 0 110-2h2.5a1 1 0 011 1zm13.4 5.4a1 1 0 011.4 0l1.8 1.8a1 1 0 11-1.4 1.4l-1.8-1.8a1 1 0 010-1.4zM7.7 6.3a1 1 0 01-1.4 0L4.5 4.5A1 1 0 115.9 3.1l1.8 1.8a1 1 0 010 1.4zm10.8-1.8a1 1 0 011.4 1.4l-1.8 1.8a1 1 0 01-1.4-1.4zM6.3 16.3a1 1 0 010 1.4L4.5 19.5A1 1 0 113.1 18.1l1.8-1.8a1 1 0 011.4 0zm4.7 3.2a1 1 0 011-1h2.5a1 1 0 110 2H12a1 1 0 01-1-1z"/>
+                    </svg>
+                    <svg class="theme-toggle__icon theme-toggle__icon--moon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M21 14.5A8.5 8.5 0 1110.5 4a7 7 0 009.9 9.9c.25.18.5.37.6.6z"/>
+                    </svg>
+                    <span class="theme-toggle__label" id="theme-toggle-label">Dark mode</span>
+                </button>
                 <div class="user-menu">
                     <button class="user-menu-toggle" type="button" id="user-menu-toggle" aria-haspopup="true"
                         aria-expanded="false">
@@ -68,6 +83,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const navDrawer = document.getElementById('primary-nav');
     const userMenu = document.querySelector('.user-menu');
     const userToggle = document.getElementById('user-menu-toggle');
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeToggleLabel = document.getElementById('theme-toggle-label');
+    const prefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
     function isDesktop() {
         return window.matchMedia('(min-width: 768px)').matches;
@@ -142,6 +160,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function getStoredTheme() {
+        try {
+            return localStorage.getItem('color-theme');
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function setStoredTheme(theme) {
+        try {
+            localStorage.setItem('color-theme', theme);
+        } catch (err) {
+            // Ignore write failures (e.g. private browsing)
+        }
+    }
+
+    function updateThemeToggleLabel(theme) {
+        if (!themeToggle) {
+            return;
+        }
+        const isDark = theme === 'dark';
+        themeToggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        const nextMode = isDark ? 'Dark mode' : 'Light mode';
+        themeToggle.setAttribute('aria-label', `Switch to ${nextMode.toLowerCase()}`);
+        if (themeToggleLabel) {
+            themeToggleLabel.textContent = nextMode;
+        }
+    }
+
+    function applyTheme(theme, persist = true) {
+        const safeTheme = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', safeTheme);
+        document.documentElement.style.colorScheme = safeTheme === 'dark' ? 'dark' : 'light';
+        if (persist) {
+            setStoredTheme(safeTheme);
+        }
+        updateThemeToggleLabel(safeTheme);
+    }
+
     document.addEventListener('click', function (event) {
         if (navToggle && navDrawer) {
             const isExpanded = navToggle.getAttribute('aria-expanded') === 'true';
@@ -170,6 +227,33 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+    if (themeToggle) {
+        updateThemeToggleLabel(document.documentElement.getAttribute('data-theme') || 'light');
+        const storedTheme = getStoredTheme();
+        if (storedTheme) {
+            applyTheme(storedTheme, false);
+        }
+        themeToggle.addEventListener('click', function () {
+            const currentTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(nextTheme);
+        });
+    }
+
+    if (prefersDark && typeof prefersDark.addEventListener === 'function') {
+        prefersDark.addEventListener('change', function (event) {
+            if (!getStoredTheme()) {
+                applyTheme(event.matches ? 'dark' : 'light', false);
+            }
+        });
+    } else if (prefersDark && typeof prefersDark.addListener === 'function') {
+        prefersDark.addListener(function (event) {
+            if (!getStoredTheme()) {
+                applyTheme(event.matches ? 'dark' : 'light', false);
+            }
+        });
+    }
+
     setNavOpen(false);
 });
 </script>

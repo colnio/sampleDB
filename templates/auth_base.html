@@ -1,15 +1,114 @@
 {{define "auth_base"}}
 <!DOCTYPE html>
-<html>
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{template "title" .}}</title>
+    <script>
+    (function () {
+        try {
+            const storedTheme = localStorage.getItem('color-theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const initialTheme = storedTheme || (prefersDark ? 'dark' : 'dark');
+            document.documentElement.setAttribute('data-theme', initialTheme);
+            document.documentElement.style.colorScheme = initialTheme === 'dark' ? 'dark' : 'light';
+        } catch (err) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.style.colorScheme = 'dark';
+        }
+    })();
+    </script>
     <link rel="stylesheet" href="/static/css/style.css">
     {{block "additional_styles" .}}{{end}}
 </head>
 <body class="auth-body">
     {{template "content" .}}
+    <script>
+    (function () {
+        const themeKey = 'color-theme';
+        const prefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+        function getStoredTheme() {
+            try {
+                return localStorage.getItem(themeKey);
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function setStoredTheme(theme) {
+            try {
+                localStorage.setItem(themeKey, theme);
+            } catch (err) {
+                // ignore
+            }
+        }
+
+        function updateToggleLabel(theme) {
+            const toggle = document.getElementById('auth-theme-toggle');
+            const label = document.getElementById('auth-theme-toggle-label');
+            if (!toggle) return;
+            const isDark = theme === 'dark';
+            const nextMode = isDark ? 'Light mode' : 'Dark mode';
+            toggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+            toggle.setAttribute('aria-label', `Switch to ${nextMode.toLowerCase()}`);
+            if (label) {
+                label.textContent = nextMode;
+            }
+        }
+
+        function applyTheme(theme, persist = true) {
+            const safeTheme = theme === 'dark' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', safeTheme);
+            document.documentElement.style.colorScheme = safeTheme === 'dark' ? 'dark' : 'light';
+            if (persist) {
+                setStoredTheme(safeTheme);
+            }
+            updateToggleLabel(safeTheme);
+        }
+
+        function initAuthThemeToggle() {
+            const storedTheme = getStoredTheme();
+            if (storedTheme) {
+                applyTheme(storedTheme, false);
+            } else {
+                const fallback = 'dark';
+                const prefers = prefersDark && prefersDark.matches ? 'dark' : fallback;
+                applyTheme(prefers, false);
+            }
+
+            const toggle = document.getElementById('auth-theme-toggle');
+            if (toggle) {
+                toggle.addEventListener('click', function () {
+                    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+                    const next = current === 'dark' ? 'light' : 'dark';
+                    applyTheme(next);
+                });
+            }
+
+            if (prefersDark && typeof prefersDark.addEventListener === 'function') {
+                prefersDark.addEventListener('change', function (event) {
+                    if (!getStoredTheme()) {
+                        applyTheme(event.matches ? 'dark' : 'light', false);
+                    }
+                });
+            } else if (prefersDark && typeof prefersDark.addListener === 'function') {
+                prefersDark.addListener(function (event) {
+                    if (!getStoredTheme()) {
+                        applyTheme(event.matches ? 'dark' : 'light', false);
+                    }
+                });
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAuthThemeToggle);
+        } else {
+            initAuthThemeToggle();
+        }
+    })();
+    </script>
 </body>
 </html>
 {{end}}

@@ -1,6 +1,43 @@
 {{define "title"}}{{if .IsRegister}}Register{{else}}Login{{end}} · Sample Tracker{{end}}
 {{define "additional_styles"}}
 <style>
+.auth-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-secondary-border);
+    background: var(--surface-default);
+    color: var(--text-strong);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-theme-toggle:hover {
+    background: var(--color-secondary-hover-bg);
+    border-color: var(--color-secondary-hover-border);
+}
+
+.auth-theme-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-button-focus);
+}
+
+.auth-theme-toggle__icon {
+    width: 16px;
+    height: 16px;
+}
+
+html[data-theme="dark"] .auth-theme-toggle__icon--sun {
+    display: none;
+}
+
+html[data-theme="light"] .auth-theme-toggle__icon--moon {
+    display: none;
+}
+
 .auth-page {
     max-width: 720px;
     margin: 0 auto;
@@ -14,6 +51,9 @@
     padding: 32px;
     box-shadow: 0 12px 30px rgba(17, 24, 39, 0.12);
     border: 1px solid rgba(15, 23, 42, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .auth-card h2 {
@@ -91,6 +131,20 @@
     align-items: center;
 }
 
+.auth-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.auth-card__heading {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
 @media (max-width: 600px) {
     .auth-card {
         padding: 24px;
@@ -106,7 +160,18 @@
 {{define "content"}}
 <div class="auth-page">
     <section class="auth-card">
-        <h2>{{if .IsRegister}}Create an account{{else}}Welcome back{{end}}</h2>
+        <div class="auth-card__top">
+            <h2 class="auth-card__heading">{{if .IsRegister}}Create an account{{else}}Welcome back{{end}}</h2>
+            <button class="auth-theme-toggle" type="button" id="auth-theme-toggle" aria-pressed="false" aria-label="Switch theme">
+                <svg class="auth-theme-toggle__icon auth-theme-toggle__icon--sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" d="M12 5.5a1 1 0 011 1V9a1 1 0 11-2 0V6.5a1 1 0 011-1zm0 8.5a3 3 0 100-6 3 3 0 000 6zm6.5-3a1 1 0 011 1h2.5a1 1 0 110 2H19.5a1 1 0 01-1-1v-2zm-16 1a1 1 0 01-1 1H1a1 1 0 110-2h2.5a1 1 0 011 1zm13.4 5.4a1 1 0 011.4 0l1.8 1.8a1 1 0 11-1.4 1.4l-1.8-1.8a1 1 0 010-1.4zM7.7 6.3a1 1 0 01-1.4 0L4.5 4.5A1 1 0 115.9 3.1l1.8 1.8a1 1 0 010 1.4zm10.8-1.8a1 1 0 011.4 1.4l-1.8 1.8a1 1 0 01-1.4-1.4zM6.3 16.3a1 1 0 010 1.4L4.5 19.5A1 1 0 113.1 18.1l1.8-1.8a1 1 0 011.4 0zm4.7 3.2a1 1 0 011-1h2.5a1 1 0 110 2H12a1 1 0 01-1-1z"/>
+                </svg>
+                <svg class="auth-theme-toggle__icon auth-theme-toggle__icon--moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" d="M21 14.5A8.5 8.5 0 1110.5 4a7 7 0 009.9 9.9c.25.18.5.37.6.6z"/>
+                </svg>
+                <span id="auth-theme-toggle-label">Light mode</span>
+            </button>
+        </div>
         <p class="auth-subtitle">
             {{if .IsRegister}}
             Fill in the details below to request access to the Sample Tracker.
@@ -155,4 +220,32 @@
         {{end}}
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const label = document.getElementById('auth-theme-toggle-label');
+    const toggle = document.getElementById('auth-theme-toggle');
+    if (!label || !toggle) {
+        return;
+    }
+
+    const config = { characterData: true, childList: true, subtree: true };
+    const observer = new MutationObserver(function () {
+        observer.disconnect();
+        swapLabel();
+        observer.observe(label, config);
+    });
+
+    function swapLabel() {
+        const current = (label.textContent || '').trim().toLowerCase();
+        if (current.startsWith('light')) {
+            label.textContent = 'Dark mode';
+        } else if (current.startsWith('dark')) {
+            label.textContent = 'Light mode';
+        }
+    }
+
+    swapLabel();
+    observer.observe(label, config);
+});
+</script>
 {{end}}

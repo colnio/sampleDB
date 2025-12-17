@@ -111,7 +111,7 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&u.UserID, &u.Username, &u.Approved,
 			&u.Admin, &groupName, &equipmentIDs)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("error scanning user row: %v\n", err)
 			continue
 		}
 
@@ -171,7 +171,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		fmt.Println("ON parsing json:", err)
+		fmt.Printf("error parsing access update JSON: %v\n", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
@@ -179,7 +179,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	// Start a transaction
 	tx, err := dbPool.Begin(context.Background())
 	if err != nil {
-		fmt.Println("ON starting transaction:", err)
+		fmt.Printf("error starting access update transaction: %v\n", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -197,7 +197,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 		`UPDATE users SET is_approved = $1, "group" = $2 WHERE user_id = $3 AND COALESCE(deleted, false) = false`,
 		data.Approved, groupParam, data.UserID)
 	if err != nil {
-		fmt.Println("ON update users approved: ", err)
+		fmt.Printf("error updating approval status: %v\n", err)
 		http.Error(w, "Error updating approval status", http.StatusInternalServerError)
 		return
 	}
@@ -207,7 +207,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM user_equipment_permissions WHERE user_id = $1",
 		data.UserID)
 	if err != nil {
-		fmt.Println("On deleting permissions:", err)
+		fmt.Printf("error deleting user permissions: %v\n", err)
 		http.Error(w, "Error updating equipment permissions", http.StatusInternalServerError)
 		return
 	}
@@ -218,14 +218,14 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 			"INSERT INTO user_equipment_permissions (user_id, equipment_id) VALUES ($1, $2)",
 			data.UserID, equipID)
 		if err != nil {
-			fmt.Println("On inserting permissions", err)
+			fmt.Printf("error inserting permission: %v\n", err)
 			continue
 		}
 	}
 
 	// Commit transaction
 	if err = tx.Commit(context.Background()); err != nil {
-		fmt.Println("On commiting to db", err)
+		fmt.Printf("error committing access update: %v\n", err)
 		http.Error(w, "Error committing changes", http.StatusInternalServerError)
 		return
 	}
