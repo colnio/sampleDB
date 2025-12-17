@@ -81,6 +81,64 @@
     --color-button-disabled-border: #d1d5db;
     --color-button-disabled-text: #9ca3af;
     --color-button-focus: rgba(37, 99, 235, 0.35);
+    --theme-color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    --theme-color-scheme: dark;
+    --surface-subtle: #0d1117;
+    --surface-default: #161b22;
+    --surface-muted: #151b23;
+
+    --neutral-950: #f0f6fc;
+    --neutral-900: #c9d1d9;
+    --neutral-800: #aab6c3;
+    --neutral-700: #9198a1;
+    --neutral-600: #7d8590;
+    --neutral-500: #6e7681;
+    --neutral-400: #484f58;
+    --neutral-200: #30363d;
+    --neutral-100: #21262d;
+    --neutral-50: #151b23;
+
+    --card-shadow: 0 8px 24px rgba(1, 4, 9, 0.65);
+    --border-subtle: #30363d;
+    --border-strong: #484f58;
+    --text-strong: #f0f6fc;
+    --text-muted: #9198a1;
+
+    --accent-100: #0c2d6b;
+    --accent-200: #1158c7;
+    --accent-400: #1f6feb;
+    --accent-500: #4493f8;
+    --accent-600: #58a6ff;
+    --accent-700: #79c0ff;
+
+    --color-primary: #4493f8;
+    --color-primary-hover: #58a6ff;
+    --color-primary-active: #1f6feb;
+
+    --color-secondary-bg: rgba(68, 147, 248, 0.16);
+    --color-secondary-border: rgba(68, 147, 248, 0.32);
+    --color-secondary-hover-bg: rgba(68, 147, 248, 0.24);
+    --color-secondary-hover-border: rgba(88, 166, 255, 0.45);
+    --color-secondary-text: #f0f6fc;
+
+    --color-destructive: #f0883e;
+    --color-destructive-hover: #ffa657;
+    --color-destructive-active: #bd561d;
+    --color-destructive-bg: rgba(219, 109, 40, 0.1);
+    --color-destructive-border: #db6d28;
+
+    --color-success: #58a6ff;
+    --color-success-bg: rgba(56, 139, 253, 0.2);
+    --color-success-border: #388bfd;
+
+    --color-button-disabled-bg: #21262d;
+    --color-button-disabled-border: #30363d;
+    --color-button-disabled-text: #7d8590;
+    --color-button-focus: rgba(68, 147, 248, 0.45);
+    --color-button-on-dark: #f0f6fc;
 }
 
 body {
@@ -92,6 +150,7 @@ body {
     font-size: var(--font-size-base);
     line-height: var(--line-height-body);
     color: var(--text-strong);
+    color-scheme: var(--theme-color-scheme);
 }
 
 .sr-only {
@@ -400,6 +459,53 @@ h6 {
     display: flex;
     align-items: center;
     justify-content: flex-start;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 0.45rem 0.9rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-secondary-border);
+    background: var(--surface-default);
+    color: var(--text-strong);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-toggle:hover {
+    background: var(--color-secondary-hover-bg);
+    border-color: var(--color-secondary-hover-border);
+}
+
+.theme-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-button-focus);
+}
+
+.theme-toggle__icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.theme-toggle__icon--moon {
+    display: none;
+}
+
+.theme-toggle__label {
+    font-size: var(--font-size-sm);
+}
+
+html[data-theme="dark"] .theme-toggle__icon--moon {
+    display: inline;
+}
+
+html[data-theme="dark"] .theme-toggle__icon--sun {
+    display: none;
 }
 
 .user-menu {
@@ -523,6 +629,7 @@ h6 {
 
     .nav-actions {
         margin-left: auto;
+        gap: var(--space-md);
     }
 }
 
@@ -1055,7 +1162,7 @@ body .markdown-body--card {
     padding: var(--space-md);
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-sm);
-    color-scheme: light;
+    color-scheme: var(--theme-color-scheme);
 }
 
 body .markdown-body > *:first-child {
@@ -1158,6 +1265,29 @@ body .markdown-body img {
     max-width: 100%;
     border-radius: var(--radius-sm);
     margin-top: var(--space-sm);
+}
+
+html[data-theme="dark"] body .markdown-body code {
+    background-color: rgba(148, 163, 184, 0.16);
+}
+
+html[data-theme="dark"] body .markdown-body pre {
+    background-color: #0b1526;
+    border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] body .markdown-body blockquote {
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-muted);
+}
+
+html[data-theme="dark"] body .markdown-body table th,
+html[data-theme="dark"] body .markdown-body table td {
+    border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] body .markdown-body table th {
+    background: var(--surface-muted);
 }
 
 /* Attachments Section */
