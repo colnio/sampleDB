@@ -7,6 +7,7 @@
     <header class="sample-detail__header">
         <div>
             <h1>{{.Sample.Name}}</h1>
+            <p class="sample-detail__created">Created {{.Sample.CreatedAt.Format "2006-01-02"}}</p>
             <p class="sample-detail__meta">
                 <span><strong>Owner:</strong> {{if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unknown{{end}}</span>
                 <span><strong>Keywords:</strong> {{if .Sample.Keywords}}{{.Sample.Keywords}}{{else}}—{{end}}</span>

@@ -55,6 +55,7 @@ type Sample struct {
 	Sample_prep    string
 	SamplePrepHTML template.HTML
 	Attachments    []Attachment
+	CreatedAt      time.Time
 }
 
 type User struct {
@@ -808,7 +809,7 @@ func searchSamples(query string) ([]Sample, error) {
 	args = append(args, "%"+trimmedQuery+"%")
 
 	queryText := fmt.Sprintf(`
-        SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner
+        SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, created_at
         FROM samples
         WHERE sample_name ILIKE $%d`, nameParamIndex)
 
@@ -832,7 +833,7 @@ func searchSamples(query string) ([]Sample, error) {
 	var samples []Sample
 	for rows.Next() {
 		var sample Sample
-		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner)
+		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -845,7 +846,7 @@ func searchSamples(query string) ([]Sample, error) {
 // getAllSamples retrieves all samples when there’s no search query
 func getAllSamples() ([]Sample, error) {
 	rows, err := dbPool.Query(context.Background(),
-		`SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, '') FROM samples order by sample_name asc`)
+		`SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, ''), created_at FROM samples order by sample_name asc`)
 	if err != nil {
 		return nil, err
 	}
@@ -854,7 +855,7 @@ func getAllSamples() ([]Sample, error) {
 	var samples []Sample
 	for rows.Next() {
 		var sample Sample
-		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.Sample_prep)
+		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.Sample_prep, &sample.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -866,7 +867,7 @@ func getAllSamples() ([]Sample, error) {
 
 // getSamples retrieves all samples from the database
 func getSamples() ([]Sample, error) {
-	rows, err := dbPool.Query(context.Background(), "SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner FROM samples")
+	rows, err := dbPool.Query(context.Background(), "SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, created_at FROM samples")
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		return nil, err
@@ -877,7 +878,7 @@ func getSamples() ([]Sample, error) {
 	for rows.Next() {
 		// fmt.Printf("parsing rows\n")
 		var s Sample
-		err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.Keywords, &s.Owner)
+		err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.Keywords, &s.Owner, &s.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -919,9 +920,9 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 func getSampleByID(sampleID string) (Sample, error) {
 	var sample Sample
 	err := dbPool.QueryRow(context.Background(),
-		`SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, '') 
+		`SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, ''), created_at 
          FROM samples WHERE sample_id=$1`, sampleID).Scan(
-		&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.Sample_prep)
+		&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.Sample_prep, &sample.CreatedAt)
 	if err != nil {
 		return sample, err
 	}

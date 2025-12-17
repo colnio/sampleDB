@@ -43,7 +43,10 @@
             {{range .Samples}}
             <article class="card tile sample-card">
                 <header class="sample-card__header">
-                    <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>
+                    <div class="sample-card__title">
+                        <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>
+                        <p class="sample-card__meta">Created {{.CreatedAt.Format "2006-01-02"}}</p>
+                    </div>
                     <p class="sample-card__owner">{{.Owner}}</p>
                 </header>
                 <p class="sample-card__description">{{if .Description}}{{.Description}}{{else}}<em>No description</em>{{end}}</p>

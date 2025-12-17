@@ -965,14 +965,25 @@ button.button:disabled {
 .sample-card__header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: flex-start;
     gap: var(--space-sm);
+}
+
+.sample-card__title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .sample-card__owner {
     color: var(--text-muted);
     font-size: var(--font-size-sm);
     font-style: italic;
+}
+
+.sample-card__meta {
+    color: var(--neutral-500);
+    font-size: var(--font-size-xs);
 }
 
 .sample-card__description {
@@ -1115,6 +1126,13 @@ label {
     flex-wrap: wrap;
     gap: var(--space-lg);
     margin-bottom: var(--space-md);
+}
+
+.sample-detail__created {
+    color: var(--neutral-500);
+    font-size: var(--font-size-sm);
+    margin-top: calc(var(--space-xs) * -1);
+    margin-bottom: var(--space-sm);
 }
 
 .sample-detail__meta {
