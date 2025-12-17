@@ -15,7 +15,7 @@
               hx-get="/"
               hx-target="#samples-panel"
               hx-select="#samples-panel"
-              hx-trigger="submit, keyup changed delay:300ms from:#samples-query"
+              hx-trigger="submit, keyup changed delay:300ms from:#samples-query, change from:input[type='date']"
               hx-indicator="#samples-search-indicator"
               hx-push-url="true">
             <input id="samples-query"
@@ -24,6 +24,16 @@
                    value="{{.Query}}"
                    placeholder="Search samples by name, keywords, or owner"
                    autocomplete="off">
+            <label for="date-from" class="date-filter-label">From:</label>
+            <input id="date-from"
+                   type="date"
+                   name="date_from"
+                   value="{{.DateFrom}}">
+            <label for="date-to" class="date-filter-label">To:</label>
+            <input id="date-to"
+                   type="date"
+                   name="date_to"
+                   value="{{.DateTo}}">
             <button type="submit" class="button button--secondary">Search</button>
             <div id="samples-search-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
                 <span class="spinner"></span>
@@ -60,8 +70,8 @@
         </div>
     {{else}}
         <div class="empty-state">
-            <p>No samples found{{if .Query}} for “{{.Query}}”{{end}}.</p>
-            <p class="empty-state__hint">Try a different keyword or add a new sample.</p>
+            <p>No samples found{{if .Query}} for "{{.Query}}"{{end}}{{if or .DateFrom .DateTo}}{{if .Query}} with{{else}} for{{end}} the selected date range{{end}}.</p>
+            <p class="empty-state__hint">Try a different keyword{{if or .DateFrom .DateTo}} or date range{{end}} or add a new sample.</p>
         </div>
     {{end}}
 </section>

@@ -68,8 +68,10 @@ type User struct {
 
 type MainPageData struct {
 	BasePageData
-	Samples []Sample
-	Query   string
+	Samples  []Sample
+	Query    string
+	DateFrom string
+	DateTo   string
 }
 
 type SampleDetailPageData struct {
@@ -627,6 +629,8 @@ func parseTemplates(files ...string) (*template.Template, error) {
 // mainPageHandler serves the main page and handles search functionality
 func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("query")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
 	var samples []Sample
 	var err error
 
@@ -634,13 +638,13 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
 	if query != "" {
-		samples, err = searchSamples(query)
+		samples, err = searchSamples(query, dateFrom, dateTo)
 		if err != nil {
 			http.Error(w, "Error retrieving search results", http.StatusInternalServerError)
 			return
 		}
 	} else {
-		samples, err = getAllSamples()
+		samples, err = getAllSamples(dateFrom, dateTo)
 		if err != nil {
 			http.Error(w, "Error retrieving samples", http.StatusInternalServerError)
 			return
@@ -657,6 +661,8 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: false},
 		Samples:      samples,
 		Query:        query,
+		DateFrom:     dateFrom,
+		DateTo:       dateTo,
 	}
 
 	if err := row.Scan(&data.BasePageData.IsAdmin); err != nil {
@@ -780,7 +786,7 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // searchSamples queries the database for samples by name, owner, or keywords
-func searchSamples(query string) ([]Sample, error) {
+func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	trimmedQuery := strings.TrimSpace(query)
 
 	rawKeywords := strings.FieldsFunc(query, func(r rune) bool {
@@ -822,6 +828,22 @@ func searchSamples(query string) ([]Sample, error) {
 		queryText = fmt.Sprintf(`%s OR %s`, queryText, strings.Join(whereClauses, " OR "))
 	}
 
+	// Wrap the search conditions in parentheses before adding date filters
+	queryText = fmt.Sprintf(`(%s)`, queryText)
+
+	// Add date filtering
+	if dateFrom != "" {
+		dateFromParamIndex := len(args) + 1
+		args = append(args, dateFrom)
+		queryText = fmt.Sprintf(`%s AND created_at >= $%d`, queryText, dateFromParamIndex)
+	}
+	if dateTo != "" {
+		dateToParamIndex := len(args) + 1
+		// Add one day to dateTo to include the entire end date
+		args = append(args, dateTo+" 23:59:59")
+		queryText = fmt.Sprintf(`%s AND created_at <= $%d`, queryText, dateToParamIndex)
+	}
+
 	// Execute the query
 	rows, err := dbPool.Query(context.Background(), queryText, args...)
 	if err != nil {
@@ -843,10 +865,29 @@ func searchSamples(query string) ([]Sample, error) {
 	return samples, nil
 }
 
-// getAllSamples retrieves all samples when there’s no search query
-func getAllSamples() ([]Sample, error) {
-	rows, err := dbPool.Query(context.Background(),
-		`SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, ''), created_at FROM samples order by sample_name asc`)
+// getAllSamples retrieves all samples when there's no search query
+func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
+	queryText := `SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, ''), created_at FROM samples`
+	var args []interface{}
+	var whereClauses []string
+
+	// Add date filtering
+	if dateFrom != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("created_at >= $%d", len(args)+1))
+		args = append(args, dateFrom)
+	}
+	if dateTo != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("created_at <= $%d", len(args)+1))
+		args = append(args, dateTo+" 23:59:59")
+	}
+
+	if len(whereClauses) > 0 {
+		queryText = queryText + " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	queryText = queryText + " ORDER BY sample_name ASC"
+
+	rows, err := dbPool.Query(context.Background(), queryText, args...)
 	if err != nil {
 		return nil, err
 	}
