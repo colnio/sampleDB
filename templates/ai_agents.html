@@ -366,6 +366,12 @@
                     <li><strong>Standard chat</strong> (ChatGPT, Claude.ai) — great for explanations, debugging advice, and snippets you paste yourself</li>
                     <li><strong>Agent</strong> (Claude Code, OpenAI Codex, Copilot, Cursor) — can read your project, edit files, run commands, and iterate on errors with your permission</li>
                 </ul>
+                <h3>How They Operate Differently</h3>
+                <ul>
+                    <li><strong>Standard chat workflow:</strong> you upload or paste a limited set of files. Those files consume context window space, so as projects grow, the model has less room for deep reasoning and long conversation history.</li>
+                    <li><strong>Agent workflow:</strong> the agent can start from an overview file such as <code>AGENTS.md</code> (or <code>agent.md</code>), then open only the files needed for the current task instead of loading everything at once.</li>
+                    <li><strong>Scalability:</strong> many agents can split work into focused subagents (parallel tasks), which helps with larger codebases and keeps each thread context smaller.</li>
+                </ul>
                 <p>You do not need to be a software engineer. If you use Python, notebooks, shell scripts, or MATLAB, these tools are already useful.</p>
             </section>
 
@@ -383,9 +389,12 @@
                     </thead>
                     <tbody>
                         <tr><td>Access your files</td><td class="cmp-con">Only what you paste or upload</td><td class="cmp-pro">Can read project files directly</td></tr>
+                        <tr><td>Initial entry point</td><td class="cmp-con">You must manually choose and upload files</td><td class="cmp-pro">Can start from <code>AGENTS.md</code>/<code>agent.md</code> and follow project instructions</td></tr>
+                        <tr><td>Context usage</td><td class="cmp-con">Uploaded files consume context window quickly</td><td class="cmp-pro">Reads files on demand, so context is used more efficiently</td></tr>
                         <tr><td>Edit scripts</td><td class="cmp-con">You copy-paste code manually</td><td class="cmp-pro">Edits files for you</td></tr>
                         <tr><td>Run code</td><td class="cmp-con">No direct execution</td><td class="cmp-pro">Can run scripts and commands</td></tr>
                         <tr><td>Fixing errors</td><td class="cmp-con">You shuttle logs back and forth</td><td class="cmp-pro">Can iterate: run, detect errors, fix, run again</td></tr>
+                        <tr><td>Parallel work</td><td class="cmp-con">Single conversation thread</td><td class="cmp-pro">Many agents can split work into subagents and parallel tasks</td></tr>
                         <tr><td>Best use</td><td class="cmp-neutral">Questions, learning, one-off snippets</td><td class="cmp-pro">Real project work across many files</td></tr>
                         <tr><td>Safety model</td><td class="cmp-pro">Read-only by design</td><td class="cmp-neutral">Permission controls and review before applying changes</td></tr>
                     </tbody>
