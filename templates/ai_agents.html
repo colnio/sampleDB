@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Coding Assistants for the Lab — Scripting, Data Analysis &amp; Automation</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            font-family: var(--font-family-base);
+            background: var(--surface-subtle);
+            color: var(--text-strong);
+            line-height: var(--line-height-body);
+            max-width: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Layout: sidebar + main */
+        .page-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            position: sticky;
+            top: 0;
+            align-self: flex-start;
+            width: 240px;
+            min-width: 240px;
+            height: 100vh;
+            overflow-y: auto;
+            background: var(--surface-default);
+            border-right: 1px solid var(--border-subtle);
+            padding: var(--space-lg) 0;
+            z-index: 50;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-sm);
+            padding: 0 var(--space-lg) var(--space-md);
+        }
+        .sidebar-title {
+            font-size: var(--font-size-sm);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            padding: 0;
+        }
+        .sidebar-toggle {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: var(--surface-muted);
+            color: var(--text-muted);
+            font-size: var(--font-size-xs);
+            padding: 4px var(--space-sm);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .sidebar-toggle:hover {
+            background: var(--surface-default);
+            border-color: var(--border-strong);
+        }
+        .sidebar-links {
+            display: block;
+        }
+        .sidebar-links a {
+            display: block;
+            padding: 6px var(--space-lg);
+            font-size: var(--font-size-sm);
+            color: var(--text-muted);
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .sidebar-links a:hover,
+        .sidebar-links a.active {
+            color: var(--color-primary);
+            background: var(--surface-muted);
+            border-left-color: var(--color-primary);
+        }
+        .sidebar .theme-toggle-sidebar {
+            display: block;
+            margin: var(--space-lg) var(--space-lg) 0;
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-xs) var(--space-sm);
+            cursor: pointer;
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            text-align: center;
+            width: calc(100% - var(--space-lg) * 2);
+        }
+        .sidebar .theme-toggle-sidebar:hover { background: var(--surface-default); border-color: var(--border-strong); }
+        .sidebar.is-collapsed {
+            width: 72px;
+            min-width: 72px;
+        }
+        .sidebar.is-collapsed .sidebar-title,
+        .sidebar.is-collapsed .sidebar-links,
+        .sidebar.is-collapsed .theme-toggle-sidebar {
+            display: none;
+        }
+        .sidebar.is-collapsed .sidebar-header {
+            justify-content: center;
+            padding: 0 var(--space-sm);
+        }
+        .sidebar.is-collapsed .sidebar-toggle {
+            width: 100%;
+            padding: 6px 0;
+        }
+
+        .main-content {
+            flex: 1;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: var(--space-xl) var(--space-xl);
+        }
+
+        /* Mobile: collapse sidebar to top bar */
+        @media (max-width: 860px) {
+            .page-layout { flex-direction: column; }
+            .sidebar {
+                position: sticky;
+                top: 0;
+                width: 100%;
+                min-width: 0;
+                height: auto;
+                max-height: none;
+                border-right: none;
+                border-bottom: 1px solid var(--border-subtle);
+                padding: var(--space-sm) 0;
+                overflow: visible;
+                display: block;
+            }
+            .sidebar-header {
+                padding: 0 var(--space-md);
+            }
+            .sidebar-title { margin: 0; white-space: nowrap; }
+            .sidebar-links {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                overflow-x: auto;
+                overflow-y: hidden;
+                white-space: nowrap;
+                padding: var(--space-sm) var(--space-sm) 0;
+                gap: 0;
+            }
+            .sidebar-links a {
+                display: inline-block;
+                padding: 6px var(--space-sm);
+                border-left: none;
+                border-bottom: 2px solid transparent;
+            }
+            .sidebar-links a:hover, .sidebar-links a.active { border-left: none; border-bottom-color: var(--color-primary); }
+            .sidebar .theme-toggle-sidebar {
+                margin: var(--space-sm) var(--space-sm) 0;
+                width: calc(100% - var(--space-sm) * 2);
+                white-space: nowrap;
+            }
+            .sidebar.is-collapsed {
+                width: 100%;
+                min-width: 0;
+            }
+            .sidebar.is-collapsed .sidebar-links,
+            .sidebar.is-collapsed .theme-toggle-sidebar {
+                display: none;
+            }
+            .sidebar.is-collapsed .sidebar-title {
+                display: block;
+            }
+            .sidebar.is-collapsed .sidebar-header {
+                justify-content: space-between;
+                padding: 0 var(--space-md);
+            }
+            .sidebar.is-collapsed .sidebar-toggle {
+                width: auto;
+                padding: 4px var(--space-sm);
+            }
+            .main-content { padding: var(--space-lg) var(--space-md); }
+        }
+
+        /* Header */
+        .agents-header {
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+        }
+        .agents-header h1 {
+            font-size: var(--font-size-3xl);
+            line-height: var(--line-height-heading);
+            margin-bottom: var(--space-sm);
+        }
+        .agents-header p {
+            font-size: var(--font-size-lg);
+            color: var(--text-muted);
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        /* Section cards */
+        .agents-section {
+            background: var(--surface-default);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            box-shadow: var(--card-shadow);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+            scroll-margin-top: var(--space-md);
+        }
+        .agents-section h2 {
+            font-size: var(--font-size-2xl);
+            margin-bottom: var(--space-md);
+            line-height: var(--line-height-heading);
+        }
+        .agents-section h3 {
+            font-size: var(--font-size-xl);
+            margin-top: var(--space-lg);
+            margin-bottom: var(--space-sm);
+        }
+        .agents-section h4 {
+            font-size: var(--font-size-lg);
+            margin-top: var(--space-md);
+            margin-bottom: var(--space-xs);
+        }
+        .agents-section p, .agents-section li {
+            font-size: var(--font-size-base);
+            color: var(--text-strong);
+        }
+        .agents-section ul, .agents-section ol {
+            padding-left: var(--space-xl);
+            margin-bottom: var(--space-md);
+        }
+        .agents-section li { margin-bottom: var(--space-xs); }
+        .agents-section a { color: var(--color-primary); text-decoration: none; }
+        .agents-section a:hover { text-decoration: underline; color: var(--color-primary-hover); }
+
+        /* Pros / Cons grid */
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+            margin-top: var(--space-md);
+        }
+        @media (max-width: 640px) { .pros-cons { grid-template-columns: 1fr; } }
+        .pros h4 { color: var(--color-success); }
+        .cons h4 { color: var(--color-destructive); }
+
+        /* Comparison table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: var(--space-md);
+            font-size: var(--font-size-sm);
+        }
+        .comparison-table th,
+        .comparison-table td {
+            text-align: left;
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .comparison-table th { background: var(--surface-muted); font-weight: 600; }
+        .comparison-table tr:last-child td { border-bottom: none; }
+        .comparison-table .cmp-pro {
+            color: var(--color-success);
+            font-weight: 500;
+        }
+        .comparison-table .cmp-con {
+            color: var(--color-destructive);
+            font-weight: 500;
+        }
+        .comparison-table .cmp-neutral {
+            color: var(--text-muted);
+        }
+
+        /* Code blocks */
+        code {
+            font-family: var(--font-family-mono);
+            font-size: var(--font-size-sm);
+            background: var(--surface-muted);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+        }
+        pre {
+            background: var(--neutral-900);
+            color: #e2e8f0;
+            padding: var(--space-md);
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            margin: var(--space-md) 0;
+        }
+        pre code { background: none; padding: 0; color: inherit; }
+
+        /* Screenshot figures */
+        .screenshot {
+            margin: var(--space-lg) 0;
+            text-align: center;
+        }
+        .screenshot img {
+            max-width: 100%;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .screenshot figcaption {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+            margin-top: var(--space-xs);
+        }
+
+        /* Tool cards grid */
+        .tool-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+            margin-top: var(--space-md);
+        }
+        @media (max-width: 640px) { .tool-cards { grid-template-columns: 1fr; } }
+        .tool-card {
+            background: var(--surface-subtle);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+        }
+        .tool-card h4 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <div class="page-layout">
+
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="chaptersSidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Chapters</div>
+                <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="true" aria-controls="sidebarLinks">Hide chapters</button>
+            </div>
+            <div class="sidebar-links" id="sidebarLinks">
+                <a href="#intro">What Are AI Agents?</a>
+                <a href="#agents-vs-chats">Agents vs Standard Chats</a>
+                <a href="#cli-agents">CLI Agents</a>
+                <a href="#claude-code-cli">Claude Code (CLI)</a>
+                <a href="#cloud-agents">Cloud Agents</a>
+                <a href="#codex-cloud">OpenAI Codex</a>
+                <a href="#ide-extensions">IDE Extensions</a>
+                <a href="#claude-code-vscode">Claude Code for VS Code</a>
+                <a href="#codex-vscode">Codex for VS Code</a>
+                <a href="#github-copilot">GitHub Copilot</a>
+                <a href="#cursor">Cursor</a>
+                <a href="#desktop-apps">Desktop Apps</a>
+                <a href="#claude-desktop">Claude Desktop</a>
+                <a href="#use-cases">When to Use What</a>
+                <a href="#workflow">Typical Workflow</a>
+                <a href="#getting-started">Getting Started</a>
+                <a href="#further-reading">Further Reading</a>
+            </div>
+            <button class="theme-toggle-sidebar" onclick="toggleTheme()" id="themeBtn">Dark mode</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <header class="agents-header">
+                <h1>AI Coding Assistants for the Lab</h1>
+                <p>A practical guide to AI tools that help with scripting, data analysis, measurement automation, and lab software — from terminal agents to desktop apps.</p>
+            </header>
+
+            <!-- Introduction -->
+            <section id="intro" class="agents-section">
+                <h2>What Are AI Coding Assistants?</h2>
+                <p>Whether you're writing Python scripts for data analysis, automating measurement routines, building LabVIEW or EPICS integrations, or just trying to plot XRD data at 5 PM on a Friday — AI coding assistants can help. They range from simple chat interfaces to full autonomous agents that can edit your scripts, run them, and fix errors on their own.</p>
+                <p>These tools come in three flavours:</p>
+                <ul>
+                    <li><strong>CLI agents</strong> — Terminal-native tools that work directly with your scripts and project files (Claude Code)</li>
+                    <li><strong>Cloud agents</strong> — Browser-based agents that take your project, work on it in an isolated environment, and deliver the finished changes for your review (OpenAI Codex)</li>
+                    <li><strong>IDE extensions</strong> — Integrated into your editor with inline suggestions, chat panels, and agentic editing (Claude Code for VS Code, Codex for VS Code, GitHub Copilot, Cursor)</li>
+                    <li><strong>Desktop apps</strong> — Standalone GUI applications for conversational help, data analysis, and quick questions (Claude Desktop)</li>
+                </ul>
+                <p>You don't need to be a software engineer to benefit. If you write any code at all — Python notebooks, shell scripts, MATLAB routines, data processing pipelines — these tools can save significant time.</p>
+            </section>
+
+            <!-- Agents vs Standard Chats -->
+            <section id="agents-vs-chats" class="agents-section">
+                <h2>Agents vs Standard AI Chats</h2>
+                <p>The key difference: standard chats generate text you copy-paste, while agents work directly on your files — editing scripts, running analysis, and fixing errors autonomously.</p>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Capability</th>
+                            <th>Standard Chat (ChatGPT, Claude.ai)</th>
+                            <th>Coding Agents (Claude Code, Codex, Copilot)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Access your files</td><td class="cmp-con">Only what you paste or upload</td><td class="cmp-pro">Full project access — reads your scripts, data files, configs</td></tr>
+                        <tr><td>Edit scripts</td><td class="cmp-con">Suggests code you copy-paste</td><td class="cmp-pro">Directly creates and modifies your .py, .m, .sh files</td></tr>
+                        <tr><td>Run code</td><td class="cmp-con">No local execution</td><td class="cmp-pro">Runs your scripts, installs packages, executes shell commands</td></tr>
+                        <tr><td>Fix errors</td><td class="cmp-con">You copy error messages back manually</td><td class="cmp-pro">Sees errors, fixes them, re-runs automatically</td></tr>
+                        <tr><td>Multi-file changes</td><td class="cmp-con">One snippet at a time</td><td class="cmp-pro">Updates analysis pipeline + plotting + config together</td></tr>
+                        <tr><td>Context</td><td class="cmp-con">Limited to conversation</td><td class="cmp-pro">Entire project — reads your data formats, existing code, docs</td></tr>
+                        <tr><td>Change tracking</td><td class="cmp-con">None</td><td class="cmp-pro">Automatically saves versions of your files so you can undo any change</td></tr>
+                        <tr><td>Testing</td><td class="cmp-neutral">Suggests test code</td><td class="cmp-pro">Writes tests, runs them, fixes failures</td></tr>
+                        <tr><td>Memory</td><td class="cmp-con">Conversation only</td><td class="cmp-pro">Remembers project conventions across sessions</td></tr>
+                        <tr><td>Safety</td><td class="cmp-pro">Can't break anything — read-only</td><td class="cmp-neutral">Permission modes let you approve or restrict actions</td></tr>
+                    </tbody>
+                </table>
+                <p style="margin-top: var(--space-md);"><strong>In short:</strong> a standard chat is a knowledgeable colleague you ask questions; an agent is a capable assistant that works directly on your scripts and data pipelines.</p>
+            </section>
+
+            <!-- CLI AGENTS -->
+            <section id="cli-agents" class="agents-section">
+                <h2>CLI Agents</h2>
+                <p>Terminal-native agents that run in your shell. Point them at a folder of analysis scripts, a measurement automation project, or a data pipeline — they'll read everything, make edits, and run your code directly.</p>
+            </section>
+
+            <!-- Claude Code CLI -->
+            <section id="claude-code-cli" class="agents-section">
+                <h2>Claude Code (CLI)</h2>
+                <p>Anthropic's agentic terminal tool. Lives in your command line, understands your full project, and can edit scripts, run analysis pipelines, install packages, and automatically track changes to your files. Powered by Claude Opus and Sonnet models.</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li>Reads and understands your entire project — scripts, configs, data formats</li>
+                    <li>Edits multiple files at once (e.g. update analysis + plotting + config together)</li>
+                    <li>Runs commands directly — <code>pip install</code>, <code>python analysis.py</code>, <code>make</code></li>
+                    <li>Automatic version tracking — saves snapshots of your work so you can always go back to a previous version</li>
+                    <li>Memory system — remembers your project conventions across sessions</li>
+                    <li>Can connect to external tools and databases (via MCP protocol)</li>
+                    <li>Permission modes — control what the agent can do (ask first, auto-edit, fully autonomous)</li>
+                </ul>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Strengths</h4>
+                        <ul>
+                            <li>Strong reasoning on complex, multi-step tasks</li>
+                            <li>Excellent at understanding large collections of scripts</li>
+                            <li>Persistent memory across sessions</li>
+                            <li>Fine-grained permission and safety controls</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Limitations</h4>
+                        <ul>
+                            <li>Requires API key or Max subscription</li>
+                            <li>Usage costs scale with conversation length</li>
+                            <li>Terminal-only (though editor extensions exist)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p style="margin-top: var(--space-md);">
+                    <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener">Claude Code Documentation</a>
+                </p>
+            </section>
+
+            <!-- CLOUD AGENTS -->
+            <section id="cloud-agents" class="agents-section">
+                <h2>Cloud Agents</h2>
+                <p>Cloud-based agents that run on remote servers. You give them a task and point them at your project — they copy it, work on it independently in an isolated environment, and present the finished changes for your review. Great for delegating tasks you don't want to babysit.</p>
+            </section>
+
+            <!-- OpenAI Codex -->
+            <section id="codex-cloud" class="agents-section">
+                <h2>OpenAI Codex</h2>
+                <p>Codex is OpenAI's cloud-based coding agent, available at <a href="https://chatgpt.com/codex" target="_blank" rel="noopener">chatgpt.com/codex</a>. You describe a task, it creates a private copy of your project in the cloud, works on it (typically 1–30 minutes), and shows you exactly what it changed for your approval. Powered by GPT-5.2-Codex.</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li><strong>Fully cloud-based</strong> — no local setup, runs in an isolated environment</li>
+                    <li>Connects to your GitHub projects — reads your code, makes edits, and delivers changes for review</li>
+                    <li>Runs multiple tasks in parallel — delegate several jobs at once</li>
+                    <li>Executes your scripts and checks for errors in the cloud</li>
+                    <li>Real-time progress monitoring — watch what it's doing as it works</li>
+                    <li>Internet disabled during execution for security</li>
+                    <li><strong>Skills</strong> — configurable for code understanding, prototyping, documentation</li>
+                    <li><strong>Automations</strong> — can pick up routine work automatically</li>
+                </ul>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Strengths</h4>
+                        <ul>
+                            <li>No local setup — works entirely in the browser</li>
+                            <li>Parallel task execution — run many jobs simultaneously</li>
+                            <li>Secure — can't affect your local machine</li>
+                            <li>Included with ChatGPT Plus, Pro, and Enterprise plans</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Limitations</h4>
+                        <ul>
+                            <li>Requires your project to be on GitHub — not for local-only files</li>
+                            <li>No internet access during execution (libraries must be pre-installed)</li>
+                            <li>Not interactive — you assign work and come back to review later</li>
+                            <li>Cannot access local lab instruments or data files directly</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p style="margin-top: var(--space-md);">
+                    <a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex</a> ·
+                    <a href="https://developers.openai.com/codex" target="_blank" rel="noopener">Developer Documentation</a>
+                </p>
+            </section>
+
+            <!-- IDE EXTENSIONS -->
+            <section id="ide-extensions" class="agents-section">
+                <h2>IDE Extensions</h2>
+                <p>These tools integrate directly into your code editor (VS Code, PyCharm, etc.), providing inline completions, chat panels, and agentic capabilities. Great if you already write scripts in an IDE and want AI help right where you work.</p>
+            </section>
+
+            <!-- Claude Code for VS Code -->
+            <section id="claude-code-vscode" class="agents-section">
+                <h2>Claude Code for VS Code</h2>
+                <p>The Claude Code VS Code extension embeds the full Claude Code agent directly into your editor. You get a chat panel that can read your project, edit files, run commands, and track changes — all within VS Code.</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li>Full agent capabilities inside VS Code (same engine as the terminal version)</li>
+                    <li>Shows you exactly what it wants to change before applying edits</li>
+                    <li>Can run commands from the chat panel (e.g. run your script, install a package)</li>
+                    <li>Automatically reads relevant files from your project</li>
+                    <li>Remembers project conventions across sessions</li>
+                    <li>Also available for JetBrains IDEs (PyCharm, etc.)</li>
+                </ul>
+
+                <p>
+                    <a href="https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code" target="_blank" rel="noopener">VS Code Marketplace</a> ·
+                    <a href="https://docs.anthropic.com/en/docs/claude-code/ide-integrations" target="_blank" rel="noopener">IDE Integration Docs</a>
+                </p>
+            </section>
+
+            <!-- Codex for VS Code -->
+            <section id="codex-vscode" class="agents-section">
+                <h2>Codex for VS Code</h2>
+                <p>OpenAI's Codex VS Code extension brings the Codex agent into your editor. You can chat, get inline edits, or delegate tasks to Codex Cloud — all from a sidebar panel. Available on macOS and Linux (Windows experimental).</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li>Three modes: <strong>Chat</strong> (conversation), <strong>Agent</strong> (edits with your approval), <strong>Agent Full Access</strong> (fully autonomous)</li>
+                    <li>Shows proposed changes side-by-side before you accept them</li>
+                    <li>Send tasks to Codex Cloud directly from the editor</li>
+                    <li>Reads your open files and project structure automatically</li>
+                    <li>Also works in Cursor and Windsurf editors</li>
+                </ul>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Strengths</h4>
+                        <ul>
+                            <li>Seamless bridge between local editing and cloud agent</li>
+                            <li>Included with ChatGPT Plus/Pro subscription</li>
+                            <li>Three permission tiers for different comfort levels</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Limitations</h4>
+                        <ul>
+                            <li>Windows support is experimental</li>
+                            <li>Newer than Copilot — smaller ecosystem</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>
+                    <a href="https://marketplace.visualstudio.com/items?itemName=openai.chatgpt" target="_blank" rel="noopener">VS Code Marketplace</a> ·
+                    <a href="https://developers.openai.com/codex/ide/" target="_blank" rel="noopener">IDE Extension Docs</a>
+                </p>
+            </section>
+
+            <!-- GitHub Copilot -->
+            <section id="github-copilot" class="agents-section">
+                <h2>GitHub Copilot</h2>
+                <p>GitHub Copilot is the most widely adopted AI coding assistant. Originally focused on suggesting code as you type, it has evolved into a full agent that can autonomously edit files, run commands, and fix errors across your project.</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li>Suggests code as you type — autocomplete on steroids</li>
+                    <li>Chat panel for asking questions about your code within the editor</li>
+                    <li><strong>Agent mode</strong> — autonomously edits files, runs commands, fixes errors</li>
+                    <li>Available in VS Code, PyCharm/JetBrains, Neovim, and more</li>
+                    <li>Multiple AI models behind the scenes (GPT-4o, Claude Sonnet, Gemini)</li>
+                </ul>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Strengths</h4>
+                        <ul>
+                            <li>Best-in-class autocomplete suggestions</li>
+                            <li>Deeply integrated into the GitHub ecosystem</li>
+                            <li>Free tier available</li>
+                            <li>Widest editor support</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Limitations</h4>
+                        <ul>
+                            <li>Agent mode is newer, less mature than dedicated agents</li>
+                            <li>Autocomplete suggestions can be distracting when you're thinking</li>
+                            <li>Advanced features require paid plans</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>
+                    <a href="https://github.com/features/copilot" target="_blank" rel="noopener">GitHub Copilot</a> ·
+                    <a href="https://docs.github.com/en/copilot" target="_blank" rel="noopener">Documentation</a>
+                </p>
+            </section>
+
+            <!-- Cursor -->
+            <section id="cursor" class="agents-section">
+                <h2>Cursor</h2>
+                <p>Cursor is a standalone AI-powered code editor (based on VS Code) that puts AI at the centre of everything. Rather than adding AI as a plugin, it's built into every part of the editor — autocomplete, inline editing, chat, and a full agent mode.</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li>AI-native editor — not a plugin, AI is woven into every interaction</li>
+                    <li><strong>Smart autocomplete</strong> — multi-line, context-aware suggestions as you type</li>
+                    <li><strong>Inline editing</strong> — select code, describe what to change in plain English, and it's applied</li>
+                    <li><strong>Agent mode</strong> — autonomously edits across files, runs commands, installs packages</li>
+                    <li>Understands your full project — ask questions about any file</li>
+                    <li>Multiple AI models (Claude, GPT-4, and others)</li>
+                    <li>Compatible with VS Code extensions — bring your existing setup</li>
+                </ul>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Strengths</h4>
+                        <ul>
+                            <li>Deepest AI integration of any editor</li>
+                            <li>Excellent "select and describe" editing workflow</li>
+                            <li>Agent mode for autonomous multi-step tasks</li>
+                            <li>Looks and feels like VS Code — easy to switch</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Limitations</h4>
+                        <ul>
+                            <li>Requires switching from your current editor</li>
+                            <li>Subscription required for full features</li>
+                            <li>Proprietary software</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>
+                    <a href="https://www.cursor.com" target="_blank" rel="noopener">cursor.com</a> ·
+                    <a href="https://docs.cursor.com" target="_blank" rel="noopener">Documentation</a>
+                </p>
+            </section>
+
+            <!-- DESKTOP APPS -->
+            <section id="desktop-apps" class="agents-section">
+                <h2>Desktop Apps</h2>
+                <p>Standalone GUI applications for conversational AI. Great for quick scripting help, analysing data files, understanding error messages, or asking "how do I fit a Gaussian to this spectrum?" — without setting up a terminal or IDE.</p>
+            </section>
+
+            <!-- Claude Desktop -->
+            <section id="claude-desktop" class="agents-section">
+                <h2>Claude Desktop</h2>
+                <p>Anthropic's desktop application for macOS and Windows. A native app for chatting with Claude — great for quick questions, analysing files and images, and getting help with scripts without needing a terminal or editor.</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li>Native macOS and Windows app with a fast, clean interface</li>
+                    <li>Drag-and-drop file and image analysis (CSV files, plots, error screenshots)</li>
+                    <li>Built-in screenshot capture and analysis</li>
+                    <li>Can connect to local tools and databases (via MCP protocol)</li>
+                    <li>Projects with custom instructions and reference files</li>
+                    <li>Generates interactive code snippets, documents, and visualisations</li>
+                    <li>Global keyboard shortcut for quick access from any app</li>
+                </ul>
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Strengths</h4>
+                        <ul>
+                            <li>Best reasoning of any desktop AI app (Claude Opus/Sonnet)</li>
+                            <li>Extensible — connect to lab databases and tools via plugins</li>
+                            <li>Excellent for planning analysis approaches and reviewing scripts</li>
+                            <li>Analyse screenshots, diagrams, spectra images, and plots</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Limitations</h4>
+                        <ul>
+                            <li>Cannot directly edit your files (use Claude Code for that)</li>
+                            <li>No built-in terminal or command execution</li>
+                            <li>Requires Pro/Max subscription for full model access</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>
+                    <a href="https://claude.ai/download" target="_blank" rel="noopener">Download Claude Desktop</a> ·
+                    <a href="https://docs.anthropic.com/en/docs/claude-desktop" target="_blank" rel="noopener">Documentation</a>
+                </p>
+            </section>
+
+            <!-- When to Use What -->
+            <section id="use-cases" class="agents-section">
+                <h2>When to Use What</h2>
+
+                <h3>Use a CLI agent (Claude Code) when:</h3>
+                <ul>
+                    <li>Building or refactoring a multi-file analysis pipeline (data loading + processing + fitting + plotting)</li>
+                    <li>Automating measurement routines — e.g. GPIB/VISA scripts, scan sequences</li>
+                    <li>Converting MATLAB scripts to Python, or porting between frameworks</li>
+                    <li>You want the agent to run your script, see the error, fix it, and re-run automatically</li>
+                    <li>Setting up a new project with proper structure, environment, and dependencies</li>
+                </ul>
+
+                <h3>Use a cloud agent (OpenAI Codex) when:</h3>
+                <ul>
+                    <li>You want to delegate a task and come back to review the results later</li>
+                    <li>Running multiple independent tasks in parallel (e.g. "add documentation to all scripts" + "write tests for the fitting library")</li>
+                    <li>Your scripts are already on GitHub and you prefer a browser-based workflow</li>
+                    <li>You don't want to install anything locally</li>
+                </ul>
+
+                <h3>Use an IDE extension (Copilot, Cursor, Claude Code / Codex for VS Code) when:</h3>
+                <ul>
+                    <li>Writing or editing scripts in VS Code or PyCharm and want inline help</li>
+                    <li>You want autocomplete that understands your data structures and function signatures</li>
+                    <li>Quick edits — "add error bars to this plot", "handle the case where the file is empty"</li>
+                    <li>You prefer a visual editor that shows what changed before and after</li>
+                </ul>
+
+                <h3>Use a desktop app (Claude Desktop) when:</h3>
+                <ul>
+                    <li>"How do I fit a Voigt profile to this XPS spectrum in Python?"</li>
+                    <li>Drag-and-drop a CSV or screenshot of a plot for analysis help</li>
+                    <li>Understanding an error message or unfamiliar library</li>
+                    <li>Planning an analysis approach before writing code</li>
+                    <li>Asking about physics, statistics, or material science concepts</li>
+                </ul>
+
+                <h3>Use a standard chat (claude.ai, chatgpt.com) when:</h3>
+                <ul>
+                    <li>Quick questions — "what's the syntax for numpy.polyfit?"</li>
+                    <li>Learning a new library (pandas, lmfit, matplotlib, scipy)</li>
+                    <li>Generating a one-off snippet you'll paste into a notebook</li>
+                </ul>
+            </section>
+
+            <!-- Workflow -->
+            <section id="workflow" class="agents-section">
+                <h2>Typical Agent Workflow</h2>
+                <p>Example: "Write a Python script that reads all .dat files in the measurements/ folder, fits each spectrum to a Lorentzian, and saves the fit parameters to a CSV."</p>
+                <ol>
+                    <li><strong>Describe the task</strong> — Tell the agent what you need in plain language</li>
+                    <li><strong>Agent reads your project</strong> — Looks at your existing scripts, data file formats, directory structure</li>
+                    <li><strong>Agent writes code</strong> — Creates or modifies scripts, installs packages (<code>pip install lmfit</code>)</li>
+                    <li><strong>Agent runs and iterates</strong> — Executes the script, reads errors, fixes issues, re-runs</li>
+                    <li><strong>You review</strong> — Check the output, ask for adjustments ("use a Voigt profile instead")</li>
+                    <li><strong>Done</strong> — Agent saves your files, optionally creates a version snapshot you can revert to</li>
+                </ol>
+            </section>
+
+            <!-- Getting Started -->
+            <section id="getting-started" class="agents-section">
+                <h2>Getting Started</h2>
+
+                <div class="tool-cards">
+                    <div class="tool-card">
+                        <h4>Claude Code (CLI)</h4>
+                        <pre><code>npm install -g @anthropic-ai/claude-code
+cd your-project
+claude</code></pre>
+                        <p>Node.js 18+ · <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener">Docs</a></p>
+                    </div>
+                    <div class="tool-card">
+                        <h4>Claude Code (VS Code)</h4>
+                        <p>Install from the <a href="https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code" target="_blank" rel="noopener">VS Code Marketplace</a> or search "Claude Code" in the extensions panel.</p>
+                    </div>
+                    <div class="tool-card">
+                        <h4>OpenAI Codex (Cloud)</h4>
+                        <p>Go to <a href="https://chatgpt.com/codex" target="_blank" rel="noopener">chatgpt.com/codex</a>, connect your GitHub project, and start assigning tasks. Included with ChatGPT Plus/Pro.</p>
+                    </div>
+                    <div class="tool-card">
+                        <h4>Codex (VS Code)</h4>
+                        <p>Install from the <a href="https://marketplace.visualstudio.com/items?itemName=openai.chatgpt" target="_blank" rel="noopener">VS Code Marketplace</a> or search "Codex" in the extensions panel.</p>
+                    </div>
+                    <div class="tool-card">
+                        <h4>GitHub Copilot</h4>
+                        <p>Install from the <a href="https://marketplace.visualstudio.com/items?itemName=GitHub.copilot" target="_blank" rel="noopener">VS Code Marketplace</a>. Free tier available. <a href="https://github.com/features/copilot" target="_blank" rel="noopener">Learn more</a></p>
+                    </div>
+                    <div class="tool-card">
+                        <h4>Cursor</h4>
+                        <p>Download the editor from <a href="https://www.cursor.com" target="_blank" rel="noopener">cursor.com</a>. Imports your VS Code settings and extensions automatically.</p>
+                    </div>
+                    <div class="tool-card">
+                        <h4>Claude Desktop</h4>
+                        <p>Download for macOS or Windows from <a href="https://claude.ai/download" target="_blank" rel="noopener">claude.ai/download</a>.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Further Reading -->
+            <section id="further-reading" class="agents-section">
+                <h2>Further Reading</h2>
+                <ul>
+                    <li><a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener">Claude Code Documentation</a></li>
+                    <li><a href="https://docs.anthropic.com/en/docs/claude-code/ide-integrations" target="_blank" rel="noopener">Claude Code IDE Integrations</a></li>
+                    <li><a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex</a></li>
+                    <li><a href="https://developers.openai.com/codex" target="_blank" rel="noopener">Codex Developer Documentation</a></li>
+                    <li><a href="https://docs.github.com/en/copilot" target="_blank" rel="noopener">GitHub Copilot Documentation</a></li>
+                    <li><a href="https://docs.cursor.com" target="_blank" rel="noopener">Cursor Documentation</a></li>
+                    <li><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol (MCP)</a></li>
+                </ul>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                btn.textContent = 'Dark mode';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = 'Light mode';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Restore saved theme
+        (function() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('themeBtn').textContent = 'Light mode';
+            }
+        })();
+
+        // Toggle chapter navigation (mobile + desktop)
+        (function() {
+            const sidebar = document.getElementById('chaptersSidebar');
+            const toggle = document.getElementById('sidebarToggle');
+            const storageKey = 'agents-sidebar-collapsed';
+            if (!sidebar || !toggle) return;
+
+            function isMobile() {
+                return window.matchMedia('(max-width: 860px)').matches;
+            }
+
+            function setSidebarCollapsed(collapsed, persist) {
+                sidebar.classList.toggle('is-collapsed', collapsed);
+                toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                toggle.textContent = collapsed ? 'Show chapters' : 'Hide chapters';
+                if (persist) {
+                    localStorage.setItem(storageKey, collapsed ? '1' : '0');
+                }
+            }
+
+            const stored = localStorage.getItem(storageKey);
+            if (stored === '1' || (stored === null && isMobile())) {
+                setSidebarCollapsed(true, false);
+            } else {
+                setSidebarCollapsed(false, false);
+            }
+
+            toggle.addEventListener('click', function() {
+                const collapsed = !sidebar.classList.contains('is-collapsed');
+                setSidebarCollapsed(collapsed, true);
+            });
+
+            window.addEventListener('resize', function() {
+                if (localStorage.getItem(storageKey) === null) {
+                    setSidebarCollapsed(isMobile(), false);
+                }
+            });
+
+            const chapterLinks = document.querySelectorAll('.sidebar-links a[href^="#"]');
+            chapterLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (isMobile()) {
+                        setSidebarCollapsed(true, false);
+                    }
+                });
+            });
+        })();
+
+        // Highlight active sidebar link on scroll
+        (function() {
+            const sections = document.querySelectorAll('.agents-section[id]');
+            const links = document.querySelectorAll('.sidebar-links a[href^="#"]');
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        links.forEach(function(link) { link.classList.remove('active'); });
+                        const active = document.querySelector('.sidebar-links a[href="#' + entry.target.id + '"]');
+                        if (active) active.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-20% 0px -70% 0px' });
+            sections.forEach(function(s) { observer.observe(s); });
+        })();
+    </script>
+</body>
+</html>

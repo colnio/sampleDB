@@ -486,6 +486,18 @@ func ensureDefaultAdmin(ctx context.Context, pool dbiface.Pool) (bool, error) {
 	return true, nil
 }
 
+func handleAIAgents(w http.ResponseWriter, r *http.Request) {
+	tmplPath := resolveTemplatePath("templates/ai_agents.html")
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.Execute(w, nil); err != nil {
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	initLocation()
 	cfg := loadConfig()
@@ -560,6 +572,9 @@ func main() {
 	// Account management
 	mux.HandleFunc("/change-password", withAuth(handleChangePassword))
 
+	// Public pages (no auth required)
+	mux.HandleFunc("/agents", handleAIAgents)
+
 	// Ensure required directories exist
 	if err = os.MkdirAll(cfg.UploadsDir, 0755); err != nil {
 		log.Fatalf("Error creating uploads directory: %v\n", err)
@@ -611,6 +626,8 @@ func main() {
 func parseTemplates(files ...string) (*template.Template, error) {
 	funcMap := template.FuncMap{
 		"markdown": renderMarkdown,
+		"split": strings.Split,
+		"trim": strings.TrimSpace,
 	}
 
 	// Always include base and header templates
