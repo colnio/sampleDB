@@ -6,6 +6,10 @@
     <title>AI Coding Assistants for the Lab — Scripting, Data Analysis &amp; Automation</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
         body {
             font-family: var(--font-family-base);
             background: var(--surface-subtle);
@@ -14,6 +18,7 @@
             max-width: none;
             padding: 0;
             margin: 0;
+            overflow-x: hidden;
         }
 
         /* Layout: sidebar + main */
@@ -115,6 +120,7 @@
 
         .main-content {
             flex: 1;
+            width: 100%;
             max-width: 860px;
             margin: 0 auto;
             padding: var(--space-xl) var(--space-xl);
@@ -181,7 +187,28 @@
                 width: auto;
                 padding: 4px var(--space-sm);
             }
-            .main-content { padding: var(--space-lg) var(--space-md); }
+            .main-content {
+                width: 100%;
+                max-width: 100%;
+                padding: var(--space-lg) var(--space-md);
+            }
+            .agents-header h1 {
+                font-size: clamp(1.85rem, 7.5vw, 2.3rem);
+            }
+            .agents-header p {
+                font-size: var(--font-size-base);
+            }
+            .agents-section {
+                padding: var(--space-lg);
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .agents-section h2 {
+                font-size: var(--font-size-xl);
+            }
+            .agents-section h3 {
+                font-size: var(--font-size-lg);
+            }
         }
 
         /* Header */
