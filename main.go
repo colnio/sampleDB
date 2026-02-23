@@ -498,6 +498,23 @@ func handleAIAgents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleAIAgentExamples(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/agents/examples" {
+		http.Redirect(w, r, "/agents/examples", http.StatusTemporaryRedirect)
+		return
+	}
+
+	tmplPath := resolveTemplatePath("templates/ai_agent_examples.html")
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.Execute(w, nil); err != nil {
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	initLocation()
 	cfg := loadConfig()
@@ -574,6 +591,8 @@ func main() {
 
 	// Public pages (no auth required)
 	mux.HandleFunc("/agents", handleAIAgents)
+	mux.HandleFunc("/agents/examples", handleAIAgentExamples)
+	mux.HandleFunc("/agents/examples/", handleAIAgentExamples)
 
 	// Ensure required directories exist
 	if err = os.MkdirAll(cfg.UploadsDir, 0755); err != nil {

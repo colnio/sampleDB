@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Examples for Physics Lab Work</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            font-family: var(--font-family-base);
+            background: var(--surface-subtle);
+            color: var(--text-strong);
+            margin: 0;
+            padding: var(--space-xl) var(--space-md);
+            line-height: var(--line-height-body);
+            max-width: none;
+            display: flex;
+            justify-content: center;
+        }
+        .page {
+            width: min(920px, 100%);
+            margin: 0;
+            padding: 0;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            margin-bottom: var(--space-lg);
+        }
+        .back-link {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .theme-toggle {
+            background: var(--surface-muted);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            padding: var(--space-xs) var(--space-sm);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+        }
+        .theme-toggle:hover {
+            background: var(--surface-default);
+            border-color: var(--border-strong);
+        }
+        .hero,
+        .category {
+            background: var(--surface-default);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            box-shadow: var(--card-shadow);
+        }
+        .hero {
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+        .hero h1 {
+            margin: 0 0 var(--space-sm);
+            font-size: var(--font-size-3xl);
+            line-height: var(--line-height-heading);
+        }
+        .hero p {
+            margin: 0;
+            color: var(--text-muted);
+        }
+        .category {
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+        .category h2 {
+            margin-top: 0;
+            margin-bottom: var(--space-md);
+            font-size: var(--font-size-2xl);
+        }
+        .example h3 {
+            margin: 0 0 var(--space-sm);
+            font-size: var(--font-size-xl);
+        }
+        .example p {
+            margin-top: 0;
+            margin-bottom: var(--space-sm);
+            color: var(--text-muted);
+        }
+        .shot {
+            margin: var(--space-sm) 0;
+        }
+        .shot img {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            background: var(--surface-muted);
+        }
+        .source-list {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--text-muted);
+        }
+        .source-list a {
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+        .source-list a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <div class="topbar">
+            <a class="back-link" href="/agents">Back to AI Assistants Guide</a>
+            <button class="theme-toggle" id="themeBtn" type="button" onclick="toggleTheme()">Dark mode</button>
+        </div>
+
+        <section class="hero">
+            <h1>AI Agent Examples for Lab Work</h1>
+            <p>Three practical examples for physics-lab workflows: data processing, scripting and automation, and software development.</p>
+        </section>
+
+        <section class="category">
+            <h2>1) Data Processing</h2>
+            <article class="example">
+                <h3>Parse many measurement files, then summarize</h3>
+                <p>Use an agent to scan experiment folders, parse repeated file formats, and produce a reproducible summary before plotting and reporting.</p>
+                <div class="shot">
+                    <img src="/static/images/ai_agent_examples/codex_data_analysis.png" alt="Data processing task prompt and summarized agent output.">
+                </div>
+                <ul class="source-list">
+                    <li><a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex</a></li>
+                    <li><a href="https://openai.com/features/data-analysis/" target="_blank" rel="noopener">OpenAI data analysis workflows</a></li>
+                </ul>
+            </article>
+        </section>
+
+        <section class="category">
+            <h2>2) Scripting and Automation</h2>
+            <article class="example">
+                <h3>Agent for repeatable scripts</h3>
+                <p>Ask the agent to generate scripts, run checks, and iterate on failures automatically so recurring tasks can be reused safely.</p>
+                <div class="shot">
+                    <img src="/static/images/ai_agent_examples/codex_scripting.png" alt="Terminal interface showing an agent task for implementation and automation.">
+                </div>
+                <ul class="source-list">
+                    <li><a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex</a></li>
+                    <li><a href="https://developers.openai.com/codex" target="_blank" rel="noopener">Codex developer documentation</a></li>
+                </ul>
+            </article>
+        </section>
+
+        <section class="category">
+            <h2>3) Software Development</h2>
+            <article class="example">
+                <h3>Liitle to no code software development</h3>
+                <p>Use agent suggestions for implementation, inspect file-level diffs, and keep final approval before applying changes.</p>
+                <div class="shot">
+                    <img src="/static/images/ai_agent_examples/codex_software.png" alt="Code review interface showing multi-file edits and change summaries.">
+                </div>
+                <ul class="source-list">
+                    <li><a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex visual workflow</a></li>
+                    <li><a href="https://docs.github.com/en/copilot" target="_blank" rel="noopener">GitHub Copilot documentation (related IDE workflow)</a></li>
+                </ul>
+            </article>
+        </section>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                btn.textContent = 'Dark mode';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = 'Light mode';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        (function() {
+            const saved = localStorage.getItem('theme');
+            const btn = document.getElementById('themeBtn');
+            if (saved === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                btn.textContent = 'Light mode';
+            } else {
+                btn.textContent = 'Dark mode';
+            }
+        })();
+    </script>
+</body>
+</html>
