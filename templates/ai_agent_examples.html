@@ -82,6 +82,34 @@
             margin: 0 0 var(--space-sm);
             font-size: var(--font-size-xl);
         }
+        .example {
+            border-top: 1px solid var(--border-subtle);
+            padding-top: var(--space-sm);
+        }
+        .example summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--text-strong);
+        }
+        .example summary::-webkit-details-marker {
+            display: none;
+        }
+        .example summary::before {
+            content: '\25B8';
+            color: var(--text-muted);
+            transition: transform 120ms ease;
+        }
+        .example[open] summary::before {
+            transform: rotate(90deg);
+        }
+        .example-body {
+            margin-top: var(--space-sm);
+        }
         .example p {
             margin-top: 0;
             margin-bottom: var(--space-sm);
@@ -124,47 +152,38 @@
 
         <section class="category">
             <h2>1) Data Processing</h2>
-            <article class="example">
-                <h3>Parse many measurement files, then summarize</h3>
-                <p>Use an agent to scan experiment folders, parse repeated file formats, and produce a reproducible summary before plotting and reporting.</p>
-                <div class="shot">
-                    <img src="/static/images/ai_agent_examples/codex_data_analysis.png" alt="Data processing task prompt and summarized agent output.">
+            <details class="example">
+                <summary>Parse many measurement files, then summarize</summary>
+                <div class="example-body">
+                    <article class="markdown-body">
+                        {{.DataProcessingHTML}}
+                    </article>
                 </div>
-                <ul class="source-list">
-                    <li><a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex</a></li>
-                    <li><a href="https://openai.com/features/data-analysis/" target="_blank" rel="noopener">OpenAI data analysis workflows</a></li>
-                </ul>
-            </article>
+            </details>
         </section>
 
         <section class="category">
             <h2>2) Scripting and Automation</h2>
-            <article class="example">
-                <h3>Agent for repeatable scripts</h3>
-                <p>Ask the agent to generate scripts, run checks, and iterate on failures automatically so recurring tasks can be reused safely.</p>
-                <div class="shot">
-                    <img src="/static/images/ai_agent_examples/codex_scripting.png" alt="Terminal interface showing an agent task for implementation and automation.">
+            <details class="example">
+                <summary>Agent for automation</summary>
+                <div class="example-body">
+                    <article class="markdown-body">
+                        {{.ScriptingAutomationHTML}}
+                    </article>
                 </div>
-                <ul class="source-list">
-                    <li><a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex</a></li>
-                    <li><a href="https://developers.openai.com/codex" target="_blank" rel="noopener">Codex developer documentation</a></li>
-                </ul>
-            </article>
+            </details>
         </section>
 
         <section class="category">
             <h2>3) Software Development</h2>
-            <article class="example">
-                <h3>Liitle to no code software development</h3>
-                <p>Use agent suggestions for implementation, inspect file-level diffs, and keep final approval before applying changes.</p>
-                <div class="shot">
-                    <img src="/static/images/ai_agent_examples/codex_software.png" alt="Code review interface showing multi-file edits and change summaries.">
+            <details class="example">
+                <summary>Liitle to no code software development</summary>
+                <div class="example-body">
+                    <article class="markdown-body">
+                        {{.SoftwareDevelopmentHTML}}
+                    </article>
                 </div>
-                <ul class="source-list">
-                    <li><a href="https://openai.com/codex/" target="_blank" rel="noopener">OpenAI Codex visual workflow</a></li>
-                    <li><a href="https://docs.github.com/en/copilot" target="_blank" rel="noopener">GitHub Copilot documentation (related IDE workflow)</a></li>
-                </ul>
-            </article>
+            </details>
         </section>
     </main>
 

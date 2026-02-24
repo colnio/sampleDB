@@ -89,6 +89,12 @@ type ChangePasswordPageData struct {
 	Success string
 }
 
+type AIAgentExamplesPageData struct {
+	DataProcessingHTML      template.HTML
+	ScriptingAutomationHTML template.HTML
+	SoftwareDevelopmentHTML template.HTML
+}
+
 // Initialize a global database connection pool
 var dbPool dbiface.Pool
 
@@ -504,15 +510,83 @@ func handleAIAgentExamples(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	dataProcessingPath := resolveAppPath("static/examples/data_processing.md")
+	dataProcessingMD, err := os.ReadFile(dataProcessingPath)
+	if err != nil {
+		http.Error(w, "Error loading example content", http.StatusInternalServerError)
+		return
+	}
+	scriptingAutomationPath := resolveAppPath("static/examples/scrpiting_automation.md")
+	scriptingAutomationMD, err := os.ReadFile(scriptingAutomationPath)
+	if err != nil {
+		http.Error(w, "Error loading example content", http.StatusInternalServerError)
+		return
+	}
+	softwareDevelopmentPath := resolveAppPath("static/examples/software_development.md")
+	softwareDevelopmentMD, err := os.ReadFile(softwareDevelopmentPath)
+	if err != nil {
+		http.Error(w, "Error loading example content", http.StatusInternalServerError)
+		return
+	}
+
 	tmplPath := resolveTemplatePath("templates/ai_agent_examples.html")
 	tmpl, err := template.ParseFiles(tmplPath)
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
-	if err := tmpl.Execute(w, nil); err != nil {
+	pageData := AIAgentExamplesPageData{
+		DataProcessingHTML:      renderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
+		ScriptingAutomationHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(scriptingAutomationMD), "/static/examples")),
+		SoftwareDevelopmentHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(softwareDevelopmentMD), "/static/examples")),
+	}
+
+	if err := tmpl.Execute(w, pageData); err != nil {
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
+}
+
+var markdownImagePattern = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
+
+func rewriteRelativeMarkdownImages(md, baseURL string) string {
+	base := strings.TrimRight(baseURL, "/")
+	return markdownImagePattern.ReplaceAllStringFunc(md, func(match string) string {
+		parts := markdownImagePattern.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+
+		alt := parts[1]
+		rawTarget := strings.TrimSpace(parts[2])
+		if rawTarget == "" {
+			return match
+		}
+
+		pathPart := rawTarget
+		suffix := ""
+		if split := strings.IndexAny(rawTarget, " \t"); split >= 0 {
+			pathPart = rawTarget[:split]
+			suffix = rawTarget[split:]
+		}
+
+		trimmedPath := strings.Trim(pathPart, "<>")
+		if strings.HasPrefix(trimmedPath, "http://") ||
+			strings.HasPrefix(trimmedPath, "https://") ||
+			strings.HasPrefix(trimmedPath, "/") ||
+			strings.HasPrefix(trimmedPath, "#") ||
+			strings.HasPrefix(trimmedPath, "data:") {
+			return match
+		}
+
+		trimmedPath = strings.TrimPrefix(trimmedPath, "./")
+		trimmedPath = strings.TrimPrefix(trimmedPath, ".\\")
+		qualified := fmt.Sprintf("%s/%s", base, trimmedPath)
+		if strings.HasPrefix(pathPart, "<") && strings.HasSuffix(pathPart, ">") {
+			qualified = "<" + qualified + ">"
+		}
+
+		return fmt.Sprintf("![%s](%s%s)", alt, qualified, suffix)
+	})
 }
 
 func main() {
@@ -645,8 +719,8 @@ func main() {
 func parseTemplates(files ...string) (*template.Template, error) {
 	funcMap := template.FuncMap{
 		"markdown": renderMarkdown,
-		"split": strings.Split,
-		"trim": strings.TrimSpace,
+		"split":    strings.Split,
+		"trim":     strings.TrimSpace,
 	}
 
 	// Always include base and header templates

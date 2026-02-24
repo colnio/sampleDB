@@ -86,6 +86,31 @@
             background: var(--surface-muted);
             border-left-color: var(--color-primary);
         }
+        .examples-link {
+            display: block;
+            margin: 0 var(--space-md) var(--space-md);
+            padding: 8px var(--space-sm);
+            border: 1px solid var(--color-primary);
+            border-radius: var(--radius-sm);
+            background: var(--surface-muted);
+            background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+            color: var(--color-primary);
+            text-decoration: none;
+            font-size: var(--font-size-sm);
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.2;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .examples-link:hover {
+            background: var(--surface-default);
+            background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+            border-color: var(--color-primary-hover);
+            color: var(--color-primary-hover);
+        }
+        .examples-link-short {
+            display: none;
+        }
         .sidebar .theme-toggle-sidebar {
             display: block;
             margin: var(--space-lg) var(--space-lg) 0;
@@ -116,6 +141,17 @@
         .sidebar.is-collapsed .sidebar-toggle {
             width: 100%;
             padding: 6px 0;
+        }
+        .sidebar.is-collapsed .examples-link {
+            margin: 0 var(--space-sm) var(--space-sm);
+            padding: 6px 4px;
+            font-size: var(--font-size-xs);
+        }
+        .sidebar.is-collapsed .examples-link-label {
+            display: none;
+        }
+        .sidebar.is-collapsed .examples-link-short {
+            display: inline;
         }
 
         .main-content {
@@ -163,6 +199,10 @@
                 border-bottom: 2px solid transparent;
             }
             .sidebar-links a:hover, .sidebar-links a.active { border-left: none; border-bottom-color: var(--color-primary); }
+            .examples-link {
+                margin: var(--space-sm) var(--space-sm) 0;
+                width: calc(100% - var(--space-sm) * 2);
+            }
             .sidebar .theme-toggle-sidebar {
                 margin: var(--space-sm) var(--space-sm) 0;
                 width: calc(100% - var(--space-sm) * 2);
@@ -174,6 +214,19 @@
             }
             .sidebar.is-collapsed .sidebar-links,
             .sidebar.is-collapsed .theme-toggle-sidebar {
+                display: none;
+            }
+            .sidebar.is-collapsed .examples-link {
+                display: block;
+                margin: var(--space-sm) var(--space-md) 0;
+                width: calc(100% - var(--space-md) * 2);
+                font-size: var(--font-size-sm);
+                padding: 6px var(--space-sm);
+            }
+            .sidebar.is-collapsed .examples-link-label {
+                display: inline;
+            }
+            .sidebar.is-collapsed .examples-link-short {
                 display: none;
             }
             .sidebar.is-collapsed .sidebar-title {
@@ -364,6 +417,10 @@
                 <div class="sidebar-title">Chapters</div>
                 <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="true" aria-controls="sidebarLinks">Hide chapters</button>
             </div>
+            <a class="examples-link" href="/agents/examples">
+                <span class="examples-link-label">Examples Page</span>
+                <span class="examples-link-short" aria-hidden="true">Examples</span>
+            </a>
             <div class="sidebar-links" id="sidebarLinks">
                 <a href="#intro">What Are AI Agents?</a>
                 <a href="#agents-vs-chats">Agents vs Standard Chats</a>
@@ -372,7 +429,6 @@
                 <a href="#workflow">Typical Workflow</a>
                 <a href="#getting-started">Getting Started</a>
                 <a href="#further-reading">Further Reading</a>
-                <a href="/agents/examples">Examples Page</a>
             </div>
             <button class="theme-toggle-sidebar" onclick="toggleTheme()" id="themeBtn">Dark mode</button>
         </nav>
