@@ -1052,6 +1052,7 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if dbErr := addAttachment(sampleID, fp); dbErr != nil {
+			_ = os.Remove(resolveAppPath(fp))
 			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
 		}
@@ -1416,7 +1417,13 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := requireSampleOwner(r, sampleIDInt, session.UserID); err != nil {
-		writeSampleOwnerError(w, err)
+		if errors.Is(err, errSampleNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+		} else if errors.Is(err, errForbidden) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 

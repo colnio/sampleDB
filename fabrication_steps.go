@@ -147,6 +147,16 @@ func reorderFabricationSteps(sampleID int, orderedIDs []int) error {
 	if count != len(orderedIDs) {
 		return fmt.Errorf("reorder: got %d step IDs but sample has %d steps", len(orderedIDs), count)
 	}
+	// Verify every submitted ID actually belongs to this sample.
+	var matchCount int
+	if err := dbPool.QueryRow(context.Background(),
+		"SELECT COUNT(*) FROM fabrication_steps WHERE step_id = ANY($1) AND sample_id = $2",
+		orderedIDs, sampleID).Scan(&matchCount); err != nil {
+		return err
+	}
+	if matchCount != len(orderedIDs) {
+		return fmt.Errorf("reorder: one or more step IDs do not belong to sample %d", sampleID)
+	}
 
 	tx, err := dbPool.Begin(context.Background())
 	if err != nil {

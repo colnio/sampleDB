@@ -28,6 +28,10 @@ var schemaStatements = []string{
 	// Migration 004
 	addSampleShareTokenColumn,
 	addSampleShareVisibilityColumn,
+	// Migration 005
+	addAttachmentSourceIDColumn,
+	addAttachmentSourceTypeColumn,
+	backfillAttachmentSourceID,
 }
 
 var dataStatements = []string{}
@@ -167,6 +171,17 @@ ALTER TABLE samples
 const addSampleShareVisibilityColumn = `
 ALTER TABLE samples
     ADD COLUMN IF NOT EXISTS share_visibility VARCHAR(20) NOT NULL DEFAULT 'private';`
+
+const addAttachmentSourceIDColumn = `
+ALTER TABLE attachments
+    ADD COLUMN IF NOT EXISTS source_id INT;`
+
+const addAttachmentSourceTypeColumn = `
+ALTER TABLE attachments
+    ADD COLUMN IF NOT EXISTS source_type VARCHAR(20) NOT NULL DEFAULT 'sample';`
+
+const backfillAttachmentSourceID = `
+UPDATE attachments SET source_id = sample_id WHERE source_id IS NULL;`
 
 // Ensure ensures that all schema elements required by the application exist.
 func Ensure(ctx context.Context, pool dbiface.Pool) error {
