@@ -53,6 +53,8 @@ type Sample struct {
 	Description    string
 	Keywords       string
 	Owner          string
+	OwnerUserID    *int
+	OwnerUsername  *string
 	Sample_prep    string
 	SamplePrepHTML template.HTML
 	Attachments    []Attachment
@@ -82,6 +84,7 @@ type SampleDetailPageData struct {
 	Error       string
 	IsPartial   bool
 	EditingPrep bool
+	Users       []User
 }
 
 type ChangePasswordPageData struct {
@@ -835,6 +838,9 @@ func parseTemplates(files ...string) (*template.Template, error) {
 		"markdown": renderMarkdown,
 		"split":    strings.Split,
 		"trim":     strings.TrimSpace,
+		"ownerSelected": func(ownerUserID *int, userID int) bool {
+			return ownerUserID != nil && *ownerUserID == userID
+		},
 	}
 
 	// Always include base and header templates
@@ -1030,7 +1036,7 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	var whereClauses []string
 	var args []interface{}
 	for i, keyword := range keywords {
-		whereClauses = append(whereClauses, fmt.Sprintf("$%d = ANY(string_to_array(lower(sample_keywords), ','))", i+1))
+		whereClauses = append(whereClauses, fmt.Sprintf("$%d = ANY(string_to_array(lower(s.sample_keywords), ','))", i+1))
 		args = append(args, keyword)
 	}
 
@@ -1039,14 +1045,16 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	args = append(args, "%"+trimmedQuery+"%")
 
 	queryText := fmt.Sprintf(`
-        SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, created_at
-        FROM samples
-        WHERE sample_name ILIKE $%d`, nameParamIndex)
+        SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
+               COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, s.created_at
+          FROM samples s
+          LEFT JOIN users u ON s.owner_user_id = u.user_id
+         WHERE s.sample_name ILIKE $%d`, nameParamIndex)
 
 	// Match owner name as well
 	ownerParamIndex := len(args) + 1
 	args = append(args, "%"+trimmedQuery+"%")
-	queryText = fmt.Sprintf(`%s OR sample_owner ILIKE $%d`, queryText, ownerParamIndex)
+	queryText = fmt.Sprintf(`%s OR s.sample_owner ILIKE $%d`, queryText, ownerParamIndex)
 
 	if len(whereClauses) > 0 {
 		queryText = fmt.Sprintf(`%s OR %s`, queryText, strings.Join(whereClauses, " OR "))
@@ -1059,13 +1067,13 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	if dateFrom != "" {
 		dateFromParamIndex := len(args) + 1
 		args = append(args, dateFrom)
-		queryText = fmt.Sprintf(`%s AND created_at >= $%d`, queryText, dateFromParamIndex)
+		queryText = fmt.Sprintf(`%s AND s.created_at >= $%d`, queryText, dateFromParamIndex)
 	}
 	if dateTo != "" {
 		dateToParamIndex := len(args) + 1
 		// Add one day to dateTo to include the entire end date
 		args = append(args, dateTo+" 23:59:59")
-		queryText = fmt.Sprintf(`%s AND created_at <= $%d`, queryText, dateToParamIndex)
+		queryText = fmt.Sprintf(`%s AND s.created_at <= $%d`, queryText, dateToParamIndex)
 	}
 
 	// Execute the query
@@ -1079,7 +1087,7 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	var samples []Sample
 	for rows.Next() {
 		var sample Sample
-		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.CreatedAt)
+		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.OwnerUserID, &sample.OwnerUsername, &sample.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -1091,17 +1099,20 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 
 // getAllSamples retrieves all samples when there's no search query
 func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
-	queryText := `SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, ''), created_at FROM samples`
+	queryText := `SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
+		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at
+		  FROM samples s
+		  LEFT JOIN users u ON s.owner_user_id = u.user_id`
 	var args []interface{}
 	var whereClauses []string
 
 	// Add date filtering
 	if dateFrom != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("created_at >= $%d", len(args)+1))
+		whereClauses = append(whereClauses, fmt.Sprintf("s.created_at >= $%d", len(args)+1))
 		args = append(args, dateFrom)
 	}
 	if dateTo != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("created_at <= $%d", len(args)+1))
+		whereClauses = append(whereClauses, fmt.Sprintf("s.created_at <= $%d", len(args)+1))
 		args = append(args, dateTo+" 23:59:59")
 	}
 
@@ -1109,7 +1120,7 @@ func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 		queryText = queryText + " WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	queryText = queryText + " ORDER BY sample_name ASC"
+	queryText = queryText + " ORDER BY s.sample_name ASC"
 
 	rows, err := dbPool.Query(context.Background(), queryText, args...)
 	if err != nil {
@@ -1120,7 +1131,7 @@ func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 	var samples []Sample
 	for rows.Next() {
 		var sample Sample
-		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.Sample_prep, &sample.CreatedAt)
+		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.OwnerUserID, &sample.OwnerUsername, &sample.Sample_prep, &sample.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -1132,7 +1143,11 @@ func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 
 // getSamples retrieves all samples from the database
 func getSamples() ([]Sample, error) {
-	rows, err := dbPool.Query(context.Background(), "SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, created_at FROM samples")
+	rows, err := dbPool.Query(context.Background(), `
+		SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
+		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, s.created_at
+		  FROM samples s
+		  LEFT JOIN users u ON s.owner_user_id = u.user_id`)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		return nil, err
@@ -1141,9 +1156,8 @@ func getSamples() ([]Sample, error) {
 
 	var samples []Sample
 	for rows.Next() {
-		// fmt.Printf("parsing rows\n")
 		var s Sample
-		err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.Keywords, &s.Owner, &s.CreatedAt)
+		err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.Keywords, &s.Owner, &s.OwnerUserID, &s.OwnerUsername, &s.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -1185,9 +1199,15 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 func getSampleByID(sampleID string) (Sample, error) {
 	var sample Sample
 	err := dbPool.QueryRow(context.Background(),
-		`SELECT sample_id, sample_name, sample_description, sample_keywords, sample_owner, coalesce(sample_prep, ''), created_at 
-         FROM samples WHERE sample_id=$1`, sampleID).Scan(
-		&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.Sample_prep, &sample.CreatedAt)
+		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
+		        COALESCE(s.sample_owner, ''), s.owner_user_id, u.username,
+		        COALESCE(s.sample_prep, ''), s.created_at
+		   FROM samples s
+		   LEFT JOIN users u ON s.owner_user_id = u.user_id
+		  WHERE s.sample_id=$1`, sampleID).Scan(
+		&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner,
+		&sample.OwnerUserID, &sample.OwnerUsername,
+		&sample.Sample_prep, &sample.CreatedAt)
 	if err != nil {
 		return sample, err
 	}
@@ -1202,8 +1222,35 @@ func getSampleByID(sampleID string) (Sample, error) {
 	return sample, nil
 }
 
+// getApprovedUsers returns all approved, non-deleted users ordered by username.
+func getApprovedUsers() ([]User, error) {
+	rows, err := dbPool.Query(context.Background(),
+		`SELECT user_id, username FROM users
+		  WHERE is_approved = true AND COALESCE(deleted, false) = false
+		  ORDER BY username`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Username); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
 func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID string) (SampleDetailPageData, error) {
 	sample, err := getSampleByID(sampleID)
+	if err != nil {
+		return SampleDetailPageData{}, err
+	}
+
+	users, err := getApprovedUsers()
 	if err != nil {
 		return SampleDetailPageData{}, err
 	}
@@ -1211,6 +1258,7 @@ func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID st
 	data := SampleDetailPageData{
 		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID},
 		Sample:       sample,
+		Users:        users,
 	}
 
 	if err := dbPool.QueryRow(ctx,
@@ -1297,9 +1345,21 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	description := r.FormValue("description")
 	keywords := r.FormValue("keywords")
-	owner := r.FormValue("owner")
 	hasSamplePrep := r.Form.Has("sample_prep")
 	sample_prep := r.FormValue("sample_prep")
+
+	ownerUserIDStr := r.FormValue("owner_user_id")
+	var ownerUserID *int
+	var ownerName string
+	if ownerUserIDStr != "" {
+		id, parseErr := strconv.Atoi(ownerUserIDStr)
+		if parseErr == nil {
+			ownerUserID = &id
+			// Resolve username for legacy sample_owner text field
+			_ = dbPool.QueryRow(context.Background(),
+				"SELECT username FROM users WHERE user_id = $1", id).Scan(&ownerName)
+		}
+	}
 
 	var (
 		query string
@@ -1307,11 +1367,11 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if hasSamplePrep {
-		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, sample_prep=$6 WHERE sample_id=$5"
-		args = []interface{}{name, description, keywords, owner, sampleID, sample_prep}
+		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5, sample_prep=$7 WHERE sample_id=$6"
+		args = []interface{}{name, description, keywords, ownerName, ownerUserID, sampleID, sample_prep}
 	} else {
-		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4 WHERE sample_id=$5"
-		args = []interface{}{name, description, keywords, owner, sampleID}
+		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5 WHERE sample_id=$6"
+		args = []interface{}{name, description, keywords, ownerName, ownerUserID, sampleID}
 	}
 
 	_, err = dbPool.Exec(context.Background(), query, args...)
@@ -1366,10 +1426,18 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		users, err := getApprovedUsers()
+		if err != nil {
+			http.Error(w, "Error loading user list", http.StatusInternalServerError)
+			return
+		}
+
 		data := struct {
 			BasePageData
+			Users []User
 		}{
 			BasePageData: baseData,
+			Users:        users,
 		}
 
 		tmpl, err := parseTemplates("templates/new_sample.html")
@@ -1386,12 +1454,26 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 		name := r.FormValue("name")
 		description := r.FormValue("description")
 		keywords := r.FormValue("keywords")
-		owner := r.FormValue("owner")
 		prep := r.FormValue("sample_prep")
+
+		ownerUserIDStr := r.FormValue("owner_user_id")
+		var ownerUserID *int
+		var ownerName string
+		if ownerUserIDStr != "" {
+			id, err := strconv.Atoi(ownerUserIDStr)
+			if err == nil {
+				ownerUserID = &id
+				// Resolve username for legacy sample_owner text field
+				_ = dbPool.QueryRow(context.Background(),
+					"SELECT username FROM users WHERE user_id = $1", id).Scan(&ownerName)
+			}
+		}
+
 		// Insert the new sample into the database
 		_, err := dbPool.Exec(context.Background(),
-			"INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_prep, sample_owner) VALUES ($1, $2, $3, $4, $5)",
-			name, description, keywords, prep, owner)
+			`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_prep, sample_owner, owner_user_id)
+			 VALUES ($1, $2, $3, $4, $5, $6)`,
+			name, description, keywords, prep, ownerName, ownerUserID)
 		if err != nil {
 			fmt.Printf("%v", err)
 			http.Error(w, "Error adding sample", http.StatusInternalServerError)

@@ -97,13 +97,13 @@ Major upgrade across four areas:
 
 ### Task 4: Sample owner from user list
 
-- [ ] update `getSamples()` and `getSample()` DB queries to JOIN `users` on `owner_user_id` and include `owner_username`
-- [ ] update sample create handler to accept `owner_user_id` from form (integer); update `updateSample()` to save it
-- [ ] update `new_sample.html` template: replace owner text input with `<select>` populated with approved users; keep a fallback text display if `owner_user_id` is null (for legacy samples)
-- [ ] update `sample_detail.html` / edit form similarly
-- [ ] write tests for `getSample()` with `owner_user_id` set and unset
-- [ ] write tests for update handler with valid and invalid owner_user_id
-- [ ] run tests — must pass before task 5
+- [x] update `getSamples()` and `getSample()` DB queries to JOIN `users` on `owner_user_id` and include `owner_username`
+- [x] update sample create handler to accept `owner_user_id` from form (integer); update `updateSample()` to save it
+- [x] update `new_sample.html` template: replace owner text input with `<select>` populated with approved users; keep a fallback text display if `owner_user_id` is null (for legacy samples)
+- [x] update `sample_detail.html` / edit form similarly
+- [x] write tests for `getSample()` with `owner_user_id` set and unset
+- [x] write tests for update handler with valid and invalid owner_user_id
+- [x] run tests — must pass before task 5
 
 ### Task 5: Fabrication steps UI
 
