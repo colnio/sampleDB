@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"html/template"
 	"log"
@@ -76,6 +77,8 @@ func handleWiki(w http.ResponseWriter, r *http.Request) {
 		deleteArticleHandler(w, r)
 	case "upload":
 		uploadArticleAttachmentHandler(w, r)
+	case "preview":
+		wikiPreviewHandler(w, r)
 	case "view":
 		if len(pathParts) < 2 || pathParts[1] == "" {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
@@ -274,7 +277,8 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		data := struct {
 			BasePageData
-			Article *Article // nil for new article
+			Article       *Article
+			ArticleImages []ArticleAttachment
 		}{
 			BasePageData: BasePageData{Username: session.Username},
 		}
@@ -322,24 +326,27 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var article Article
-		var rawContent string
-		err := dbPool.QueryRow(context.Background(),
-			`SELECT article_id, title, content FROM articles WHERE title = $1`,
-			title).Scan(&article.ID, &article.Title, &rawContent)
+		article, err := loadArticleData(r.Context(), session, title)
 		if err != nil {
 			http.Error(w, "Article not found", http.StatusNotFound)
 			return
 		}
 
-		article.Content = ArticleContent{Raw: rawContent}
+		var articleImages []ArticleAttachment
+		for _, att := range article.Attachments {
+			if att.IsImage {
+				articleImages = append(articleImages, att)
+			}
+		}
 
 		data := struct {
 			BasePageData
-			Article *Article
+			Article       *Article
+			ArticleImages []ArticleAttachment
 		}{
-			BasePageData: BasePageData{Username: session.Username},
-			Article:      &article,
+			BasePageData:  BasePageData{Username: session.Username},
+			Article:       article,
+			ArticleImages: articleImages,
 		}
 
 		tmpl, err := parseTemplates("templates/wiki_edit.html")
@@ -552,4 +559,35 @@ func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request, attac
 
 	// Serve the file
 	http.ServeFile(w, r, resolveAppPath(filepath))
+}
+
+// wikiPreviewHandler renders Markdown to HTML for the live editor preview pane.
+// POST /wiki/preview — accepts {"content": "..."} JSON or form field "content".
+func wikiPreviewHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var content string
+	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		var body struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		content = body.Content
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form", http.StatusBadRequest)
+			return
+		}
+		content = r.FormValue("content")
+	}
+
+	rendered := renderMarkdown(content)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(string(rendered))) //nolint:errcheck
 }

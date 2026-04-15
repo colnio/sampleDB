@@ -151,12 +151,12 @@ Major upgrade across four areas:
 
 ### Task 9: Wiki UX/UI improvements
 
-- [ ] update wiki edit page (`templates/wiki_edit.html`) to add a live Markdown preview pane (split view: editor left, preview right; rendered via `POST /wiki/preview` or client-side JS)
-- [ ] add `POST /wiki/preview` handler — accepts `{"content": "..."}`, returns rendered HTML; used by editor for live preview
-- [ ] add "Insert image" helper button in wiki editor — opens a mini attachment picker showing already-uploaded images for the article; inserts `![filename](url)` at cursor
-- [ ] apply the image gallery/player (Task 7 gallery.js) to wiki article view for inline image attachments
-- [ ] write tests for `POST /wiki/preview` handler (valid markdown → HTML response)
-- [ ] run tests — must pass before task 10
+- [x] update wiki edit page (`templates/wiki_edit.html`) to add a live Markdown preview pane (split view: editor left, preview right; rendered via `POST /wiki/preview` or client-side JS)
+- [x] add `POST /wiki/preview` handler — accepts `{"content": "..."}`, returns rendered HTML; used by editor for live preview
+- [x] add "Insert image" helper button in wiki editor — opens a mini attachment picker showing already-uploaded images for the article; inserts `![filename](url)` at cursor
+- [x] apply the image gallery/player (Task 7 gallery.js) to wiki article view for inline image attachments
+- [x] write tests for `POST /wiki/preview` handler (valid markdown → HTML response)
+- [x] run tests — must pass before task 10
 
 ### Task 10: General UX/UI polish
 

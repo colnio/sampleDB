@@ -30,6 +30,33 @@
             <a href="{{if .Article}}/wiki/view/{{.Article.Title}}{{else}}/wiki{{end}}" class="button button--secondary">Cancel</a>
         </div>
     </form>
+
+    <!-- Image picker panel for inserting uploaded images into the editor -->
+    <div id="wiki-image-picker" class="wiki-image-picker" style="display:none" aria-label="Insert image picker">
+        <div class="wiki-image-picker__header">
+            <span class="wiki-image-picker__title">Insert Image</span>
+            <button type="button" class="wiki-image-picker__close"
+                    onclick="document.getElementById('wiki-image-picker').style.display='none'"
+                    aria-label="Close image picker">&times;</button>
+        </div>
+        <div class="wiki-image-picker__body">
+            {{if .ArticleImages}}
+            <div class="wiki-image-picker__grid">
+                {{range .ArticleImages}}
+                <button type="button" class="wiki-image-picker__item"
+                        data-name="{{.OriginalName}}"
+                        data-url="/wiki/attachment/{{.ID}}"
+                        onclick="wikiInsertImage(this)">
+                    <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
+                    <span class="wiki-image-picker__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                </button>
+                {{end}}
+            </div>
+            {{else}}
+            <p class="wiki-image-picker__empty">No images uploaded yet. Upload images from the article view first.</p>
+            {{end}}
+        </div>
+    </div>
 </div>
 
 <script src="/static/js/easymde.min.js"></script>
@@ -99,11 +126,39 @@
                 action: "https://www.markdownguide.org/basic-syntax/",
                 className: "fa fa-question-circle",
                 title: "Markdown Guide",
+            },
+            "|",
+            {
+                name: "side-by-side",
+                action: EasyMDE.toggleSideBySide,
+                className: "fa fa-columns no-disable no-mobile",
+                title: "Toggle Preview",
+            },
+            {
+                name: "insert-image",
+                action: function(editor) {
+                    var picker = document.getElementById('wiki-image-picker');
+                    if (picker) {
+                        picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+                    }
+                },
+                className: "fa fa-image",
+                title: "Insert Uploaded Image",
             }
         ],
         renderingConfig: {
             singleLineBreaks: false,
             codeSyntaxHighlighting: true,
+        },
+        previewRender: function(plainText, preview) {
+            fetch('/wiki/preview', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({content: plainText}),
+            })
+            .then(function(r) { return r.text(); })
+            .then(function(html) { preview.innerHTML = html; });
+            return 'Rendering\u2026';
         },
         status: ["autosave", "lines", "words"],
     });
@@ -116,6 +171,18 @@
             return false;
         }
         return true;
+    }
+
+    // Insert image markdown at current cursor position
+    function wikiInsertImage(btn) {
+        var name = btn.dataset.name;
+        var url = btn.dataset.url;
+        var md = '![' + name + '](' + url + ')';
+        var cm = easyMDE.codemirror;
+        var cursor = cm.getCursor();
+        cm.replaceRange(md, cursor);
+        cm.focus();
+        document.getElementById('wiki-image-picker').style.display = 'none';
     }
 </script>
 
@@ -185,6 +252,97 @@
     background-color: var(--surface-subtle);
     border: 1px solid var(--neutral-200);
     border-top: none;
+}
+
+/* Image picker panel */
+.wiki-image-picker {
+    margin-top: var(--space-md);
+    background: var(--surface-default);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+}
+
+.wiki-image-picker__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+.wiki-image-picker__title {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-strong);
+}
+
+.wiki-image-picker__close {
+    background: none;
+    border: none;
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+}
+
+.wiki-image-picker__close:hover {
+    color: var(--text-strong);
+}
+
+.wiki-image-picker__body {
+    padding: var(--space-md);
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.wiki-image-picker__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: var(--space-sm);
+}
+
+.wiki-image-picker__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+    background: var(--surface-subtle);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: center;
+}
+
+.wiki-image-picker__item:hover {
+    border-color: var(--color-primary);
+    background: var(--surface-hover, var(--surface-subtle));
+}
+
+.wiki-image-picker__item img {
+    max-width: 100%;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+.wiki-image-picker__name {
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--text-muted);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+.wiki-image-picker__empty {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    padding: var(--space-md) 0;
+    margin: 0;
 }
 </style>
 {{end}}
