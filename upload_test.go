@@ -90,8 +90,8 @@ func TestUploadAttachment_MultiFile(t *testing.T) {
 	rr := httptest.NewRecorder()
 	uploadAttachmentHandler(rr, req)
 
-	if rr.Code == http.StatusMethodNotAllowed || rr.Code == http.StatusBadRequest {
-		t.Fatalf("handler returned unexpected error status %d: %s", rr.Code, rr.Body.String())
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned unexpected status %d: %s", rr.Code, rr.Body.String())
 	}
 
 	// Verify two attachment rows were created.

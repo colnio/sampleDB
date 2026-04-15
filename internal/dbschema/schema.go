@@ -30,14 +30,7 @@ var schemaStatements = []string{
 	addSampleShareVisibilityColumn,
 }
 
-// Data seeding is disabled; keep statements for reference but do not execute.
 var dataStatements = []string{}
-var disabledDataStatements = []string{
-	backfillGroups,
-	seedEquipment,
-	backfillDeleted,
-}
-var _ = disabledDataStatements
 
 const createUsersTable = `
 CREATE TABLE IF NOT EXISTS users (
@@ -174,28 +167,6 @@ ALTER TABLE samples
 const addSampleShareVisibilityColumn = `
 ALTER TABLE samples
     ADD COLUMN IF NOT EXISTS share_visibility VARCHAR(20) NOT NULL DEFAULT 'private';`
-
-const backfillGroups = `
-INSERT INTO groups (name)
-SELECT DISTINCT btrim("group")
-FROM users
-WHERE "group" IS NOT NULL
-  AND btrim("group") <> ''
-ON CONFLICT (name) DO NOTHING;`
-
-const seedEquipment = `
-INSERT INTO equipment (name, description, location)
-VALUES
-    ('AFM', 'Atomic Force Microscope', 'E3A L7'),
-    ('XeCl', 'XeCl MAC LCVD system', 'Laser Lab S12'),
-    ('ICP', 'MAC growth system', 'Laser Lab S12'),
-    ('Probe Station', 'Probe Station', 'Meeting room S13')
-ON CONFLICT (name) DO NOTHING;`
-
-const backfillDeleted = `
-UPDATE users
-SET deleted = false
-WHERE deleted IS NULL;`
 
 // Ensure ensures that all schema elements required by the application exist.
 func Ensure(ctx context.Context, pool dbiface.Pool) error {

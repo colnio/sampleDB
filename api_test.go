@@ -102,7 +102,7 @@ func TestParsePagination_ClampsExcessLimit(t *testing.T) {
 // Auth rejection — no valid credentials → redirect (not API caller 401)
 // ---------------------------------------------------------------------------
 
-func TestAPIAuth_NoAuth_Redirects(t *testing.T) {
+func TestAPIAuth_NoAuth_Returns401(t *testing.T) {
 	mock, _ := pgxmock.NewPool()
 	defer mock.Close()
 
@@ -116,9 +116,9 @@ func TestAPIAuth_NoAuth_Redirects(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler(rr, req)
 
-	// Without a Bearer header, the middleware redirects to /login.
-	if rr.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303 (redirect to login)", rr.Code)
+	// API paths return 401, not a browser redirect.
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rr.Code)
 	}
 }
 
@@ -220,7 +220,9 @@ func TestAPIListSamples_EmptyResult(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	var body map[string]any
-	json.NewDecoder(rr.Body).Decode(&body)
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
 	items, _ := body["items"].([]any)
 	if len(items) != 0 {
 		t.Errorf("items not empty for no results: %v", items)
@@ -251,7 +253,9 @@ func TestAPIGetSample_NotFound(t *testing.T) {
 		t.Errorf("status = %d, want 404", rr.Code)
 	}
 	var body map[string]string
-	json.NewDecoder(rr.Body).Decode(&body)
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
 	if !strings.Contains(body["error"], "not found") {
 		t.Errorf("error = %q, want message containing 'not found'", body["error"])
 	}
@@ -286,7 +290,9 @@ func TestAPIListArticles_OK(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	var body map[string]any
-	json.NewDecoder(rr.Body).Decode(&body)
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
 	if body["total"] != float64(2) {
 		t.Errorf("total = %v, want 2", body["total"])
 	}
@@ -342,7 +348,9 @@ func TestAPIListUsers_OK(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	var body map[string]any
-	json.NewDecoder(rr.Body).Decode(&body)
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
 	if body["total"] != float64(2) {
 		t.Errorf("total = %v, want 2", body["total"])
 	}
@@ -373,7 +381,9 @@ func TestAPIListEquipment_OK(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	var body map[string]any
-	json.NewDecoder(rr.Body).Decode(&body)
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
 	items, _ := body["items"].([]any)
 	if len(items) != 2 {
 		t.Errorf("items length = %d, want 2", len(items))

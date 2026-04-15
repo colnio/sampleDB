@@ -216,10 +216,6 @@ func isHTMXRequest(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
 }
 
-func hxTargetIs(r *http.Request, target string) bool {
-	return isHTMXRequest(r) && r.Header.Get("HX-Target") == target
-}
-
 func renderTemplateSection(w http.ResponseWriter, templatePath, section string, data interface{}) error {
 	tmpl, err := parseTemplates(templatePath)
 	if err != nil {
@@ -936,7 +932,7 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hxTargetIs(r, "samples-panel") {
+	if isHTMXRequest(r) && r.Header.Get("HX-Target") == "samples-panel" {
 		if err := tmpl.ExecuteTemplate(w, "samples_panel", data); err != nil {
 			http.Error(w, "Error rendering samples", http.StatusInternalServerError)
 		}
@@ -1213,32 +1209,6 @@ func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 	return samples, nil
 }
 
-// getSamples retrieves all samples from the database
-func getSamples() ([]Sample, error) {
-	rows, err := dbPool.Query(context.Background(), `
-		SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
-		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, s.created_at
-		  FROM samples s
-		  LEFT JOIN users u ON s.owner_user_id = u.user_id`)
-	if err != nil {
-		fmt.Printf("%s\n", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var samples []Sample
-	for rows.Next() {
-		var s Sample
-		err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.Keywords, &s.Owner, &s.OwnerUserID, &s.OwnerUsername, &s.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		samples = append(samples, s)
-	}
-
-	return samples, nil
-}
-
 func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1338,8 +1308,7 @@ func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID st
 		return SampleDetailPageData{}, err
 	}
 
-	sampleIDInt := 0
-	fmt.Sscan(sampleID, &sampleIDInt)
+	sampleIDInt, _ := strconv.Atoi(sampleID)
 	steps, _ := getFabricationSteps(sampleIDInt) // non-fatal: show empty on error
 
 	shareURL := ""
@@ -1488,27 +1457,6 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	// Redirect to the sample's detail page to display updated info
 	http.Redirect(w, r, "/samples/"+sampleID, http.StatusSeeOther)
 }
-
-// newSampleFormHandler displays the form to add a new sample
-// func newSampleHandler(w http.ResponseWriter, r *http.Request) {
-//     if r.Method == http.MethodGet {
-//         session := auth.MustSessionFromContext(r.Context())
-//         data := struct {
-//             BasePageData
-//         }{
-//             BasePageData: BasePageData{Username: session.Username},
-//         }
-
-//         tmpl, err := template.ParseFiles("templates/header.html", "templates/new_sample.html")
-//         if err != nil {
-//             http.Error(w, "Error loading template", http.StatusInternalServerError)
-//             return
-//         }
-//         tmpl.ExecuteTemplate(w, "new_sample", data)
-//         return
-//     }
-// 	tmpl.Execute(w, nil)
-// }
 
 // newSampleHandler handles both displaying the form and processing the submission
 func newSampleHandler(w http.ResponseWriter, r *http.Request) {

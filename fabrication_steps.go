@@ -56,25 +56,22 @@ func getFabricationSteps(sampleID int) ([]FabricationStep, error) {
 	return steps, rows.Err()
 }
 
-// addFabricationStep inserts a new step and returns the created record.
+// addFabricationStep inserts a new step and returns the fully-joined record
+// (including PersonUsername and EquipmentName from joined tables).
 func addFabricationStep(sampleID int, step FabricationStep) (FabricationStep, error) {
-	var created FabricationStep
+	var id int
 	err := dbPool.QueryRow(context.Background(), `
 		INSERT INTO fabrication_steps
 		            (sample_id, step_order, step_date, person_user_id, description, equipment_id)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING step_id, sample_id, step_order, step_date,
-		          person_user_id, COALESCE(description,''), equipment_id, created_at`,
+		RETURNING step_id`,
 		sampleID, step.StepOrder, step.StepDate, step.PersonUserID,
 		step.Description, step.EquipmentID,
-	).Scan(
-		&created.ID, &created.SampleID, &created.StepOrder, &created.StepDate,
-		&created.PersonUserID, &created.Description, &created.EquipmentID, &created.CreatedAt,
-	)
+	).Scan(&id)
 	if err != nil {
 		return FabricationStep{}, err
 	}
-	return created, nil
+	return getStepByID(id)
 }
 
 // updateFabricationStep updates an existing step by ID.

@@ -366,7 +366,12 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 
 	// Fabrication steps
 	if idInt, err := strconv.Atoi(sampleID); err == nil {
-		steps, _ := getFabricationSteps(idInt)
+		steps, stepsErr := getFabricationSteps(idInt)
+		if stepsErr != nil {
+			log.Printf("api: getSample steps error: %v", stepsErr)
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
 		detail.Steps = make([]apiFabricationStep, 0, len(steps))
 		for _, s := range steps {
 			detail.Steps = append(detail.Steps, fabricationStepToAPI(s))
@@ -376,7 +381,12 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	}
 
 	// Attachments
-	atts, _ := getAttachments(sampleID)
+	atts, attsErr := getAttachments(sampleID)
+	if attsErr != nil {
+		log.Printf("api: getSample attachments error: %v", attsErr)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
 	detail.AttachmentCount = len(atts)
 	detail.Attachments = make([]apiAttachment, 0, len(atts))
 	for _, a := range atts {
@@ -386,7 +396,7 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	writeJSON(w, http.StatusOK, detail)
 }
 
-type createSampleRequest struct {
+type sampleRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Keywords    string `json:"keywords"`
@@ -395,7 +405,7 @@ type createSampleRequest struct {
 }
 
 func apiCreateSample(w http.ResponseWriter, r *http.Request) {
-	var req createSampleRequest
+	var req sampleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
@@ -430,18 +440,14 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type updateSampleRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Keywords    string `json:"keywords"`
-	Owner       string `json:"owner"`
-	SamplePrep  string `json:"sample_prep"`
-}
-
 func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
-	var req updateSampleRequest
+	var req sampleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
@@ -519,6 +525,21 @@ type stepRequest struct {
 	EquipmentID  *int   `json:"equipment_id"`
 }
 
+func stepRequestToStep(req stepRequest) FabricationStep {
+	step := FabricationStep{
+		StepOrder:    req.StepOrder,
+		PersonUserID: req.PersonUserID,
+		Description:  req.Description,
+		EquipmentID:  req.EquipmentID,
+	}
+	if req.StepDate != "" {
+		if t, err := time.Parse("2006-01-02", req.StepDate); err == nil {
+			step.StepDate = &t
+		}
+	}
+	return step
+}
+
 func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
 	id, err := strconv.Atoi(sampleID)
 	if err != nil {
@@ -532,18 +553,7 @@ func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
-	step := FabricationStep{
-		StepOrder:    req.StepOrder,
-		PersonUserID: req.PersonUserID,
-		Description:  req.Description,
-		EquipmentID:  req.EquipmentID,
-	}
-	if req.StepDate != "" {
-		t, parseErr := time.Parse("2006-01-02", req.StepDate)
-		if parseErr == nil {
-			step.StepDate = &t
-		}
-	}
+	step := stepRequestToStep(req)
 
 	created, err := addFabricationStep(id, step)
 	if err != nil {
@@ -585,18 +595,7 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
-	step := FabricationStep{
-		StepOrder:    req.StepOrder,
-		PersonUserID: req.PersonUserID,
-		Description:  req.Description,
-		EquipmentID:  req.EquipmentID,
-	}
-	if req.StepDate != "" {
-		t, parseErr := time.Parse("2006-01-02", req.StepDate)
-		if parseErr == nil {
-			step.StepDate = &t
-		}
-	}
+	step := stepRequestToStep(req)
 
 	if err := updateFabricationStep(id, step); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

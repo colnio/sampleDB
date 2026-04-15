@@ -307,7 +307,7 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/wiki/view/"+title, http.StatusSeeOther)
+	http.Redirect(w, r, "/wiki/view/"+url.PathEscape(title), http.StatusSeeOther)
 }
 
 func editArticleHandler(w http.ResponseWriter, r *http.Request) {
@@ -388,7 +388,7 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/wiki/view/"+title, http.StatusSeeOther)
+	http.Redirect(w, r, "/wiki/view/"+url.PathEscape(title), http.StatusSeeOther)
 }
 
 func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {

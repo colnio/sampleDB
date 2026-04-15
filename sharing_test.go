@@ -213,11 +213,11 @@ func TestHandleSharedSample_AuthenticatedRequiresLogin(t *testing.T) {
 	}
 }
 
-func TestHandleSharedSample_PrivateReturns404(t *testing.T) {
+func TestHandleSharedSample_RevokedTokenReturns404(t *testing.T) {
 	sampleID, cleanup := createTestSampleForSharing(t)
 	defer cleanup()
 
-	// Generate a token then revoke it so visibility = 'private'.
+	// Generate a token then revoke it (sets share_token=NULL, visibility='private').
 	token, err := generateShareToken(sampleID, "public")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
@@ -231,7 +231,7 @@ func TestHandleSharedSample_PrivateReturns404(t *testing.T) {
 	authManagerInstance = auth.NewManager(pool)
 	t.Cleanup(func() { authManagerInstance = origManager })
 
-	// The token was revoked so getSampleByShareToken will return no rows.
+	// The token was revoked (set to NULL) so getSampleByShareToken returns no rows.
 	req := httptest.NewRequest(http.MethodGet, "/s/"+token, nil)
 	rr := httptest.NewRecorder()
 	handleSharedSample(rr, req)
