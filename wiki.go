@@ -724,23 +724,25 @@ func deleteAttachmentWiki(attachmentID string) (string, error) {
 
 func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request, attachmentID string) {
 	var (
-		filepath string
+		filePath string
 		original string
 	)
 	err := dbPool.QueryRow(context.Background(),
 		"SELECT attachment_address, original_name FROM article_attachments WHERE attachment_id = $1",
-		attachmentID).Scan(&filepath, &original)
+		attachmentID).Scan(&filePath, &original)
 	if err != nil {
 		http.Error(w, "Attachment not found", http.StatusNotFound)
 		return
 	}
 
-	if original != "" {
+	// Only force download for non-image files; images must be served inline so
+	// gallery <img> tags can display them in the browser.
+	if original != "" && !isImage(mime.TypeByExtension(filepath.Ext(original))) {
 		setDownloadHeaders(w, original)
 	}
 
 	// Serve the file
-	http.ServeFile(w, r, resolveAppPath(filepath))
+	http.ServeFile(w, r, resolveAppPath(filePath))
 }
 
 // wikiPreviewHandler renders Markdown to HTML for the live editor preview pane.

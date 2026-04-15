@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -226,7 +228,11 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 	}
 
 	original := originalFilenameFromPath(filePath)
-	setDownloadHeaders(w, original)
+	// Only force download for non-image files; images must be served inline so
+	// the gallery <img> tags can display them in the browser.
+	if !isImage(mime.TypeByExtension(filepath.Ext(filePath))) {
+		setDownloadHeaders(w, original)
+	}
 	http.ServeFile(w, r, resolveAppPath(filePath))
 }
 

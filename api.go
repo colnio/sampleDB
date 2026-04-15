@@ -434,6 +434,7 @@ type sampleRequest struct {
 func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req sampleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -486,6 +487,7 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req sampleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -532,9 +534,9 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
-	// Delete attachments (files + DB rows) before removing the sample.
-	// New-style rows use source_id/source_type, not the legacy sample_id FK,
-	// so ON DELETE CASCADE does not cover them.
+	// Collect attachment IDs before deleting the sample, but delete the sample
+	// row first so that a concurrent double-delete cannot cause partial cleanup
+	// (attachments gone, sample row still present).
 	rows, err := dbPool.Query(r.Context(),
 		`SELECT attachment_id FROM attachments WHERE source_id = $1 AND source_type = 'sample'`, id)
 	if err != nil {
@@ -559,13 +561,9 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	for _, aid := range attachmentIDs {
-		if delErr := deleteAttachment(strconv.Itoa(aid)); delErr != nil {
-			log.Printf("api: deleteSample cleanup attachment %d error: %v", aid, delErr)
-			// Non-fatal: continue deleting remaining attachments.
-		}
-	}
 
+	// Delete the sample record first; if it no longer exists return 404 without
+	// touching any attachments.
 	tag, err := dbPool.Exec(r.Context(), `DELETE FROM samples WHERE sample_id = $1`, id)
 	if err != nil {
 		log.Printf("api: deleteSample error: %v", err)
@@ -576,6 +574,17 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		writeError(w, http.StatusNotFound, "sample not found")
 		return
 	}
+
+	// Sample is confirmed deleted — clean up attachment files and DB rows.
+	// New-style rows use source_id/source_type, not the legacy sample_id FK,
+	// so ON DELETE CASCADE does not cover them.
+	for _, aid := range attachmentIDs {
+		if delErr := deleteAttachment(strconv.Itoa(aid)); delErr != nil {
+			log.Printf("api: deleteSample cleanup attachment %d error: %v", aid, delErr)
+			// Non-fatal: continue deleting remaining attachments.
+		}
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -657,6 +666,7 @@ func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req stepRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -720,6 +730,7 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req stepRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -920,6 +931,7 @@ type articleRequest struct {
 func apiCreateArticle(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req articleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -988,6 +1000,7 @@ func apiUpdateArticle(w http.ResponseWriter, r *http.Request, articleID string) 
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req articleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")

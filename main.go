@@ -1715,20 +1715,24 @@ func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	attachmentID := parts[2]
 
 	// Get file path from database
-	var filepath string
+	var filePath string
 	err := dbPool.QueryRow(context.Background(),
 		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID,
-	).Scan(&filepath)
+	).Scan(&filePath)
 	if err != nil {
 		http.Error(w, "Attachment not found", http.StatusNotFound)
 		return
 	}
 
-	original := originalFilenameFromPath(filepath)
-	setDownloadHeaders(w, original)
+	original := originalFilenameFromPath(filePath)
+	// Only force download for non-image files; images must be served inline so
+	// the gallery <img> tags can display them in the browser.
+	if !isImage(mime.TypeByExtension(filepath.Ext(filePath))) {
+		setDownloadHeaders(w, original)
+	}
 	// Serve the file
-	http.ServeFile(w, r, resolveAppPath(filepath))
+	http.ServeFile(w, r, resolveAppPath(filePath))
 }
 
 func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
