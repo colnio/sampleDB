@@ -130,13 +130,13 @@ Major upgrade across four areas:
 
 ### Task 7: Image gallery/player
 
-- [ ] add `static/js/gallery.js` — lightweight lightbox: clicking a thumbnail opens a modal overlay; left/right arrow key + click navigation between images in the set; ESC to close; no external dependencies
-- [ ] add `static/css/gallery.css` — modal overlay, thumbnail grid, navigation arrows
-- [ ] update `sample_detail.html` attachment display: group images into a thumbnail grid; each thumbnail links to lightbox; non-image files remain as a separate file list below
-- [ ] update wiki article view (`templates/wiki_view.html` or equivalent): same thumbnail grid + lightbox for article image attachments
-- [ ] write tests for gallery JS (jsdom or simple DOM tests if project has a JS test setup; else document as manual test)
-- [ ] write tests for attachment handler returning correct `Content-Type` header for images (needed for gallery detection)
-- [ ] run tests — must pass before task 8
+- [x] add `static/js/gallery.js` — lightweight lightbox: clicking a thumbnail opens a modal overlay; left/right arrow key + click navigation between images in the set; ESC to close; no external dependencies
+- [x] add `static/css/gallery.css` — modal overlay, thumbnail grid, navigation arrows
+- [x] update `sample_detail.html` attachment display: group images into a thumbnail grid; each thumbnail links to lightbox; non-image files remain as a separate file list below
+- [x] update wiki article view (`templates/wiki_view.html` or equivalent): same thumbnail grid + lightbox for article image attachments
+- [x] write tests for gallery JS (jsdom or simple DOM tests if project has a JS test setup; else document as manual test)
+- [x] write tests for attachment handler returning correct `Content-Type` header for images (needed for gallery detection)
+- [x] run tests — must pass before task 8
 
 ### Task 8: Sample sharing by link
 

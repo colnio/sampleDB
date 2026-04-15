@@ -1,5 +1,9 @@
 {{define "title"}}{{.Sample.Name}} · Sample Tracker{{end}}
 
+{{define "additional_styles"}}
+<link rel="stylesheet" href="/static/css/gallery.css">
+{{end}}
+
 {{define "content"}}
 <a href="/" class="back-link back-link--quiet">← Back to samples</a>
 
@@ -72,44 +76,62 @@
     <div class="alert alert-error">{{.}}</div>
     {{end}}
 
-    <div class="attachment-grid">
-        {{if .Sample.Attachments}}
-            {{range .Sample.Attachments}}
-            <article class="attachment-preview">
-                {{if .IsImage}}
-                <a href="/attachment/{{.ID}}" target="_blank" rel="noopener" class="attachment-preview__thumb">
-                    <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}">
-                </a>
-                {{else}}
-                <a href="/attachment/{{.ID}}" download="{{.OriginalName}}" class="attachment-preview__thumb">
-                    <div class="file-icon">📄</div>
-                </a>
-                {{end}}
-                <div class="attachment-preview__body">
-                    <p class="attachment-name">{{.OriginalName}}</p>
-                    <div class="attachment-actions">
-                        <a href="/attachment/{{.ID}}" target="_blank" class="button button--ghost button--small">Open</a>
-                        <form action="/attachment/{{.ID}}/delete"
-                              method="POST"
-                              class="inline-form"
-                              hx-post="/attachment/{{.ID}}/delete"
-                              hx-target="#attachments-panel"
-                              hx-select="#attachments-panel"
-                              hx-swap="outerHTML"
-                              hx-confirm="Delete this attachment?">
-                            <button type="submit" class="button button--destructive button--small">Delete</button>
-                        </form>
-                    </div>
-                </div>
-            </article>
-            {{end}}
-        {{else}}
-            <div class="empty-state">
-                <p>No attachments yet.</p>
-                <p class="empty-state__hint">Upload your first file to keep everything in one place.</p>
-            </div>
-        {{end}}
+    {{if .Sample.Attachments}}
+    <!-- Image thumbnail gallery — gallery.js opens lightbox on click -->
+    <div class="gallery-set">
+        {{range .Sample.Attachments}}{{if .IsImage}}
+        <figure class="gallery-item">
+            <button type="button" class="gallery-thumb"
+                    data-gallery-src="/attachment/{{.ID}}"
+                    data-gallery-name="{{.OriginalName}}"
+                    aria-label="View {{.OriginalName}}">
+                <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
+            </button>
+            <figcaption class="gallery-item__caption">
+                <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                <form action="/attachment/{{.ID}}/delete"
+                      method="POST"
+                      class="inline-form"
+                      hx-post="/attachment/{{.ID}}/delete"
+                      hx-target="#attachments-panel"
+                      hx-select="#attachments-panel"
+                      hx-swap="outerHTML"
+                      hx-confirm="Delete this attachment?">
+                    <button type="submit" class="button button--destructive button--small">Delete</button>
+                </form>
+            </figcaption>
+        </figure>
+        {{end}}{{end}}
     </div>
+
+    <!-- Non-image file list -->
+    <ul class="attachment-file-list">
+        {{range .Sample.Attachments}}{{if not .IsImage}}
+        <li class="attachment-file-list__item">
+            <span class="attachment-file-list__icon">📄</span>
+            <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+            <div class="attachment-file-list__actions">
+                <a href="/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
+                <form action="/attachment/{{.ID}}/delete"
+                      method="POST"
+                      class="inline-form"
+                      hx-post="/attachment/{{.ID}}/delete"
+                      hx-target="#attachments-panel"
+                      hx-select="#attachments-panel"
+                      hx-swap="outerHTML"
+                      hx-confirm="Delete this attachment?">
+                    <button type="submit" class="button button--destructive button--small">Delete</button>
+                </form>
+            </div>
+        </li>
+        {{end}}{{end}}
+    </ul>
+    {{else}}
+    <div class="empty-state">
+        <p>No attachments yet.</p>
+        <p class="empty-state__hint">Upload your first file to keep everything in one place.</p>
+    </div>
+    {{end}}
 </section>
 {{end}}
 
@@ -238,6 +260,7 @@
 
 {{define "footer_scripts"}}
 <script src="/static/js/upload.js" defer></script>
+<script src="/static/js/gallery.js" defer></script>
 {{end}}
 
 {{template "base" .}}

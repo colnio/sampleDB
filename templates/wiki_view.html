@@ -3,6 +3,7 @@
 {{define "additional_styles"}}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+<link rel="stylesheet" href="/static/css/gallery.css">
 {{end}}
 
 {{define "content"}}
@@ -51,31 +52,40 @@
     {{if .Article.Attachments}}
     <div class="attachments-container">
         <h2>Attachments</h2>
-        <div class="attachments-grid">
-            {{range .Article.Attachments}}
-            <figure class="attachment-preview">
-                {{if .IsImage}}
-                <button type="button" class="attachment-thumb" data-image="/wiki/attachment/{{.ID}}" data-name="{{.OriginalName}}">
-                    <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}">
+        <!-- Image thumbnail gallery — gallery.js opens lightbox on click -->
+        <div class="gallery-set">
+            {{range .Article.Attachments}}{{if .IsImage}}
+            <figure class="gallery-item">
+                <button type="button" class="gallery-thumb"
+                        data-gallery-src="/wiki/attachment/{{.ID}}"
+                        data-gallery-name="{{.OriginalName}}"
+                        aria-label="View {{.OriginalName}}">
+                    <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
                 </button>
-                {{else}}
-                <a href="/wiki/attachment/{{.ID}}" download="{{.OriginalName}}" class="attachment-file">
-                    <div class="file-icon">📄</div>
-                    <span>Download file</span>
-                </a>
-                {{end}}
-                <figcaption class="attachment-info">
-                    <div class="attachment-name" title="{{.OriginalName}}">{{.OriginalName}}</div>
-                    <div class="attachment-actions">
-                        <a href="/wiki/attachment/{{.ID}}" class="button button--secondary button--small" {{if not .IsImage}}download="{{.OriginalName}}"{{end}}>Download</a>
-                        <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
-                            <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
-                        </form>
-                    </div>
+                <figcaption class="gallery-item__caption">
+                    <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
+                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
+                    </form>
                 </figcaption>
             </figure>
-            {{end}}
+            {{end}}{{end}}
         </div>
+        <!-- Non-image file list -->
+        <ul class="attachment-file-list">
+            {{range .Article.Attachments}}{{if not .IsImage}}
+            <li class="attachment-file-list__item">
+                <span class="attachment-file-list__icon">📄</span>
+                <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                <div class="attachment-file-list__actions">
+                    <a href="/wiki/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
+                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
+                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
+                    </form>
+                </div>
+            </li>
+            {{end}}{{end}}
+        </ul>
     </div>
     {{end}}
 
@@ -99,74 +109,16 @@
         </div>
     </div>
 
-    <div id="image-lightbox" class="image-lightbox" aria-hidden="true">
-        <div class="lightbox-overlay" onclick="closeLightbox()"></div>
-        <div class="lightbox-panel" role="dialog" aria-modal="true">
-            <button type="button" class="lightbox-close" onclick="closeLightbox()" aria-label="Close preview">&times;</button>
-            <img id="lightbox-image" src="" alt="">
-            <p id="lightbox-caption"></p>
-        </div>
-    </div>
 </div>
 
 <a href="/wiki" class="back-link">← Back to Wiki</a>
 
-<!-- Add syntax highlighting -->
+<!-- Syntax highlighting -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 <script>
-    function closeLightbox() {
-        const lightbox = document.getElementById('image-lightbox');
-        if (!lightbox) {
-            return;
-        }
-
-        lightbox.classList.remove('is-visible');
-        lightbox.setAttribute('aria-hidden', 'true');
-
-        const lightboxImage = document.getElementById('lightbox-image');
-        const lightboxCaption = document.getElementById('lightbox-caption');
-        if (lightboxImage) {
-            lightboxImage.src = '';
-            lightboxImage.alt = '';
-        }
-        if (lightboxCaption) {
-            lightboxCaption.textContent = '';
-        }
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);
-        });
-
-        const lightbox = document.getElementById('image-lightbox');
-        const lightboxImage = document.getElementById('lightbox-image');
-        const lightboxCaption = document.getElementById('lightbox-caption');
-
-        document.querySelectorAll('.attachment-thumb').forEach((button) => {
-            button.addEventListener('click', () => {
-                if (!lightbox || !lightboxImage) {
-                    return;
-                }
-
-                const src = button.dataset.image;
-                const name = button.dataset.name || '';
-
-                lightboxImage.src = src;
-                lightboxImage.alt = name;
-                if (lightboxCaption) {
-                    lightboxCaption.textContent = name;
-                }
-
-                lightbox.classList.add('is-visible');
-                lightbox.setAttribute('aria-hidden', 'false');
-            });
-        });
-
-        document.addEventListener('keyup', (event) => {
-            if (event.key === 'Escape') {
-                closeLightbox();
-            }
         });
     });
 </script>
@@ -539,6 +491,7 @@ figure.attachment-preview {
 }
 </style>
 <script src="/static/js/upload.js" defer></script>
+<script src="/static/js/gallery.js" defer></script>
 {{end}}
 
 {{define "article_content_panel"}}
