@@ -408,7 +408,7 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	}
 
 	// Attachments
-	atts, attsErr := getAttachments(strconv.Itoa(id))
+	atts, attsErr := getAttachments(r.Context(), strconv.Itoa(id))
 	if attsErr != nil {
 		log.Printf("api: getSample attachments error: %v", attsErr)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -451,12 +451,18 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 
 	var id int
 	var createdAt time.Time
+	var ownerUsername *string
 	err := dbPool.QueryRow(r.Context(), `
-		INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id, sample_prep)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING sample_id, created_at`,
+		WITH ins AS (
+			INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id, sample_prep)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING sample_id, owner_user_id, created_at
+		)
+		SELECT ins.sample_id, ins.created_at, u.username
+		  FROM ins
+		  LEFT JOIN users u ON u.user_id = ins.owner_user_id`,
 		req.Name, req.Description, req.Keywords, req.Owner, ownerUserID, req.SamplePrep,
-	).Scan(&id, &createdAt)
+	).Scan(&id, &createdAt, &ownerUsername)
 	if err != nil {
 		log.Printf("api: createSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -470,6 +476,7 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 		Keywords:        req.Keywords,
 		Owner:           req.Owner,
 		OwnerUserID:     &ownerUserID,
+		OwnerUsername:   ownerUsername,
 		AttachmentCount: 0,
 		CreatedAt:       createdAt,
 	})
@@ -580,7 +587,7 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	// New-style rows use source_id/source_type, not the legacy sample_id FK,
 	// so ON DELETE CASCADE does not cover them.
 	for _, aid := range attachmentIDs {
-		if delErr := deleteAttachment(strconv.Itoa(aid)); delErr != nil {
+		if delErr := deleteAttachment(r.Context(), strconv.Itoa(aid)); delErr != nil {
 			log.Printf("api: deleteSample cleanup attachment %d error: %v", aid, delErr)
 			// Non-fatal: continue deleting remaining attachments.
 		}
@@ -753,7 +760,14 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+
+	updated, err := getStepByID(r.Context(), id)
+	if err != nil {
+		log.Printf("api: updateStep fetch error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	writeJSON(w, http.StatusOK, fabricationStepToAPI(updated))
 }
 
 func apiDeleteStep(w http.ResponseWriter, r *http.Request, stepID string) {

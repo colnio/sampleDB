@@ -65,7 +65,7 @@ func getSampleByShareToken(ctx context.Context, token string) (Sample, error) {
 		return sample, err
 	}
 	var err2 error
-	sample.Attachments, err2 = getAttachments(strconv.Itoa(sample.ID))
+	sample.Attachments, err2 = getAttachments(ctx, strconv.Itoa(sample.ID))
 	if err2 != nil {
 		return sample, err2
 	}

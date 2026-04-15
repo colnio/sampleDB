@@ -1306,7 +1306,7 @@ func getSampleByID(sampleID string) (Sample, error) {
 	}
 
 	// Fetch attachments
-	sample.Attachments, err = getAttachments(sampleID)
+	sample.Attachments, err = getAttachments(context.Background(), sampleID)
 	if err != nil {
 		return sample, err
 	}
@@ -1641,8 +1641,8 @@ func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 }
 
 // getAttachments retrieves all attachments for a sample
-func getAttachments(sampleID string) ([]Attachment, error) {
-	rows, err := dbPool.Query(context.Background(),
+func getAttachments(ctx context.Context, sampleID string) ([]Attachment, error) {
+	rows, err := dbPool.Query(ctx,
 		`SELECT attachment_id, source_id, attachment_address, uploaded_at 
          FROM attachments 
          WHERE source_type = 'sample' AND source_id = $1`,
@@ -1678,10 +1678,10 @@ func addAttachment(sampleID string, filepath string) error {
 }
 
 // deleteAttachment removes an attachment from both database and filesystem
-func deleteAttachment(attachmentID string) error {
+func deleteAttachment(ctx context.Context, attachmentID string) error {
 	// First get the file path
 	var filepath string
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID,
 	).Scan(&filepath)
@@ -1690,7 +1690,7 @@ func deleteAttachment(attachmentID string) error {
 	}
 
 	// Delete from database
-	_, err = dbPool.Exec(context.Background(),
+	_, err = dbPool.Exec(ctx,
 		"DELETE FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID)
 	if err != nil {
@@ -1801,7 +1801,7 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete the attachment
-	err = deleteAttachment(attachmentID)
+	err = deleteAttachment(r.Context(), attachmentID)
 	if err != nil {
 		if isHTMXRequest(r) {
 			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Failed to remove attachment.")
