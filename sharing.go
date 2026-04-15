@@ -16,6 +16,12 @@ import (
 	"sampleDB/internal/auth"
 )
 
+// errSampleNotFound is returned by requireSampleOwner when the sample does not exist.
+var errSampleNotFound = errors.New("sample not found")
+
+// errForbidden is returned by requireSampleOwner when the user does not own the sample.
+var errForbidden = errors.New("forbidden")
+
 // generateShareToken creates or replaces the share token for a sample, setting
 // the given visibility ('public' or 'authenticated'). Returns the new token.
 func generateShareToken(sampleID int, visibility string) (string, error) {
@@ -169,7 +175,11 @@ func handleSampleShare(w http.ResponseWriter, r *http.Request) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	if err := requireSampleOwner(r, sampleID, session.UserID); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		if errors.Is(err, errSampleNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		}
 		return
 	}
 
@@ -200,13 +210,13 @@ func requireSampleOwner(r *http.Request, sampleID, userID int) error {
 		sampleID).Scan(&ownerUserID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("sample not found")
+			return errSampleNotFound
 		}
 		log.Printf("requireSampleOwner: db error: %v", err)
 		return fmt.Errorf("database error")
 	}
 	if ownerUserID != nil && *ownerUserID != userID {
-		return fmt.Errorf("forbidden")
+		return errForbidden
 	}
 	return nil
 }
@@ -231,7 +241,11 @@ func handleSampleShareRevoke(w http.ResponseWriter, r *http.Request) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	if err := requireSampleOwner(r, sampleID, session.UserID); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		if errors.Is(err, errSampleNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		}
 		return
 	}
 

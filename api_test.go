@@ -240,7 +240,7 @@ func TestAPIGetSample_NotFound(t *testing.T) {
 	defer restore()
 
 	mock.ExpectQuery(`SELECT s\.sample_id`).
-		WithArgs("9999").
+		WithArgs(9999).
 		WillReturnError(pgx.ErrNoRows)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/samples/9999", nil)
@@ -464,7 +464,7 @@ func TestAPISamplesHandler_RouteToGetByID(t *testing.T) {
 
 	// getSample query
 	mock.ExpectQuery(`SELECT s\.sample_id`).
-		WithArgs("5").
+		WithArgs(5).
 		WillReturnError(pgx.ErrNoRows)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/samples/5", nil)

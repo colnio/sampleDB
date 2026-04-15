@@ -71,10 +71,10 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			}
 
 			// Load username so the session context is fully populated.
-			// Fail auth if the user has been deleted since the token was issued.
+			// Fail auth if the user has been deleted or is not yet approved.
 			var username string
 			if err := m.db.QueryRow(r.Context(),
-				"SELECT username FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+				"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false",
 				userID).Scan(&username); err != nil {
 				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 				return
@@ -313,10 +313,10 @@ func (m *Manager) TryAuth(r *http.Request) (Session, bool) {
 		if err != nil {
 			return Session{}, false
 		}
-		// Fail auth if the user has been deleted since the token was issued.
+		// Fail auth if the user has been deleted or is not yet approved.
 		var username string
 		if err := m.db.QueryRow(r.Context(),
-			"SELECT username FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+			"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false",
 			userID).Scan(&username); err != nil {
 			return Session{}, false
 		}

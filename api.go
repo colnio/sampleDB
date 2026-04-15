@@ -33,6 +33,18 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
+// writeSampleOwnerError maps requireSampleOwner sentinel errors to HTTP responses.
+func writeSampleOwnerError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errSampleNotFound):
+		writeError(w, http.StatusNotFound, "sample not found")
+	case errors.Is(err, errForbidden):
+		writeError(w, http.StatusForbidden, "forbidden")
+	default:
+		writeError(w, http.StatusInternalServerError, "database error")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Response types
 // ---------------------------------------------------------------------------
@@ -251,11 +263,19 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "%"+ownerFilter+"%")
 	}
 	if from != "" {
+		if _, parseErr := time.Parse("2006-01-02", from); parseErr != nil {
+			writeError(w, http.StatusBadRequest, "invalid from date: use YYYY-MM-DD")
+			return
+		}
 		idx := len(args) + 1
 		conditions = append(conditions, fmt.Sprintf("s.created_at >= $%d", idx))
 		args = append(args, from)
 	}
 	if to != "" {
+		if _, parseErr := time.Parse("2006-01-02", to); parseErr != nil {
+			writeError(w, http.StatusBadRequest, "invalid to date: use YYYY-MM-DD")
+			return
+		}
 		idx := len(args) + 1
 		conditions = append(conditions, fmt.Sprintf("s.created_at <= $%d", idx))
 		args = append(args, to+" 23:59:59")
@@ -337,10 +357,16 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
+	id, err := strconv.Atoi(sampleID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid sample id")
+		return
+	}
+
 	var detail apiSampleDetail
 	var samplePrep string
 
-	err := dbPool.QueryRow(r.Context(), `
+	err = dbPool.QueryRow(r.Context(), `
 		SELECT s.sample_id,
 		       s.sample_name,
 		       COALESCE(s.sample_description, ''),
@@ -352,7 +378,7 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		       s.created_at
 		  FROM samples s
 		  LEFT JOIN users u ON s.owner_user_id = u.user_id
-		 WHERE s.sample_id = $1`, sampleID).Scan(
+		 WHERE s.sample_id = $1`, id).Scan(
 		&detail.ID, &detail.Name, &detail.Description, &detail.Keywords, &detail.Owner,
 		&detail.OwnerUserID, &detail.OwnerUsername,
 		&samplePrep, &detail.CreatedAt,
@@ -369,19 +395,15 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	detail.SamplePrep = samplePrep
 
 	// Fabrication steps
-	if idInt, err := strconv.Atoi(sampleID); err == nil {
-		steps, stepsErr := getFabricationSteps(idInt)
-		if stepsErr != nil {
-			log.Printf("api: getSample steps error: %v", stepsErr)
-			writeError(w, http.StatusInternalServerError, "database error")
-			return
-		}
-		detail.Steps = make([]apiFabricationStep, 0, len(steps))
-		for _, s := range steps {
-			detail.Steps = append(detail.Steps, fabricationStepToAPI(s))
-		}
-	} else {
-		detail.Steps = []apiFabricationStep{}
+	steps, stepsErr := getFabricationSteps(id)
+	if stepsErr != nil {
+		log.Printf("api: getSample steps error: %v", stepsErr)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	detail.Steps = make([]apiFabricationStep, 0, len(steps))
+	for _, s := range steps {
+		detail.Steps = append(detail.Steps, fabricationStepToAPI(s))
 	}
 
 	// Attachments
@@ -460,7 +482,7 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	if err := requireSampleOwner(r, id, session.UserID); err != nil {
-		writeError(w, http.StatusForbidden, "forbidden")
+		writeSampleOwnerError(w, err)
 		return
 	}
 
@@ -473,10 +495,6 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
-	if req.OwnerUserID == nil {
-		writeError(w, http.StatusBadRequest, "owner_user_id is required")
-		return
-	}
 
 	tag, err := dbPool.Exec(r.Context(), `
 		UPDATE samples
@@ -484,7 +502,7 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		       sample_description = $2,
 		       sample_keywords    = $3,
 		       sample_owner       = $4,
-		       owner_user_id      = $5,
+		       owner_user_id      = COALESCE($5, owner_user_id),
 		       sample_prep        = $6
 		 WHERE sample_id = $7`,
 		req.Name, req.Description, req.Keywords, req.Owner, req.OwnerUserID, req.SamplePrep, id)
@@ -510,7 +528,7 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	if err := requireSampleOwner(r, id, session.UserID); err != nil {
-		writeError(w, http.StatusForbidden, "forbidden")
+		writeSampleOwnerError(w, err)
 		return
 	}
 
@@ -591,7 +609,7 @@ func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	if err := requireSampleOwner(r, id, session.UserID); err != nil {
-		writeError(w, http.StatusForbidden, "forbidden")
+		writeSampleOwnerError(w, err)
 		return
 	}
 
@@ -654,7 +672,7 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
-		writeError(w, http.StatusForbidden, "forbidden")
+		writeSampleOwnerError(w, err)
 		return
 	}
 
@@ -702,7 +720,7 @@ func apiDeleteStep(w http.ResponseWriter, r *http.Request, stepID string) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
-		writeError(w, http.StatusForbidden, "forbidden")
+		writeSampleOwnerError(w, err)
 		return
 	}
 

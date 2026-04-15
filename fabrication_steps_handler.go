@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -90,7 +91,11 @@ func handleFabricationStepsEndpoint(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := requireSampleOwner(r, sampleIDInt, session.UserID); err != nil {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			if errors.Is(err, errSampleNotFound) {
+				http.Error(w, "Sample not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+			}
 			return
 		}
 
@@ -163,7 +168,11 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 			return
 		}
 		if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			if errors.Is(err, errSampleNotFound) {
+				http.Error(w, "Sample not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+			}
 			return
 		}
 		sampleIDStr := strconv.Itoa(existing.SampleID)
@@ -182,7 +191,11 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 			return
 		}
 		if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			if errors.Is(err, errSampleNotFound) {
+				http.Error(w, "Sample not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+			}
 			return
 		}
 
@@ -267,7 +280,11 @@ func handleFabricationStepsReorder(w http.ResponseWriter, r *http.Request) {
 
 	if err := requireSampleOwner(r, sampleIDInt, session.UserID); err != nil {
 		log.Printf("handleFabricationStepsReorder: ownership check failed for sample %d user %d: %v", sampleIDInt, session.UserID, err)
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		if errors.Is(err, errSampleNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		}
 		return
 	}
 
