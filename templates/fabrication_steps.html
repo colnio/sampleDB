@@ -1,0 +1,109 @@
+{{define "fabrication_steps_panel"}}
+<section id="fabrication-steps-panel" class="card fabrication-steps">
+    <header class="fabrication-steps__header">
+        <h2>Fabrication Steps</h2>
+    </header>
+
+    {{with .Flash}}
+    <div class="alert alert-success">{{.}}</div>
+    {{end}}
+    {{with .Error}}
+    <div class="alert alert-error">{{.}}</div>
+    {{end}}
+
+    {{if .Steps}}
+    <ol class="step-list">
+        {{range .Steps}}
+        {{$step := .}}
+        <li id="step-{{.ID}}" class="step-item{{if eq $.EditingStep .ID}} step-item--editing{{end}}">
+            {{if eq $.EditingStep .ID}}
+            <form method="POST" action="/steps/{{.ID}}/edit"
+                  class="stacked-form step-edit-form"
+                  hx-post="/steps/{{.ID}}/edit"
+                  hx-target="#fabrication-steps-panel"
+                  hx-select="#fabrication-steps-panel"
+                  hx-swap="outerHTML">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-step-date-{{.ID}}">Date</label>
+                        <input id="edit-step-date-{{.ID}}" type="date" name="step_date"
+                               value="{{formatDate $step.StepDate}}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-step-order-{{.ID}}">Order</label>
+                        <input id="edit-step-order-{{.ID}}" type="number" name="step_order"
+                               value="{{$step.StepOrder}}" min="1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-step-person-{{.ID}}">Person</label>
+                        <select id="edit-step-person-{{.ID}}" name="person_user_id">
+                            <option value="">-- None --</option>
+                            {{range $.Users}}
+                            <option value="{{.ID}}" {{if ownerSelected $step.PersonUserID .ID}}selected{{end}}>{{.Username}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-step-equip-{{.ID}}">Equipment</label>
+                        <select id="edit-step-equip-{{.ID}}" name="equipment_id">
+                            <option value="">-- None --</option>
+                            {{range $.Equipment}}
+                            <option value="{{.ID}}" {{if ownerSelected $step.EquipmentID .ID}}selected{{end}}>{{.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit-step-desc-{{.ID}}">Description</label>
+                    <textarea id="edit-step-desc-{{.ID}}" name="description">{{$step.Description}}</textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button button--primary button--small">Save</button>
+                    <button type="button"
+                            class="button button--ghost button--small"
+                            hx-get="/samples/{{$.Sample.ID}}/steps"
+                            hx-target="#fabrication-steps-panel"
+                            hx-select="#fabrication-steps-panel"
+                            hx-swap="outerHTML">Cancel</button>
+                </div>
+            </form>
+            {{else}}
+            <div class="step-meta">
+                {{if .StepDate}}<span class="step-date">{{formatDate .StepDate}}</span>{{end}}
+                {{if .PersonUsername}}<span class="step-person">{{.PersonUsername}}</span>{{end}}
+                {{if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
+            </div>
+            {{if .Description}}<p class="step-description">{{.Description}}</p>{{end}}
+            <div class="step-actions">
+                <button class="button button--ghost button--small"
+                        hx-get="/steps/{{.ID}}/edit"
+                        hx-target="#fabrication-steps-panel"
+                        hx-select="#fabrication-steps-panel"
+                        hx-swap="outerHTML">Edit</button>
+                <form method="POST"
+                      action="/steps/{{.ID}}/delete"
+                      class="inline-form"
+                      hx-post="/steps/{{.ID}}/delete"
+                      hx-target="#fabrication-steps-panel"
+                      hx-select="#fabrication-steps-panel"
+                      hx-swap="outerHTML"
+                      hx-confirm="Delete this step?">
+                    <button type="submit" class="button button--destructive button--small">Delete</button>
+                </form>
+            </div>
+            {{end}}
+        </li>
+        {{end}}
+    </ol>
+    {{else}}
+    <div class="empty-state">
+        <p>No fabrication steps yet.</p>
+        <p class="empty-state__hint">Add the first step below to document this sample's fabrication process.</p>
+    </div>
+    {{end}}
+
+    {{template "step_add_form" .}}
+</section>
+{{end}}

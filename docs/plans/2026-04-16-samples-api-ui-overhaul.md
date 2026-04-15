@@ -107,14 +107,14 @@ Major upgrade across four areas:
 
 ### Task 5: Fabrication steps UI
 
-- [ ] add DB functions: `getFabricationSteps(sampleID int)`, `addFabricationStep(sampleID int, step FabricationStep)`, `updateFabricationStep(stepID int, step FabricationStep)`, `deleteFabricationStep(stepID int)`, `reorderFabricationSteps(sampleID int, orderedIDs []int)`
-- [ ] add HTML handlers: `POST /samples/{id}/steps` (add), `POST /steps/{id}/edit` (update), `POST /steps/{id}/delete` (delete), `POST /samples/{id}/steps/reorder` (reorder via drag)
-- [ ] create `templates/fabrication_steps.html` partial — HTMX-powered step list; each step shows date, person (username), description, equipment name; inline edit/delete buttons
-- [ ] create `templates/step_form.html` partial — add-step form: date picker, person dropdown (approved users), equipment dropdown, description textarea; "Add Step" button appends via HTMX
-- [ ] integrate steps panel into `sample_detail.html` alongside existing prep panel
-- [ ] write tests for all step DB functions (add, update, delete, get, reorder)
-- [ ] write tests for step HTTP handlers (add step → verify returned HTML contains step; delete → verify removed)
-- [ ] run tests — must pass before task 6
+- [x] add DB functions: `getFabricationSteps(sampleID int)`, `addFabricationStep(sampleID int, step FabricationStep)`, `updateFabricationStep(stepID int, step FabricationStep)`, `deleteFabricationStep(stepID int)`, `reorderFabricationSteps(sampleID int, orderedIDs []int)`
+- [x] add HTML handlers: `POST /samples/{id}/steps` (add), `POST /steps/{id}/edit` (update), `POST /steps/{id}/delete` (delete), `POST /samples/{id}/steps/reorder` (reorder via drag)
+- [x] create `templates/fabrication_steps.html` partial — HTMX-powered step list; each step shows date, person (username), description, equipment name; inline edit/delete buttons
+- [x] create `templates/step_form.html` partial — add-step form: date picker, person dropdown (approved users), equipment dropdown, description textarea; "Add Step" button appends via HTMX
+- [x] integrate steps panel into `sample_detail.html` alongside existing prep panel
+- [x] write tests for all step DB functions (add, update, delete, get, reorder)
+- [x] write tests for step HTTP handlers (add step → verify returned HTML contains step; delete → verify removed)
+- [x] run tests — must pass before task 6
 
 ### Task 6: Multi-file upload + copy-paste
 

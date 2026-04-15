@@ -85,6 +85,9 @@ type SampleDetailPageData struct {
 	IsPartial   bool
 	EditingPrep bool
 	Users       []User
+	Steps       []FabricationStep
+	Equipment   []Equipment
+	EditingStep int // step_id currently in inline-edit mode (0 = none)
 }
 
 type ChangePasswordPageData struct {
@@ -766,6 +769,9 @@ func main() {
 	mux.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
 	mux.HandleFunc("/admin/delete-user", withAuth(requireAdmin(handleDeleteUser)))
 
+	// Fabrication step actions: /steps/{id}/edit and /steps/{id}/delete
+	mux.HandleFunc("/steps/", withAuth(handleStepAction))
+
 	// Account management
 	mux.HandleFunc("/change-password", withAuth(handleChangePassword))
 	mux.HandleFunc("/profile/tokens", withAuth(handleProfileTokens))
@@ -841,6 +847,13 @@ func parseTemplates(files ...string) (*template.Template, error) {
 		"ownerSelected": func(ownerUserID *int, userID int) bool {
 			return ownerUserID != nil && *ownerUserID == userID
 		},
+		"formatDate": func(t *time.Time) string {
+			if t == nil {
+				return ""
+			}
+			return t.Format("2006-01-02")
+		},
+		"add": func(a, b int) int { return a + b },
 	}
 
 	// Always include base and header templates
@@ -933,6 +946,18 @@ func handleSample(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		uploadAttachmentHandler(w, r)
+		return
+	}
+
+	// Handle steps reorder: /samples/{id}/steps/reorder
+	if len(pathParts) == 3 && pathParts[1] == "steps" && pathParts[2] == "reorder" {
+		handleFabricationStepsReorder(w, r)
+		return
+	}
+
+	// Handle steps list/add: /samples/{id}/steps
+	if len(pathParts) == 2 && pathParts[1] == "steps" {
+		handleFabricationStepsEndpoint(w, r)
 		return
 	}
 
@@ -1186,7 +1211,11 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := parseTemplates("templates/sample_detail.html")
+	tmpl, err := parseTemplates(
+		"templates/sample_detail.html",
+		"templates/fabrication_steps.html",
+		"templates/step_form.html",
+	)
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
@@ -1255,10 +1284,21 @@ func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID st
 		return SampleDetailPageData{}, err
 	}
 
+	equipment, err := getAllEquipment()
+	if err != nil {
+		return SampleDetailPageData{}, err
+	}
+
+	sampleIDInt := 0
+	fmt.Sscan(sampleID, &sampleIDInt)
+	steps, _ := getFabricationSteps(sampleIDInt) // non-fatal: show empty on error
+
 	data := SampleDetailPageData{
 		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID},
 		Sample:       sample,
 		Users:        users,
+		Equipment:    equipment,
+		Steps:        steps,
 	}
 
 	if err := dbPool.QueryRow(ctx,

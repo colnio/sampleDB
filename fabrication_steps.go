@@ -110,3 +110,46 @@ func deleteFabricationStep(stepID int) error {
 	}
 	return nil
 }
+
+// getStepByID returns a single fabrication step with joined user and equipment names.
+func getStepByID(stepID int) (FabricationStep, error) {
+	var s FabricationStep
+	err := dbPool.QueryRow(context.Background(), `
+		SELECT fs.step_id, fs.sample_id, fs.step_order, fs.step_date,
+		       fs.person_user_id, u.username,
+		       COALESCE(fs.description, ''),
+		       fs.equipment_id, e.name,
+		       fs.created_at
+		  FROM fabrication_steps fs
+		  LEFT JOIN users u ON fs.person_user_id = u.user_id
+		  LEFT JOIN equipment e ON fs.equipment_id = e.equipment_id
+		 WHERE fs.step_id = $1`, stepID).Scan(
+		&s.ID, &s.SampleID, &s.StepOrder, &s.StepDate,
+		&s.PersonUserID, &s.PersonUsername,
+		&s.Description,
+		&s.EquipmentID, &s.EquipmentName,
+		&s.CreatedAt,
+	)
+	if err != nil {
+		return FabricationStep{}, err
+	}
+	return s, nil
+}
+
+// reorderFabricationSteps updates step_order for each step in orderedIDs (1-based).
+func reorderFabricationSteps(sampleID int, orderedIDs []int) error {
+	tx, err := dbPool.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	for i, stepID := range orderedIDs {
+		if _, err := tx.Exec(context.Background(),
+			`UPDATE fabrication_steps SET step_order = $1 WHERE step_id = $2 AND sample_id = $3`,
+			i+1, stepID, sampleID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(context.Background())
+}
