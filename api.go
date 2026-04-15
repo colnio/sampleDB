@@ -277,8 +277,8 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		idx := len(args) + 1
-		conditions = append(conditions, fmt.Sprintf("s.created_at <= $%d", idx))
-		args = append(args, to+" 23:59:59")
+		conditions = append(conditions, fmt.Sprintf("s.created_at < $%d::date + interval '1 day'", idx))
+		args = append(args, to)
 	}
 
 	whereClause := ""
@@ -568,8 +568,6 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
-	limit, offset := parsePagination(r)
-
 	steps, err := getFabricationSteps(id)
 	if err != nil {
 		log.Printf("api: listSteps error: %v", err)
@@ -582,10 +580,8 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 		items = append(items, fabricationStepToAPI(s))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items":  items,
-		"total":  len(items),
-		"limit":  limit,
-		"offset": offset,
+		"items": items,
+		"total": len(items),
 	})
 }
 

@@ -30,11 +30,14 @@ func generateShareToken(sampleID int, visibility string) (string, error) {
 		return "", fmt.Errorf("generate share token: %w", err)
 	}
 	token := hex.EncodeToString(b)
-	_, err := dbPool.Exec(context.Background(),
+	tag, err := dbPool.Exec(context.Background(),
 		`UPDATE samples SET share_token=$1, share_visibility=$2 WHERE sample_id=$3`,
 		token, visibility, sampleID)
 	if err != nil {
 		return "", fmt.Errorf("save share token: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return "", errSampleNotFound
 	}
 	return token, nil
 }
@@ -144,7 +147,6 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := parseTemplates(
 		"templates/sample_shared.html",
 		"templates/fabrication_steps.html",
-		"templates/step_form.html",
 	)
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)

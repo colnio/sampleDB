@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -67,7 +69,12 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			userID, err := m.ValidateAPIToken(r.Context(), plain)
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+				if errors.Is(err, ErrTokenInvalid) {
+					http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+				} else {
+					log.Printf("auth: token validation db error: %v", err)
+					http.Error(w, `{"error":"service unavailable"}`, http.StatusServiceUnavailable)
+				}
 				return
 			}
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -134,7 +135,19 @@ func getStepByID(stepID int) (FabricationStep, error) {
 }
 
 // reorderFabricationSteps updates step_order for each step in orderedIDs (1-based).
+// orderedIDs must contain exactly all step IDs belonging to sampleID.
 func reorderFabricationSteps(sampleID int, orderedIDs []int) error {
+	// Verify the supplied IDs cover all steps for this sample.
+	var count int
+	if err := dbPool.QueryRow(context.Background(),
+		"SELECT COUNT(*) FROM fabrication_steps WHERE sample_id = $1",
+		sampleID).Scan(&count); err != nil {
+		return err
+	}
+	if count != len(orderedIDs) {
+		return fmt.Errorf("reorder: got %d step IDs but sample has %d steps", len(orderedIDs), count)
+	}
+
 	tx, err := dbPool.Begin(context.Background())
 	if err != nil {
 		return err

@@ -379,12 +379,44 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify the caller is the article creator or an admin.
+	var createdBy int
+	var isAdmin bool
+	if authErr := dbPool.QueryRow(context.Background(),
+		`SELECT a.created_by, COALESCE(u.admin, false)
+		   FROM articles a
+		   LEFT JOIN users u ON u.user_id = $1
+		  WHERE a.title = $2`,
+		session.UserID, title).Scan(&createdBy, &isAdmin); authErr != nil {
+		if errors.Is(authErr, pgx.ErrNoRows) {
+			if isHTMXRequest(r) {
+				renderArticleContentPanel(w, r, session, title, "", "Article not found.", true)
+				return
+			}
+			http.Error(w, "Article not found", http.StatusNotFound)
+			return
+		}
+		if isHTMXRequest(r) {
+			renderArticleContentPanel(w, r, session, title, "", "Error checking article permissions.", true)
+			return
+		}
+		http.Error(w, "Error checking permissions", http.StatusInternalServerError)
+		return
+	}
+	if createdBy != session.UserID && !isAdmin {
+		if isHTMXRequest(r) {
+			renderArticleContentPanel(w, r, session, title, "", "You do not have permission to edit this article.", true)
+			return
+		}
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	content := r.FormValue("content")
-	_, err := dbPool.Exec(context.Background(),
-		`UPDATE articles SET content = $1, last_modified_at = NOW(), 
+	if _, execErr := dbPool.Exec(context.Background(),
+		`UPDATE articles SET content = $1, last_modified_at = NOW(),
          last_modified_by = $2 WHERE title = $3`,
-		content, session.UserID, title)
-	if err != nil {
+		content, session.UserID, title); execErr != nil {
 		if isHTMXRequest(r) {
 			renderArticleContentPanel(w, r, session, title, "", "Failed to update article content.", true)
 			return
@@ -407,6 +439,8 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 4 || parts[3] == "" {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
@@ -415,6 +449,28 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 	title, err := url.PathUnescape(parts[3])
 	if err != nil {
 		http.Error(w, "Invalid article title", http.StatusBadRequest)
+		return
+	}
+
+	// Verify the caller is the article creator or an admin.
+	var createdBy int
+	var isAdmin bool
+	err = dbPool.QueryRow(context.Background(),
+		`SELECT a.created_by, COALESCE(u.admin, false)
+		   FROM articles a
+		   LEFT JOIN users u ON u.user_id = $1
+		  WHERE a.title = $2`,
+		session.UserID, title).Scan(&createdBy, &isAdmin)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "Article not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Error checking permissions", http.StatusInternalServerError)
+		return
+	}
+	if createdBy != session.UserID && !isAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 

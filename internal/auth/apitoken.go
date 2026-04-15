@@ -5,9 +5,16 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
+
+// ErrTokenInvalid is returned by ValidateAPIToken when the token does not exist
+// or has been revoked. Use errors.Is to distinguish it from database errors.
+var ErrTokenInvalid = errors.New("invalid or revoked api token")
 
 // APIToken represents an API token record from the database.
 type APIToken struct {
@@ -66,10 +73,13 @@ func (m *Manager) ValidateAPIToken(ctx context.Context, plain string) (int, erro
 		`SELECT token_id, user_id, revoked FROM api_tokens WHERE token_hash = $1`,
 		hash).Scan(&tokenID, &userID, &revoked)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrTokenInvalid
+		}
 		return 0, fmt.Errorf("validate api token: %w", err)
 	}
 	if revoked {
-		return 0, fmt.Errorf("api token revoked")
+		return 0, ErrTokenInvalid
 	}
 
 	// Best-effort update of last_used_at; ignore errors so auth is not blocked.
