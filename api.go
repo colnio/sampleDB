@@ -580,10 +580,8 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 		items = append(items, fabricationStepToAPI(s))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items":  items,
-		"total":  len(items),
-		"limit":  len(items),
-		"offset": 0,
+		"items": items,
+		"total": len(items),
 	})
 }
 
@@ -1025,10 +1023,8 @@ func apiUsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items":  users,
-		"total":  len(users),
-		"limit":  len(users),
-		"offset": 0,
+		"items": users,
+		"total": len(users),
 	})
 }
 
@@ -1050,10 +1046,8 @@ func apiEquipmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items":  equip,
-		"total":  len(equip),
-		"limit":  len(equip),
-		"offset": 0,
+		"items": equip,
+		"total": len(equip),
 	})
 }
 

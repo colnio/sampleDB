@@ -528,7 +528,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 			`INSERT INTO article_attachments
              (article_id, attachment_address, original_name, uploaded_by)
              VALUES ($1, $2, $3, $4)`,
-			articleID, fp, fh.Filename, session.UserID)
+			articleID, fp, sanitizeFilename(fh.Filename), session.UserID)
 		if dbErr != nil {
 			log.Printf("wiki: error storing attachment metadata for article %s: %v", articleID, dbErr)
 			uploadErrs = append(uploadErrs, fh.Filename)
