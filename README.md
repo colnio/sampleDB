@@ -125,6 +125,66 @@ sudo systemctl daemon-reload
 sudo systemctl restart sampledb
 ```
 
+## REST API
+
+SampleDB exposes a JSON REST API under `/api/v1/`. All endpoints require authentication via either a session cookie (browser) or a Bearer token (programmatic access).
+
+### Authentication
+
+**Session cookie** — log in via the web UI; the session cookie is sent automatically by the browser.
+
+**Bearer token** — generate a token at `/profile/tokens`, then include it in every request:
+
+```
+Authorization: Bearer <token>
+```
+
+Requests without valid credentials receive `401 Unauthorized`.
+
+### Base URL
+
+```
+http(s)://<host>/api/v1
+```
+
+### Key endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/samples` | List samples (supports `q`, `owner`, `from`, `to`, `limit`, `offset`) |
+| `POST` | `/samples` | Create a sample |
+| `GET` | `/samples/{id}` | Get sample detail with fabrication steps and attachments |
+| `PUT` | `/samples/{id}` | Update sample fields |
+| `DELETE` | `/samples/{id}` | Delete sample |
+| `GET` | `/samples/{id}/steps` | List fabrication steps for a sample |
+| `POST` | `/samples/{id}/steps` | Add a fabrication step |
+| `PUT` | `/steps/{id}` | Update a fabrication step |
+| `DELETE` | `/steps/{id}` | Delete a fabrication step |
+| `GET` | `/wiki` | List wiki articles |
+| `POST` | `/wiki` | Create a wiki article |
+| `GET` | `/wiki/{id}` | Get article with content and attachments |
+| `PUT` | `/wiki/{id}` | Update a wiki article |
+| `GET` | `/users` | List approved users (for owner/person pickers) |
+| `GET` | `/equipment` | List equipment |
+
+All list responses follow the envelope `{"items": [...], "total": N, "limit": N, "offset": N}`. Error responses use `{"error": "message"}`. See `docs/api.md` for full request/response details.
+
+### Quick example
+
+```bash
+# Generate a token at /profile/tokens, then:
+TOKEN=<your_token>
+
+# List samples
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8010/api/v1/samples
+
+# Create a sample
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Si wafer","description":"4-inch p-type","keywords":"silicon wafer"}' \
+     http://localhost:8010/api/v1/samples
+```
+
 ## Tests
 
 ```bash

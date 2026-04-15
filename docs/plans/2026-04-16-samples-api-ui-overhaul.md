@@ -183,9 +183,9 @@ Major upgrade across four areas:
 
 ### Task 12: [Final] Update documentation
 
-- [ ] update `README.md` — add REST API section: auth (Bearer token), base URL, key endpoints
-- [ ] create `docs/api.md` — full endpoint reference: method, path, auth required, request/response JSON examples for all `/api/v1/*` routes
-- [ ] update README environment variables section if any new config added
+- [x] update `README.md` — add REST API section: auth (Bearer token), base URL, key endpoints
+- [x] create `docs/api.md` — full endpoint reference: method, path, auth required, request/response JSON examples for all `/api/v1/*` routes
+- [x] update README environment variables section if any new config added (no new env vars added — section unchanged)
 
 ---
 
