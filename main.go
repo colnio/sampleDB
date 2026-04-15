@@ -295,7 +295,13 @@ func resolveAppPath(path string) string {
 	if appConfig.BaseDir == "" {
 		return clean
 	}
-	return filepath.Join(appConfig.BaseDir, clean)
+	joined := filepath.Join(appConfig.BaseDir, clean)
+	// Reject paths that escape the base directory.
+	base := appConfig.BaseDir + string(os.PathSeparator)
+	if joined != appConfig.BaseDir && !strings.HasPrefix(joined, base) {
+		return ""
+	}
+	return joined
 }
 
 func resolveTemplatePath(path string) string {

@@ -244,7 +244,11 @@ func handleFabricationStepDelete(w http.ResponseWriter, r *http.Request, stepIDS
 		return
 	}
 	if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		if errors.Is(err, errSampleNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		}
 		return
 	}
 	sampleIDStr := strconv.Itoa(existing.SampleID)

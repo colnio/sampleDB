@@ -120,6 +120,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 				Error:      r.URL.Query().Get("error"),
 				Success:    r.URL.Query().Get("success"),
 				IsRegister: false,
+				Next:       r.URL.Query().Get("next"),
 			}
 
 			tmpl, err := template.ParseFiles(m.templatePath("auth_base.html"), m.templatePath("login.html"))
@@ -181,7 +182,16 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			SameSite: http.SameSiteStrictMode,
 		})
 
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		// Honor ?next= redirect only for local paths to prevent open-redirect.
+		next := r.FormValue("next")
+		if next == "" {
+			next = r.URL.Query().Get("next")
+		}
+		if next != "" && strings.HasPrefix(next, "/") && !strings.Contains(next, "://") {
+			http.Redirect(w, r, next, http.StatusSeeOther)
+		} else {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		}
 	}
 }
 
@@ -412,4 +422,5 @@ type authPageData struct {
 	IsRegister bool
 	Username   string
 	IsAdmin    bool
+	Next       string
 }

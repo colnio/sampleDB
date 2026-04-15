@@ -125,7 +125,7 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	row := dbPool.QueryRow(context.Background(), `SELECT admin
 	FROM users
-	WHERE username = $1`, session.Username)
+	WHERE user_id = $1`, session.UserID)
 
 	if err := row.Scan(&data.BasePageData.IsAdmin); err != nil {
 		log.Printf("wiki: unable to load admin flag for %s: %v", session.Username, err)
@@ -752,6 +752,8 @@ func wikiPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB
 
 	var content string
 	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {

@@ -190,6 +190,7 @@ html[data-theme="light"] .auth-theme-toggle__icon--moon {
         </div>
 
         <form method="POST" action="{{if .IsRegister}}/register{{else}}/login{{end}}">
+            {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" autocomplete="username" required>

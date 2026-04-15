@@ -200,7 +200,7 @@ func TestHandleSharedSample_AuthenticatedRequiresLogin(t *testing.T) {
 	authManagerInstance = auth.NewManager(pool)
 	t.Cleanup(func() { authManagerInstance = origManager })
 
-	// No auth headers — expect redirect to /login.
+	// No auth headers — expect redirect to /login with ?next= pointing back to the share URL.
 	req := httptest.NewRequest(http.MethodGet, "/s/"+token, nil)
 	rr := httptest.NewRecorder()
 	handleSharedSample(rr, req)
@@ -208,8 +208,10 @@ func TestHandleSharedSample_AuthenticatedRequiresLogin(t *testing.T) {
 	if rr.Code != http.StatusSeeOther {
 		t.Errorf("status = %d, want 303 redirect to /login", rr.Code)
 	}
-	if loc := rr.Header().Get("Location"); loc != "/login" {
-		t.Errorf("Location = %q, want /login", loc)
+	loc := rr.Header().Get("Location")
+	wantPrefix := "/login?next="
+	if !strings.HasPrefix(loc, wantPrefix) {
+		t.Errorf("Location = %q, want prefix %q", loc, wantPrefix)
 	}
 }
 
