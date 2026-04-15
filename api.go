@@ -542,9 +542,9 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	var attachmentIDs []string
+	var attachmentIDs []int
 	for rows.Next() {
-		var aid string
+		var aid int
 		if scanErr := rows.Scan(&aid); scanErr != nil {
 			rows.Close()
 			log.Printf("api: deleteSample scan attachment id error: %v", scanErr)
@@ -560,8 +560,8 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 	for _, aid := range attachmentIDs {
-		if delErr := deleteAttachment(aid); delErr != nil {
-			log.Printf("api: deleteSample cleanup attachment %s error: %v", aid, delErr)
+		if delErr := deleteAttachment(strconv.Itoa(aid)); delErr != nil {
+			log.Printf("api: deleteSample cleanup attachment %d error: %v", aid, delErr)
 			// Non-fatal: continue deleting remaining attachments.
 		}
 	}
