@@ -567,7 +567,11 @@ func handleProfileTokenRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := authManagerInstance.RevokeAPIToken(r.Context(), tokenID, session.UserID); err != nil {
-		http.Error(w, "Could not revoke token", http.StatusInternalServerError)
+		if errors.Is(err, auth.ErrTokenNotFound) {
+			http.Error(w, "Token not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Could not revoke token", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -1353,7 +1357,7 @@ func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID st
 	}
 
 	sampleIDInt, _ := strconv.Atoi(sampleID)
-	steps, _ := getFabricationSteps(sampleIDInt) // non-fatal: show empty on error
+	steps, _ := getFabricationSteps(ctx, sampleIDInt) // non-fatal: show empty on error
 
 	shareURL := ""
 	if sample.ShareToken != nil && *sample.ShareToken != "" {
@@ -1491,8 +1495,8 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if hasSamplePrep {
-		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5, sample_prep=$7 WHERE sample_id=$6"
-		args = []interface{}{name, description, keywords, ownerName, ownerUserID, sampleID, sample_prep}
+		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5, sample_prep=$6 WHERE sample_id=$7"
+		args = []interface{}{name, description, keywords, ownerName, ownerUserID, sample_prep, sampleID}
 	} else {
 		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5 WHERE sample_id=$6"
 		args = []interface{}{name, description, keywords, ownerName, ownerUserID, sampleID}
@@ -1504,7 +1508,7 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 			renderSampleEditSection(w, r, session, sampleID, "", "Failed to update the sample.")
 			return
 		}
-		fmt.Println(err)
+		log.Printf("editSampleHandler: update error: %v", err)
 		http.Error(w, "Error updating sample", http.StatusInternalServerError)
 		return
 	}

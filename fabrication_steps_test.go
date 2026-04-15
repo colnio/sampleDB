@@ -60,7 +60,7 @@ func TestGetFabricationSteps_Empty(t *testing.T) {
 	sampleID, cleanup := createTestSample(t)
 	defer cleanup()
 
-	steps, err := getFabricationSteps(sampleID)
+	steps, err := getFabricationSteps(context.Background(), sampleID)
 	if err != nil {
 		t.Fatalf("getFabricationSteps: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestAddAndGetFabricationSteps(t *testing.T) {
 		Description: desc,
 	}
 
-	created, err := addFabricationStep(sampleID, step)
+	created, err := addFabricationStep(context.Background(), sampleID, step)
 	if err != nil {
 		t.Fatalf("addFabricationStep: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestAddAndGetFabricationSteps(t *testing.T) {
 		dbPool.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
 	})
 
-	steps, err := getFabricationSteps(sampleID)
+	steps, err := getFabricationSteps(context.Background(), sampleID)
 	if err != nil {
 		t.Fatalf("getFabricationSteps after add: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestUpdateFabricationStep(t *testing.T) {
 	defer cleanup()
 
 	step := FabricationStep{StepOrder: 1, Description: "original"}
-	created, err := addFabricationStep(sampleID, step)
+	created, err := addFabricationStep(context.Background(), sampleID, step)
 	if err != nil {
 		t.Fatalf("addFabricationStep: %v", err)
 	}
@@ -139,11 +139,11 @@ func TestUpdateFabricationStep(t *testing.T) {
 	})
 
 	updated := FabricationStep{StepOrder: 2, Description: "updated description"}
-	if err := updateFabricationStep(created.ID, updated); err != nil {
+	if err := updateFabricationStep(context.Background(), created.ID, updated); err != nil {
 		t.Fatalf("updateFabricationStep: %v", err)
 	}
 
-	steps, err := getFabricationSteps(sampleID)
+	steps, err := getFabricationSteps(context.Background(), sampleID)
 	if err != nil {
 		t.Fatalf("getFabricationSteps after update: %v", err)
 	}
@@ -167,16 +167,16 @@ func TestDeleteFabricationStep(t *testing.T) {
 	defer cleanup()
 
 	step := FabricationStep{StepOrder: 1, Description: "to be deleted"}
-	created, err := addFabricationStep(sampleID, step)
+	created, err := addFabricationStep(context.Background(), sampleID, step)
 	if err != nil {
 		t.Fatalf("addFabricationStep: %v", err)
 	}
 
-	if err := deleteFabricationStep(created.ID); err != nil {
+	if err := deleteFabricationStep(context.Background(), created.ID); err != nil {
 		t.Fatalf("deleteFabricationStep: %v", err)
 	}
 
-	steps, err := getFabricationSteps(sampleID)
+	steps, err := getFabricationSteps(context.Background(), sampleID)
 	if err != nil {
 		t.Fatalf("getFabricationSteps after delete: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestDeleteFabricationStep_NotFound(t *testing.T) {
 	dbPool = pool
 	defer func() { dbPool = orig }()
 
-	err := deleteFabricationStep(999999999)
+	err := deleteFabricationStep(context.Background(), 999999999)
 	if err == nil {
 		t.Fatal("expected error deleting non-existent step, got nil")
 	}
@@ -207,11 +207,11 @@ func TestReorderFabricationSteps(t *testing.T) {
 	sampleID, cleanup := createTestSample(t)
 	defer cleanup()
 
-	s1, err := addFabricationStep(sampleID, FabricationStep{StepOrder: 1, Description: "first"})
+	s1, err := addFabricationStep(context.Background(), sampleID, FabricationStep{StepOrder: 1, Description: "first"})
 	if err != nil {
 		t.Fatalf("add step 1: %v", err)
 	}
-	s2, err := addFabricationStep(sampleID, FabricationStep{StepOrder: 2, Description: "second"})
+	s2, err := addFabricationStep(context.Background(), sampleID, FabricationStep{StepOrder: 2, Description: "second"})
 	if err != nil {
 		t.Fatalf("add step 2: %v", err)
 	}
@@ -220,11 +220,11 @@ func TestReorderFabricationSteps(t *testing.T) {
 	})
 
 	// Reverse the order: put s2 first, s1 second
-	if err := reorderFabricationSteps(sampleID, []int{s2.ID, s1.ID}); err != nil {
+	if err := reorderFabricationSteps(context.Background(), sampleID, []int{s2.ID, s1.ID}); err != nil {
 		t.Fatalf("reorderFabricationSteps: %v", err)
 	}
 
-	steps, err := getFabricationSteps(sampleID)
+	steps, err := getFabricationSteps(context.Background(), sampleID)
 	if err != nil {
 		t.Fatalf("getFabricationSteps after reorder: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestGetStepByID(t *testing.T) {
 	sampleID, cleanup := createTestSample(t)
 	defer cleanup()
 
-	created, err := addFabricationStep(sampleID, FabricationStep{StepOrder: 1, Description: "lookup test"})
+	created, err := addFabricationStep(context.Background(), sampleID, FabricationStep{StepOrder: 1, Description: "lookup test"})
 	if err != nil {
 		t.Fatalf("addFabricationStep: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestGetStepByID(t *testing.T) {
 		dbPool.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
 	})
 
-	fetched, err := getStepByID(created.ID)
+	fetched, err := getStepByID(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("getStepByID: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestHandleFabricationStepDelete_RemovesStep(t *testing.T) {
 	defer cleanup()
 
 	desc := "step to delete via handler"
-	created, err := addFabricationStep(sampleID, FabricationStep{StepOrder: 1, Description: desc})
+	created, err := addFabricationStep(context.Background(), sampleID, FabricationStep{StepOrder: 1, Description: desc})
 	if err != nil {
 		t.Fatalf("addFabricationStep: %v", err)
 	}
@@ -333,7 +333,7 @@ func TestHandleFabricationStepDelete_RemovesStep(t *testing.T) {
 		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
 	// Step should be gone from DB
-	steps, err := getFabricationSteps(sampleID)
+	steps, err := getFabricationSteps(context.Background(), sampleID)
 	if err != nil {
 		t.Fatalf("getFabricationSteps after handler delete: %v", err)
 	}

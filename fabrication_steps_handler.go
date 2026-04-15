@@ -110,7 +110,7 @@ func handleFabricationStepsEndpoint(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if _, err := addFabricationStep(sampleIDInt, step); err != nil {
+		if _, err := addFabricationStep(r.Context(), sampleIDInt, step); err != nil {
 			renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Failed to add step.", 0)
 			return
 		}
@@ -162,7 +162,7 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 
 	switch r.Method {
 	case http.MethodGet:
-		existing, err := getStepByID(stepID)
+		existing, err := getStepByID(r.Context(), stepID)
 		if err != nil {
 			http.Error(w, "Step not found", http.StatusNotFound)
 			return
@@ -185,7 +185,7 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 		}
 
 		// Re-fetch the step to get sample_id for ownership check.
-		existing, err := getStepByID(stepID)
+		existing, err := getStepByID(r.Context(), stepID)
 		if err != nil {
 			http.Error(w, "Step not found", http.StatusNotFound)
 			return
@@ -205,7 +205,7 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 			return
 		}
 
-		if err := updateFabricationStep(stepID, step); err != nil {
+		if err := updateFabricationStep(r.Context(), stepID, step); err != nil {
 			http.Error(w, "Failed to update step", http.StatusInternalServerError)
 			return
 		}
@@ -238,7 +238,7 @@ func handleFabricationStepDelete(w http.ResponseWriter, r *http.Request, stepIDS
 	}
 
 	// Fetch sample_id before deleting so we can re-render the panel
-	existing, err := getStepByID(stepID)
+	existing, err := getStepByID(r.Context(), stepID)
 	if err != nil {
 		http.Error(w, "Step not found", http.StatusNotFound)
 		return
@@ -253,7 +253,7 @@ func handleFabricationStepDelete(w http.ResponseWriter, r *http.Request, stepIDS
 	}
 	sampleIDStr := strconv.Itoa(existing.SampleID)
 
-	if err := deleteFabricationStep(stepID); err != nil {
+	if err := deleteFabricationStep(r.Context(), stepID); err != nil {
 		renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Failed to delete step.", 0)
 		return
 	}
@@ -309,7 +309,7 @@ func handleFabricationStepsReorder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(orderedIDs) > 0 {
-		if err := reorderFabricationSteps(sampleIDInt, orderedIDs); err != nil {
+		if err := reorderFabricationSteps(r.Context(), sampleIDInt, orderedIDs); err != nil {
 			renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Failed to reorder steps.", 0)
 			return
 		}

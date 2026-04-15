@@ -16,6 +16,10 @@ import (
 // or has been revoked. Use errors.Is to distinguish it from database errors.
 var ErrTokenInvalid = errors.New("invalid or revoked api token")
 
+// ErrTokenNotFound is returned by RevokeAPIToken when no matching token exists
+// for the given tokenID and userID (token absent or owned by another user).
+var ErrTokenNotFound = errors.New("token not found or not owned by user")
+
 // APIToken represents an API token record from the database.
 type APIToken struct {
 	TokenID    int
@@ -124,7 +128,7 @@ func (m *Manager) RevokeAPIToken(ctx context.Context, tokenID, userID int) error
 		return fmt.Errorf("revoke api token: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("token not found or not owned by user")
+		return ErrTokenNotFound
 	}
 	return nil
 }

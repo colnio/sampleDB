@@ -395,7 +395,7 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	detail.SamplePrep = samplePrep
 
 	// Fabrication steps
-	steps, stepsErr := getFabricationSteps(id)
+	steps, stepsErr := getFabricationSteps(r.Context(), id)
 	if stepsErr != nil {
 		log.Printf("api: getSample steps error: %v", stepsErr)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -611,7 +611,7 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
-	steps, err := getFabricationSteps(id)
+	steps, err := getFabricationSteps(r.Context(), id)
 	if err != nil {
 		log.Printf("api: listSteps error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -679,7 +679,7 @@ func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
-	created, err := addFabricationStep(id, step)
+	created, err := addFabricationStep(r.Context(), id, step)
 	if err != nil {
 		log.Printf("api: addStep error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -713,7 +713,7 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
-	existing, err := getStepByID(id)
+	existing, err := getStepByID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "step not found")
@@ -743,7 +743,7 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
-	if err := updateFabricationStep(id, step); err != nil {
+	if err := updateFabricationStep(r.Context(), id, step); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "step not found")
 			return
@@ -762,7 +762,7 @@ func apiDeleteStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
-	existing, err := getStepByID(id)
+	existing, err := getStepByID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "step not found")
@@ -779,7 +779,7 @@ func apiDeleteStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
-	if err := deleteFabricationStep(id); err != nil {
+	if err := deleteFabricationStep(r.Context(), id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "step not found")
 			return

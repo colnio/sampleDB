@@ -151,7 +151,7 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sampleIDInt := sample.ID
-	steps, _ := getFabricationSteps(sampleIDInt) // non-fatal
+	steps, _ := getFabricationSteps(r.Context(), sampleIDInt) // non-fatal
 
 	data := SharedSamplePageData{
 		Sample:          sample,

@@ -23,8 +23,8 @@ type FabricationStep struct {
 }
 
 // getFabricationSteps returns all steps for a sample, ordered by step_order.
-func getFabricationSteps(sampleID int) ([]FabricationStep, error) {
-	rows, err := dbPool.Query(context.Background(), `
+func getFabricationSteps(ctx context.Context, sampleID int) ([]FabricationStep, error) {
+	rows, err := dbPool.Query(ctx, `
 		SELECT fs.step_id, fs.sample_id, fs.step_order, fs.step_date,
 		       fs.person_user_id, u.username,
 		       COALESCE(fs.description, ''),
@@ -59,9 +59,9 @@ func getFabricationSteps(sampleID int) ([]FabricationStep, error) {
 
 // addFabricationStep inserts a new step and returns the fully-joined record
 // (including PersonUsername and EquipmentName from joined tables).
-func addFabricationStep(sampleID int, step FabricationStep) (FabricationStep, error) {
+func addFabricationStep(ctx context.Context, sampleID int, step FabricationStep) (FabricationStep, error) {
 	var id int
-	err := dbPool.QueryRow(context.Background(), `
+	err := dbPool.QueryRow(ctx, `
 		INSERT INTO fabrication_steps
 		            (sample_id, step_order, step_date, person_user_id, description, equipment_id)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -72,12 +72,12 @@ func addFabricationStep(sampleID int, step FabricationStep) (FabricationStep, er
 	if err != nil {
 		return FabricationStep{}, err
 	}
-	return getStepByID(id)
+	return getStepByID(ctx, id)
 }
 
 // updateFabricationStep updates an existing step by ID.
-func updateFabricationStep(stepID int, step FabricationStep) error {
-	tag, err := dbPool.Exec(context.Background(), `
+func updateFabricationStep(ctx context.Context, stepID int, step FabricationStep) error {
+	tag, err := dbPool.Exec(ctx, `
 		UPDATE fabrication_steps
 		   SET step_order     = $1,
 		       step_date      = $2,
@@ -97,8 +97,8 @@ func updateFabricationStep(stepID int, step FabricationStep) error {
 }
 
 // deleteFabricationStep removes a step by ID.
-func deleteFabricationStep(stepID int) error {
-	tag, err := dbPool.Exec(context.Background(), `
+func deleteFabricationStep(ctx context.Context, stepID int) error {
+	tag, err := dbPool.Exec(ctx, `
 		DELETE FROM fabrication_steps WHERE step_id = $1`, stepID)
 	if err != nil {
 		return err
@@ -110,9 +110,9 @@ func deleteFabricationStep(stepID int) error {
 }
 
 // getStepByID returns a single fabrication step with joined user and equipment names.
-func getStepByID(stepID int) (FabricationStep, error) {
+func getStepByID(ctx context.Context, stepID int) (FabricationStep, error) {
 	var s FabricationStep
-	err := dbPool.QueryRow(context.Background(), `
+	err := dbPool.QueryRow(ctx, `
 		SELECT fs.step_id, fs.sample_id, fs.step_order, fs.step_date,
 		       fs.person_user_id, u.username,
 		       COALESCE(fs.description, ''),
@@ -136,10 +136,10 @@ func getStepByID(stepID int) (FabricationStep, error) {
 
 // reorderFabricationSteps updates step_order for each step in orderedIDs (1-based).
 // orderedIDs must contain exactly all step IDs belonging to sampleID.
-func reorderFabricationSteps(sampleID int, orderedIDs []int) error {
+func reorderFabricationSteps(ctx context.Context, sampleID int, orderedIDs []int) error {
 	// Verify the supplied IDs cover all steps for this sample.
 	var count int
-	if err := dbPool.QueryRow(context.Background(),
+	if err := dbPool.QueryRow(ctx,
 		"SELECT COUNT(*) FROM fabrication_steps WHERE sample_id = $1",
 		sampleID).Scan(&count); err != nil {
 		return err
@@ -149,7 +149,7 @@ func reorderFabricationSteps(sampleID int, orderedIDs []int) error {
 	}
 	// Verify every submitted ID actually belongs to this sample.
 	var matchCount int
-	if err := dbPool.QueryRow(context.Background(),
+	if err := dbPool.QueryRow(ctx,
 		"SELECT COUNT(*) FROM fabrication_steps WHERE step_id = ANY($1) AND sample_id = $2",
 		orderedIDs, sampleID).Scan(&matchCount); err != nil {
 		return err
@@ -158,18 +158,18 @@ func reorderFabricationSteps(sampleID int, orderedIDs []int) error {
 		return fmt.Errorf("reorder: one or more step IDs do not belong to sample %d", sampleID)
 	}
 
-	tx, err := dbPool.Begin(context.Background())
+	tx, err := dbPool.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(context.Background())
+	defer tx.Rollback(ctx)
 
 	for i, stepID := range orderedIDs {
-		if _, err := tx.Exec(context.Background(),
+		if _, err := tx.Exec(ctx,
 			`UPDATE fabrication_steps SET step_order = $1 WHERE step_id = $2 AND sample_id = $3`,
 			i+1, stepID, sampleID); err != nil {
 			return err
 		}
 	}
-	return tx.Commit(context.Background())
+	return tx.Commit(ctx)
 }
