@@ -66,6 +66,7 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			plain := authHeader[7:]
 			userID, err := m.ValidateAPIToken(r.Context(), plain)
 			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
 				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 				return
 			}
@@ -76,6 +77,7 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			if err := m.db.QueryRow(r.Context(),
 				"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false",
 				userID).Scan(&username); err != nil {
+				w.Header().Set("Content-Type", "application/json")
 				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 				return
 			}
@@ -92,6 +94,7 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 
 		// 3. No valid auth found — 401 for API callers, redirect HTML clients to login.
 		if strings.HasPrefix(r.URL.Path, "/api/") {
+			w.Header().Set("Content-Type", "application/json")
 			http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 			return
 		}

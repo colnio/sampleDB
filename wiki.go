@@ -432,7 +432,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	session := auth.MustSessionFromContext(r.Context())
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 3 {
+	if len(parts) < 4 || parts[3] == "" {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
@@ -480,7 +480,13 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("wiki: failed to upload files for article %s: %v", articleID, uploadErrs)
 	}
 
-	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
+	redirect := "/wiki"
+	if ref := r.Header.Get("Referer"); ref != "" {
+		if u, err := url.Parse(ref); err == nil && u.Path != "" {
+			redirect = u.Path
+		}
+	}
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
