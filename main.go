@@ -791,6 +791,8 @@ func main() {
 	mux.HandleFunc("/api/v1/wiki/", withAuth(apiWikiHandler))
 	mux.HandleFunc("/api/v1/users", withAuth(apiUsersHandler))
 	mux.HandleFunc("/api/v1/equipment", withAuth(apiEquipmentHandler))
+	// Catch-all for unknown /api/ paths — return JSON 404 instead of falling through to the HTML root handler.
+	mux.HandleFunc("/api/", withAuth(apiNotFoundHandler))
 
 	// Public shared sample view — no auth middleware; visibility checked in handler
 	mux.HandleFunc("/s/", handleSharedSample)
@@ -1016,7 +1018,28 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sampleID := pathParts[0]
 
-	// Parse multipart form — allow up to 32 MB for multiple files
+	// Verify the caller owns the sample (or is admin) before accepting files.
+	sampleIDInt, convErr := strconv.Atoi(sampleID)
+	if convErr != nil {
+		http.Error(w, "Invalid sample ID", http.StatusBadRequest)
+		return
+	}
+	if ownerErr := requireSampleOwner(r, sampleIDInt, session.UserID); ownerErr != nil {
+		if errors.Is(ownerErr, errSampleNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+		} else if errors.Is(ownerErr, errForbidden) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Limit total request body to 100 MB before parsing the multipart form.
+	const maxUploadBytes = 100 << 20
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+
+	// Parse multipart form — allow up to 32 MB in memory; rest goes to temp files
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		if isHTMXRequest(r) {
@@ -1848,4 +1871,3 @@ func handleAttachment(w http.ResponseWriter, r *http.Request) {
 
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
-

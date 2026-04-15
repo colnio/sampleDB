@@ -70,10 +70,12 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				if errors.Is(err, ErrTokenInvalid) {
-					http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+					w.WriteHeader(http.StatusUnauthorized)
+					fmt.Fprintln(w, `{"error":"authentication required"}`)
 				} else {
 					log.Printf("auth: token validation db error: %v", err)
-					http.Error(w, `{"error":"service unavailable"}`, http.StatusServiceUnavailable)
+					w.WriteHeader(http.StatusServiceUnavailable)
+					fmt.Fprintln(w, `{"error":"service unavailable"}`)
 				}
 				return
 			}
@@ -85,7 +87,8 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 				"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false",
 				userID).Scan(&username); err != nil {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprintln(w, `{"error":"authentication required"}`)
 				return
 			}
 
@@ -102,7 +105,8 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		// 3. No valid auth found — 401 for API callers, redirect HTML clients to login.
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(w, `{"error":"authentication required"}`)
 			return
 		}
 		http.Redirect(w, r, "/login", http.StatusSeeOther)

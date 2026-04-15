@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"sampleDB/internal/auth"
@@ -31,6 +33,22 @@ func samplePrepHandler(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case http.MethodPost:
+		sampleIDInt, convErr := strconv.Atoi(sampleID)
+		if convErr != nil {
+			http.Error(w, "Invalid sample ID", http.StatusBadRequest)
+			return
+		}
+		if ownerErr := requireSampleOwner(r, sampleIDInt, session.UserID); ownerErr != nil {
+			if errors.Is(ownerErr, errSampleNotFound) {
+				http.Error(w, "Sample not found", http.StatusNotFound)
+			} else if errors.Is(ownerErr, errForbidden) {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+			} else {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+			return
+		}
+
 		if err := r.ParseForm(); err != nil {
 			renderSamplePrepSection(w, r, session, sampleID, "", "Invalid form submission.", true)
 			return

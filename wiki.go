@@ -519,7 +519,11 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := r.ParseMultipartForm(32 << 20) // 32 MB for multiple files
+	// Limit total request body to 100 MB before parsing the multipart form.
+	const maxUploadBytes = 100 << 20
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+
+	err := r.ParseMultipartForm(32 << 20) // 32 MB in memory; rest goes to temp files
 	if err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
@@ -552,6 +556,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 			articleID, fp, sanitizeFilename(fh.Filename), session.UserID)
 		if dbErr != nil {
 			log.Printf("wiki: error storing attachment metadata for article %s: %v", articleID, dbErr)
+			_ = os.Remove(resolveAppPath(fp))
 			uploadErrs = append(uploadErrs, fh.Filename)
 			continue
 		}
@@ -582,6 +587,31 @@ func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case r.Method == http.MethodPost && strings.HasSuffix(trimmedPath, "/delete"):
+		session := auth.MustSessionFromContext(r.Context())
+
+		// Verify the caller is the article creator or an admin before deleting.
+		var createdBy int
+		var isAdmin bool
+		authErr := dbPool.QueryRow(r.Context(),
+			`SELECT a.created_by, COALESCE(u.admin, false)
+			   FROM article_attachments aa
+			   JOIN articles a ON aa.article_id = a.article_id
+			   LEFT JOIN users u ON u.user_id = $1
+			  WHERE aa.attachment_id = $2`,
+			session.UserID, attachmentID).Scan(&createdBy, &isAdmin)
+		if authErr != nil {
+			if errors.Is(authErr, pgx.ErrNoRows) {
+				http.Error(w, "Attachment not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Error checking permissions", http.StatusInternalServerError)
+			}
+			return
+		}
+		if createdBy != session.UserID && !isAdmin {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		articleTitle, err := deleteAttachmentWiki(attachmentID)
 		if err != nil {
 			log.Printf("wiki: failed to delete attachment %s: %v", attachmentID, err)

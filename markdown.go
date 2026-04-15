@@ -36,7 +36,9 @@ func renderMarkdown(md string) template.HTML {
 			html.LazyLoadImages |
 			html.TOC |
 			html.UseXHTML |
-			html.FootnoteReturnLinks,
+			html.FootnoteReturnLinks |
+			html.SkipHTML |
+			html.Safelink,
 	}
 	renderer := html.NewRenderer(opts)
 

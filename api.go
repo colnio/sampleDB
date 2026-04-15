@@ -1085,3 +1085,8 @@ func apiEquipmentHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// apiNotFoundHandler is a catch-all for /api/ paths that don't match any registered route.
+// It returns a JSON 404 instead of falling through to the HTML root handler.
+func apiNotFoundHandler(w http.ResponseWriter, r *http.Request) {
+	writeError(w, http.StatusNotFound, "not found")
+}

@@ -195,14 +195,32 @@ func TestUploadAttachment_PasteImage(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestUploadAttachment_NoFiles(t *testing.T) {
-	// This test does not need a DB — the handler returns before touching it.
+	pool := testDB(t)
+
+	orig := dbPool
+	dbPool = pool
+	t.Cleanup(func() { dbPool = orig })
+
 	setTestTemplatesDir(t)
+
+	// Create a sample with no owner_user_id so the ownership check passes for any authenticated user.
+	sampleName := fmt.Sprintf("nofiles-test-%d", time.Now().UnixNano())
+	var sampleID int
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO samples (sample_name, sample_owner) VALUES ($1, 'tester') RETURNING sample_id`,
+		sampleName).Scan(&sampleID); err != nil {
+		t.Fatalf("create test sample: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(context.Background(), "DELETE FROM samples WHERE sample_id = $1", sampleID)
+	})
 
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	mw.Close()
 
-	req := httptest.NewRequest(http.MethodPost, "/samples/1/upload", &buf)
+	url := fmt.Sprintf("/samples/%d/upload", sampleID)
+	req := httptest.NewRequest(http.MethodPost, url, &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req = withTestSession(req)
 
