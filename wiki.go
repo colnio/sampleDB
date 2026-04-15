@@ -421,34 +421,46 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	articleID := parts[3]
 
-	err := r.ParseMultipartForm(10 << 20) // 10 MB max
+	err := r.ParseMultipartForm(32 << 20) // 32 MB for multiple files
 	if err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, "Error retrieving file", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
-
-	filepath, err := saveUploadedFile(file, header.Filename)
-	if err != nil {
-		http.Error(w, "Error saving file", http.StatusInternalServerError)
+	fileHeaders := r.MultipartForm.File["files"]
+	if len(fileHeaders) == 0 {
+		http.Error(w, "No files provided", http.StatusBadRequest)
 		return
 	}
 
-	_, err = dbPool.Exec(context.Background(),
-		`INSERT INTO article_attachments 
-         (article_id, attachment_address, original_name, uploaded_by) 
-         VALUES ($1, $2, $3, $4)`,
-		articleID, filepath, header.Filename, session.UserID)
-	if err != nil {
-		log.Printf("wiki: error storing attachment metadata for article %s: %v", articleID, err)
-		http.Error(w, "Error storing attachment info", http.StatusInternalServerError)
-		return
+	var uploadErrs []string
+	for _, fh := range fileHeaders {
+		f, openErr := fh.Open()
+		if openErr != nil {
+			uploadErrs = append(uploadErrs, fh.Filename)
+			continue
+		}
+		fp, saveErr := saveUploadedFile(f, fh.Filename)
+		f.Close()
+		if saveErr != nil {
+			log.Printf("wiki: error saving %s for article %s: %v", fh.Filename, articleID, saveErr)
+			uploadErrs = append(uploadErrs, fh.Filename)
+			continue
+		}
+		_, dbErr := dbPool.Exec(context.Background(),
+			`INSERT INTO article_attachments
+             (article_id, attachment_address, original_name, uploaded_by)
+             VALUES ($1, $2, $3, $4)`,
+			articleID, fp, fh.Filename, session.UserID)
+		if dbErr != nil {
+			log.Printf("wiki: error storing attachment metadata for article %s: %v", articleID, dbErr)
+			uploadErrs = append(uploadErrs, fh.Filename)
+			continue
+		}
+	}
+
+	if len(uploadErrs) > 0 {
+		log.Printf("wiki: failed to upload files for article %s: %v", articleID, uploadErrs)
 	}
 
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)

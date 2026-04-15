@@ -32,7 +32,6 @@
     <header class="attachments-header">
         <div>
             <h2 id="attachments-heading">Attachments</h2>
-            <!-- <p class="section-hint">Add reference images, reports, or raw data. Updates stream in without leaving the page.</p> -->
         </div>
         <form action="/samples/{{.Sample.ID}}/upload"
               method="POST"
@@ -44,14 +43,27 @@
               hx-swap="outerHTML"
               hx-encoding="multipart/form-data"
               hx-indicator="#attachment-upload-indicator">
-            <label class="sr-only" for="attachment-file">Attachment</label>
-            <input id="attachment-file" type="file" name="file" required>
+            <label class="sr-only" for="attachment-file">Attachments</label>
+            <input id="attachment-file" type="file" name="files" multiple data-upload-input>
             <button type="submit" class="button button--primary button--small">Upload</button>
             <div id="attachment-upload-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
                 <span class="spinner"></span>
             </div>
         </form>
     </header>
+
+    <div class="upload-drop-zone"
+         data-upload-zone
+         data-upload-endpoint="/samples/{{.Sample.ID}}/upload"
+         data-upload-target="#attachments-panel">
+        <p class="upload-drop-zone__hint">Drop files here or paste images (Ctrl+V / ⌘V)</p>
+        <div class="upload-progress" data-upload-progress style="display:none">
+            <div class="upload-progress__track">
+                <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
+            </div>
+            <span class="upload-progress__label" data-upload-progress-label></span>
+        </div>
+    </div>
 
     {{with .Flash}}
     <div class="alert alert-success">{{.}}</div>
@@ -222,6 +234,10 @@
         </div>
     </form>
 </section>
+{{end}}
+
+{{define "footer_scripts"}}
+<script src="/static/js/upload.js" defer></script>
 {{end}}
 
 {{template "base" .}}

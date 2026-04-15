@@ -987,8 +987,8 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sampleID := pathParts[0]
 
-	// Parse multipart form
-	err := r.ParseMultipartForm(10 << 20) // 10 MB max
+	// Parse multipart form — allow up to 32 MB for multiple files
+	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		if isHTMXRequest(r) {
 			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Unable to read the upload form.")
@@ -998,41 +998,47 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, header, err := r.FormFile("file")
-	if err != nil {
+	fileHeaders := r.MultipartForm.File["files"]
+	if len(fileHeaders) == 0 {
 		if isHTMXRequest(r) {
-			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Please choose a file to upload.")
+			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Please choose at least one file to upload.")
 			return
 		}
-		http.Error(w, "Error retrieving file", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
-
-	// Save file and get filepath
-	filepath, err := saveUploadedFile(file, header.Filename)
-	if err != nil {
-		if isHTMXRequest(r) {
-			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Unable to save the file. Try again.")
-			return
-		}
-		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		http.Error(w, "No files provided", http.StatusBadRequest)
 		return
 	}
 
-	// Add to database
-	err = addAttachment(sampleID, filepath)
-	if err != nil {
-		if isHTMXRequest(r) {
-			renderSampleAttachmentsSection(w, r, session, sampleID, "", "Could not store attachment metadata.")
-			return
+	var errMsgs []string
+	uploaded := 0
+	for _, fh := range fileHeaders {
+		f, openErr := fh.Open()
+		if openErr != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("could not open %s", fh.Filename))
+			continue
 		}
-		http.Error(w, "Error storing attachment info", http.StatusInternalServerError)
-		return
+		fp, saveErr := saveUploadedFile(f, fh.Filename)
+		f.Close()
+		if saveErr != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("could not save %s", fh.Filename))
+			continue
+		}
+		if dbErr := addAttachment(sampleID, fp); dbErr != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
+			continue
+		}
+		uploaded++
+	}
+
+	var flash, errMsg string
+	if uploaded > 0 {
+		flash = fmt.Sprintf("%d file(s) uploaded", uploaded)
+	}
+	if len(errMsgs) > 0 {
+		errMsg = strings.Join(errMsgs, "; ")
 	}
 
 	if isHTMXRequest(r) {
-		renderSampleAttachmentsSection(w, r, session, sampleID, "Attachment uploaded", "")
+		renderSampleAttachmentsSection(w, r, session, sampleID, flash, errMsg)
 		return
 	}
 

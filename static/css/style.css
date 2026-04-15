@@ -1359,6 +1359,55 @@ html[data-theme="dark"] body .markdown-body table th {
     max-width: 260px;
 }
 
+/* Drag-and-drop zone */
+.upload-drop-zone {
+    border: 2px dashed var(--neutral-300);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md) var(--space-lg);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    cursor: default;
+    transition: border-color 0.15s, background-color 0.15s;
+    margin-top: var(--space-sm);
+}
+
+.upload-drop-zone--over,
+.upload-drop-zone:focus-within {
+    border-color: var(--color-primary);
+    background-color: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.upload-drop-zone__hint {
+    margin: 0;
+}
+
+/* Upload progress bar */
+.upload-progress {
+    margin-top: var(--space-sm);
+}
+
+.upload-progress__track {
+    height: 6px;
+    background: var(--neutral-200);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.upload-progress__bar {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
+
+.upload-progress__label {
+    display: block;
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--text-muted);
+    margin-top: var(--space-xs);
+}
+
 .attachment-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

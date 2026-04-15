@@ -82,9 +82,21 @@
     <div class="upload-form">
         <h3>Add Attachment</h3>
         <form action="/wiki/upload/{{.Article.ID}}" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" required>
+            <input type="file" name="files" multiple>
             <button type="submit" class="button button--primary">Upload</button>
         </form>
+        <div class="upload-drop-zone"
+             data-upload-zone
+             data-upload-endpoint="/wiki/upload/{{.Article.ID}}"
+             data-upload-target="">
+            <p class="upload-drop-zone__hint">Drop files here or paste images (Ctrl+V / ⌘V)</p>
+            <div class="upload-progress" data-upload-progress style="display:none">
+                <div class="upload-progress__track">
+                    <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
+                </div>
+                <span class="upload-progress__label" data-upload-progress-label></span>
+            </div>
+        </div>
     </div>
 
     <div id="image-lightbox" class="image-lightbox" aria-hidden="true">
@@ -526,6 +538,7 @@ figure.attachment-preview {
     }
 }
 </style>
+<script src="/static/js/upload.js" defer></script>
 {{end}}
 
 {{define "article_content_panel"}}

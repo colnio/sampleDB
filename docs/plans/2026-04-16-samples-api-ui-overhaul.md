@@ -118,15 +118,15 @@ Major upgrade across four areas:
 
 ### Task 6: Multi-file upload + copy-paste
 
-- [ ] update `POST /samples/{id}/upload` handler to iterate `r.MultipartForm.File["files"]` (plural) instead of a single file; process each file in a loop
-- [ ] update `POST /wiki/upload/{article_id}` handler similarly
-- [ ] update `templates/sample_detail.html` upload section: replace single-file `<input type="file">` with `<input type="file" multiple>`; add drag-and-drop zone div with JS handler
-- [ ] add `static/js/upload.js` — handles: (a) drag-and-drop onto zone, (b) paste event on `document` detecting `image/*` MIME type in clipboard items, (c) submits files via `fetch()` to upload endpoint; updates attachment list via HTMX swap after success
-- [ ] apply same drag-drop + paste zone to wiki article attachment upload
-- [ ] show per-file upload progress using `XMLHttpRequest` upload events or `fetch` with ReadableStream
-- [ ] write tests for multi-file upload handler (2 files in one request → 2 attachment rows created)
-- [ ] write tests for paste upload (simulate FormData with image blob)
-- [ ] run tests — must pass before task 7
+- [x] update `POST /samples/{id}/upload` handler to iterate `r.MultipartForm.File["files"]` (plural) instead of a single file; process each file in a loop
+- [x] update `POST /wiki/upload/{article_id}` handler similarly
+- [x] update `templates/sample_detail.html` upload section: replace single-file `<input type="file">` with `<input type="file" multiple>`; add drag-and-drop zone div with JS handler
+- [x] add `static/js/upload.js` — handles: (a) drag-and-drop onto zone, (b) paste event on `document` detecting `image/*` MIME type in clipboard items, (c) submits files via `fetch()` to upload endpoint; updates attachment list via HTMX swap after success
+- [x] apply same drag-drop + paste zone to wiki article attachment upload
+- [x] show per-file upload progress using `XMLHttpRequest` upload events or `fetch` with ReadableStream
+- [x] write tests for multi-file upload handler (2 files in one request → 2 attachment rows created)
+- [x] write tests for paste upload (simulate FormData with image blob)
+- [x] run tests — must pass before task 7
 
 ### Task 7: Image gallery/player
 
