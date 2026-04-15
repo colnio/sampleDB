@@ -294,6 +294,13 @@ func MustSessionFromContext(ctx context.Context) Session {
 	return session
 }
 
+// ContextWithSession returns a context with the given session stored at the
+// auth key. Intended for use in tests that need to call handlers directly
+// without going through the RequireAuth middleware.
+func ContextWithSession(ctx context.Context, s Session) context.Context {
+	return context.WithValue(ctx, userContextKey, s)
+}
+
 func (m *Manager) newSession(username string, userID int) (Session, error) {
 	token, err := generateSessionToken()
 	if err != nil {

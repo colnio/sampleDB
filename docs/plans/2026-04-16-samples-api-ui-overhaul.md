@@ -74,26 +74,26 @@ Major upgrade across four areas:
 
 ### Task 3: REST API endpoints (core)
 
-- [ ] create `api.go` — all `/api/v1/*` handlers; separate file from HTML handlers
-- [ ] write helper `writeJSON(w, status, v)` and `writeError(w, status, msg)` for consistent JSON responses
-- [ ] `GET /api/v1/samples` — list samples; supports query params: `q` (keyword), `owner`, `from`, `to`, `limit`, `offset`; returns JSON array with `id, name, description, keywords, owner_username, created_at, attachment_count`
-- [ ] `GET /api/v1/samples/{id}` — full sample detail: fields + fabrication steps + attachments list
-- [ ] `POST /api/v1/samples` — create sample; JSON body; returns created sample
-- [ ] `PUT /api/v1/samples/{id}` — update sample fields; returns updated sample
-- [ ] `DELETE /api/v1/samples/{id}` — delete sample; 204 on success
-- [ ] `GET /api/v1/samples/{id}/steps` — list fabrication steps for sample
-- [ ] `POST /api/v1/samples/{id}/steps` — add fabrication step
-- [ ] `PUT /api/v1/steps/{id}` — update step
-- [ ] `DELETE /api/v1/steps/{id}` — delete step
-- [ ] `GET /api/v1/wiki` — list articles (id, title, created_at, last_modified_at)
-- [ ] `GET /api/v1/wiki/{id}` — article detail: title, content (raw markdown), attachments
-- [ ] `POST /api/v1/wiki` — create article
-- [ ] `PUT /api/v1/wiki/{id}` — update article
-- [ ] `GET /api/v1/users` — list approved users (id, username, group) — for owner/person pickers
-- [ ] `GET /api/v1/equipment` — list equipment (id, name, location)
-- [ ] register all `/api/v1/*` routes in `main.go`; apply `withAuth()` middleware to all
-- [ ] write HTTP-level tests for each endpoint: success path, auth required (401 without token), not found (404), create + retrieve round-trip
-- [ ] run tests — must pass before task 4
+- [x] create `api.go` — all `/api/v1/*` handlers; separate file from HTML handlers
+- [x] write helper `writeJSON(w, status, v)` and `writeError(w, status, msg)` for consistent JSON responses
+- [x] `GET /api/v1/samples` — list samples; supports query params: `q` (keyword), `owner`, `from`, `to`, `limit`, `offset`; returns JSON array with `id, name, description, keywords, owner_username, created_at, attachment_count`
+- [x] `GET /api/v1/samples/{id}` — full sample detail: fields + fabrication steps + attachments list
+- [x] `POST /api/v1/samples` — create sample; JSON body; returns created sample
+- [x] `PUT /api/v1/samples/{id}` — update sample fields; returns updated sample
+- [x] `DELETE /api/v1/samples/{id}` — delete sample; 204 on success
+- [x] `GET /api/v1/samples/{id}/steps` — list fabrication steps for sample
+- [x] `POST /api/v1/samples/{id}/steps` — add fabrication step
+- [x] `PUT /api/v1/steps/{id}` — update step
+- [x] `DELETE /api/v1/steps/{id}` — delete step
+- [x] `GET /api/v1/wiki` — list articles (id, title, created_at, last_modified_at)
+- [x] `GET /api/v1/wiki/{id}` — article detail: title, content (raw markdown), attachments
+- [x] `POST /api/v1/wiki` — create article
+- [x] `PUT /api/v1/wiki/{id}` — update article
+- [x] `GET /api/v1/users` — list approved users (id, username, group) — for owner/person pickers
+- [x] `GET /api/v1/equipment` — list equipment (id, name, location)
+- [x] register all `/api/v1/*` routes in `main.go`; apply `withAuth()` middleware to all
+- [x] write HTTP-level tests for each endpoint: success path, auth required (401 without token), not found (404), create + retrieve round-trip
+- [x] run tests — must pass before task 4
 
 ### Task 4: Sample owner from user list
 

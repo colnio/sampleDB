@@ -768,6 +768,15 @@ func main() {
 	mux.HandleFunc("/profile/tokens", withAuth(handleProfileTokens))
 	mux.HandleFunc("/profile/tokens/", withAuth(handleProfileTokenRevoke))
 
+	// REST API v1 routes (Bearer token or session cookie auth)
+	mux.HandleFunc("/api/v1/samples", withAuth(apiSamplesHandler))
+	mux.HandleFunc("/api/v1/samples/", withAuth(apiSamplesHandler))
+	mux.HandleFunc("/api/v1/steps/", withAuth(apiStepsHandler))
+	mux.HandleFunc("/api/v1/wiki", withAuth(apiWikiHandler))
+	mux.HandleFunc("/api/v1/wiki/", withAuth(apiWikiHandler))
+	mux.HandleFunc("/api/v1/users", withAuth(apiUsersHandler))
+	mux.HandleFunc("/api/v1/equipment", withAuth(apiEquipmentHandler))
+
 	// Public pages (no auth required)
 	mux.HandleFunc("/agents", handleAIAgents)
 	mux.HandleFunc("/agents/examples", handleAIAgentExamples)
