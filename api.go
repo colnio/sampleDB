@@ -811,12 +811,17 @@ func apiListArticles(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiGetArticle(w http.ResponseWriter, r *http.Request, articleID string) {
+	id, err := strconv.Atoi(articleID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid article id")
+		return
+	}
 	var detail apiArticleDetail
-	err := dbPool.QueryRow(r.Context(), `
+	err = dbPool.QueryRow(r.Context(), `
 		SELECT article_id, title, content, created_at,
 		       COALESCE(last_modified_at, created_at)
 		  FROM articles
-		 WHERE article_id = $1`, articleID).Scan(
+		 WHERE article_id = $1`, id).Scan(
 		&detail.ID, &detail.Title, &detail.Content,
 		&detail.CreatedAt, &detail.LastModifiedAt,
 	)
@@ -906,7 +911,36 @@ func apiCreateArticle(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiUpdateArticle(w http.ResponseWriter, r *http.Request, articleID string) {
+	id, err := strconv.Atoi(articleID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid article id")
+		return
+	}
+
 	session := auth.MustSessionFromContext(r.Context())
+
+	// Check ownership: caller must be the article creator or an admin.
+	var createdBy int
+	var isAdmin bool
+	err = dbPool.QueryRow(r.Context(),
+		`SELECT a.created_by, COALESCE(u.admin, false)
+		   FROM articles a
+		   JOIN users u ON u.user_id = $1
+		  WHERE a.article_id = $2`,
+		session.UserID, id).Scan(&createdBy, &isAdmin)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "article not found")
+			return
+		}
+		log.Printf("api: updateArticle auth check error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if createdBy != session.UserID && !isAdmin {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
 
 	var req articleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -925,7 +959,7 @@ func apiUpdateArticle(w http.ResponseWriter, r *http.Request, articleID string) 
 		       last_modified_at = NOW(),
 		       last_modified_by = $3
 		 WHERE article_id = $4`,
-		req.Title, req.Content, session.UserID, articleID)
+		req.Title, req.Content, session.UserID, id)
 	if err != nil {
 		log.Printf("api: updateArticle error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")

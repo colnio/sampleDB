@@ -118,9 +118,10 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	session, isAuth := authManagerInstance.TryAuth(r)
 
 	if sample.ShareVisibility == "authenticated" && !isAuth {
-		// API clients (Bearer token present) get 403; browsers get redirected to login.
-		if r.Header.Get("Authorization") != "" {
-			http.Error(w, "authentication required", http.StatusForbidden)
+		// API clients (Bearer token attempted) get 401; browsers get redirected to login.
+		if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(w, "authentication required", http.StatusUnauthorized)
 		} else {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 		}

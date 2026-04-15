@@ -111,6 +111,10 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		articles = append(articles, article)
 	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Error retrieving articles", http.StatusInternalServerError)
+		return
+	}
 
 	data := struct {
 		BasePageData
@@ -508,7 +512,12 @@ func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		redirect := r.Header.Get("Referer")
+		redirect := ""
+		if ref := r.Header.Get("Referer"); ref != "" {
+			if u, err := url.Parse(ref); err == nil {
+				redirect = u.Path
+			}
+		}
 		if redirect == "" {
 			if articleTitle != "" {
 				redirect = "/wiki/view/" + url.PathEscape(articleTitle)

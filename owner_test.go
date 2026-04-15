@@ -150,6 +150,11 @@ func TestEditSampleHandler_WithValidOwnerUserID(t *testing.T) {
 
 	ownerID := 3
 
+	// 0. requireSampleOwner check — sample has no owner (NULL), so any user can edit
+	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
+		WithArgs(42).
+		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+
 	// 1. Resolve username for owner_user_id=3
 	mock.ExpectQuery(`SELECT username FROM users WHERE user_id`).
 		WithArgs(ownerID).
@@ -202,6 +207,11 @@ func TestEditSampleHandler_InvalidOwnerUserID_Ignored(t *testing.T) {
 	defer mock.Close()
 	restore := setMockDB(mock)
 	defer restore()
+
+	// requireSampleOwner check — sample has no owner (NULL), so any user can edit
+	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
+		WithArgs(42).
+		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
 
 	// No username lookup since owner_user_id is not numeric → ownerUserID stays nil
 	mock.ExpectExec(`UPDATE samples SET`).

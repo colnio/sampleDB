@@ -1160,6 +1160,9 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 		}
 		samples = append(samples, sample)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return samples, nil
 }
@@ -1210,6 +1213,9 @@ func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 			return nil, err
 		}
 		samples = append(samples, sample)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return samples, nil
@@ -1294,6 +1300,9 @@ func getApprovedUsers() ([]User, error) {
 			return nil, err
 		}
 		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return users, nil
 }
@@ -1401,8 +1410,18 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract sample ID from URL by removing "/samples/edit/"
 	sampleID := strings.TrimPrefix(r.URL.Path, "/samples/edit/")
 
+	sampleIDInt, err := strconv.Atoi(sampleID)
+	if err != nil {
+		http.Error(w, "Invalid sample ID", http.StatusBadRequest)
+		return
+	}
+	if err := requireSampleOwner(r, sampleIDInt, session.UserID); err != nil {
+		writeSampleOwnerError(w, err)
+		return
+	}
+
 	// Parse form data
-	err := r.ParseForm()
+	err = r.ParseForm()
 	if err != nil {
 		if isHTMXRequest(r) {
 			renderSampleEditSection(w, r, session, sampleID, "", "Unable to read the form submission.")

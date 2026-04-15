@@ -309,7 +309,7 @@ func TestAPIGetArticle_NotFound(t *testing.T) {
 	defer restore()
 
 	mock.ExpectQuery(`SELECT article_id, title, content`).
-		WithArgs("42").
+		WithArgs(42).
 		WillReturnError(pgx.ErrNoRows)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/wiki/42", nil)

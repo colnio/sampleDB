@@ -62,7 +62,7 @@
                         <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>
                         <p class="sample-card__meta">Created {{.CreatedAt.Format "2006-01-02"}}</p>
                     </div>
-                    <p class="sample-card__owner">{{.Owner}}</p>
+                    <p class="sample-card__owner">{{if .OwnerUsername}}{{.OwnerUsername}}{{else}}{{.Owner}}{{end}}</p>
                 </header>
                 <p class="sample-card__description">{{if .Description}}{{.Description}}{{else}}<em>No description</em>{{end}}</p>
                 <p class="sample-card__keywords">
