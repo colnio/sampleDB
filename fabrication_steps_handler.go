@@ -89,6 +89,11 @@ func handleFabricationStepsEndpoint(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if err := requireSampleOwner(r, sampleIDInt, session.UserID); err != nil {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		if err := r.ParseForm(); err != nil {
 			renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Invalid form submission.", 0)
 			return
@@ -155,6 +160,10 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 		existing, err := getStepByID(stepID)
 		if err != nil {
 			http.Error(w, "Step not found", http.StatusNotFound)
+			return
+		}
+		if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 		sampleIDStr := strconv.Itoa(existing.SampleID)

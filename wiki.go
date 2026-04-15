@@ -158,17 +158,19 @@ func loadArticleData(ctx context.Context, session auth.Session, title string) (*
 
 	// Get attachments
 	rows, err := dbPool.Query(ctx,
-		`SELECT attachment_id, original_name, attachment_address, uploaded_at 
+		`SELECT attachment_id, original_name, attachment_address, uploaded_at
          FROM article_attachments WHERE article_id = $1`, article.ID)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
 			var att ArticleAttachment
-			err := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt)
-			if err == nil {
+			if scanErr := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt); scanErr == nil {
 				att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(att.Address)))
 				article.Attachments = append(article.Attachments, att)
 			}
+		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			return nil, rowsErr
 		}
 	}
 
@@ -295,10 +297,14 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST request
 	title := r.FormValue("title")
+	if strings.TrimSpace(title) == "" {
+		http.Error(w, "Article title is required", http.StatusBadRequest)
+		return
+	}
 	content := r.FormValue("content")
 
 	_, err := dbPool.Exec(context.Background(),
-		`INSERT INTO articles (title, content, created_by, last_modified_by) 
+		`INSERT INTO articles (title, content, created_by, last_modified_by)
          VALUES ($1, $2, $3, $3)`,
 		title, content, session.UserID)
 	if err != nil {
@@ -398,13 +404,17 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 3 {
+	if len(parts) < 4 || parts[3] == "" {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	title := parts[3]
+	title, err := url.PathUnescape(parts[3])
+	if err != nil {
+		http.Error(w, "Invalid article title", http.StatusBadRequest)
+		return
+	}
 
-	_, err := dbPool.Exec(context.Background(),
+	_, err = dbPool.Exec(context.Background(),
 		"DELETE FROM articles WHERE title = $1", title)
 	if err != nil {
 		http.Error(w, "Error deleting article", http.StatusInternalServerError)

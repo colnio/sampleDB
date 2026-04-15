@@ -410,6 +410,8 @@ type sampleRequest struct {
 }
 
 func apiCreateSample(w http.ResponseWriter, r *http.Request) {
+	session := auth.MustSessionFromContext(r.Context())
+
 	var req sampleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -420,13 +422,16 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Owner is always the authenticated caller; ignore any owner_user_id in the request body.
+	ownerUserID := session.UserID
+
 	var id int
 	var createdAt time.Time
 	err := dbPool.QueryRow(r.Context(), `
 		INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id, sample_prep)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING sample_id, created_at`,
-		req.Name, req.Description, req.Keywords, req.Owner, req.OwnerUserID, req.SamplePrep,
+		req.Name, req.Description, req.Keywords, req.Owner, ownerUserID, req.SamplePrep,
 	).Scan(&id, &createdAt)
 	if err != nil {
 		log.Printf("api: createSample error: %v", err)
@@ -440,6 +445,7 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 		Description:     req.Description,
 		Keywords:        req.Keywords,
 		Owner:           req.Owner,
+		OwnerUserID:     &ownerUserID,
 		AttachmentCount: 0,
 		CreatedAt:       createdAt,
 	})
@@ -465,6 +471,10 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	}
 	if strings.TrimSpace(req.Name) == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.OwnerUserID == nil {
+		writeError(w, http.StatusBadRequest, "owner_user_id is required")
 		return
 	}
 
