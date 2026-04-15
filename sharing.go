@@ -124,7 +124,9 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 		// API clients (Bearer token attempted) get 401; browsers get redirected to login.
 		if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
 			w.Header().Set("WWW-Authenticate", "Bearer")
-			http.Error(w, "authentication required", http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, `{"error":"authentication required"}`)
 		} else {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 		}
@@ -219,7 +221,16 @@ func requireSampleOwner(r *http.Request, sampleID, userID int) error {
 		return fmt.Errorf("database error")
 	}
 	if ownerUserID != nil && *ownerUserID != userID {
-		return errForbidden
+		// Allow admins to bypass ownership check.
+		var isAdmin bool
+		if err := dbPool.QueryRow(r.Context(),
+			"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1", userID).Scan(&isAdmin); err != nil {
+			log.Printf("requireSampleOwner: admin check db error: %v", err)
+			return fmt.Errorf("database error")
+		}
+		if !isAdmin {
+			return errForbidden
+		}
 	}
 	return nil
 }

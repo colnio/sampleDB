@@ -580,8 +580,10 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 		items = append(items, fabricationStepToAPI(s))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items": items,
-		"total": len(items),
+		"items":  items,
+		"total":  len(items),
+		"limit":  len(items),
+		"offset": 0,
 	})
 }
 
