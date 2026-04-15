@@ -498,6 +498,27 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	articleID := parts[3]
 
+	// Verify the caller is the article creator or an admin.
+	var createdBy int
+	var isAdmin bool
+	if authErr := dbPool.QueryRow(r.Context(),
+		`SELECT a.created_by, COALESCE(u.admin, false)
+		   FROM articles a
+		   LEFT JOIN users u ON u.user_id = $1
+		  WHERE a.article_id = $2`,
+		session.UserID, articleID).Scan(&createdBy, &isAdmin); authErr != nil {
+		if errors.Is(authErr, pgx.ErrNoRows) {
+			http.Error(w, "Article not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Error checking permissions", http.StatusInternalServerError)
+		return
+	}
+	if createdBy != session.UserID && !isAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	err := r.ParseMultipartForm(32 << 20) // 32 MB for multiple files
 	if err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)

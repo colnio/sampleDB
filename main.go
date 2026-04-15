@@ -1774,15 +1774,34 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		attachmentID,
 	).Scan(&sampleID)
 	if err != nil {
-		if isHTMXRequest(r) {
-			http.Error(w, "Attachment not found", http.StatusNotFound)
-			return
-		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "Attachment not found", http.StatusNotFound)
 			return
 		}
+		if isHTMXRequest(r) {
+			renderSampleAttachmentsSection(w, r, session, "", "", "Failed to remove attachment.")
+			return
+		}
 		http.Error(w, "Error getting sample ID", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify the caller owns the sample (or is an admin).
+	sampleIDInt, convErr := strconv.Atoi(sampleID)
+	if convErr != nil {
+		http.Error(w, "Invalid sample ID", http.StatusInternalServerError)
+		return
+	}
+	if ownerErr := requireSampleOwner(r, sampleIDInt, session.UserID); ownerErr != nil {
+		if isHTMXRequest(r) {
+			renderSampleAttachmentsSection(w, r, session, sampleID, "", "You do not have permission to delete this attachment.")
+			return
+		}
+		if errors.Is(ownerErr, errSampleNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 

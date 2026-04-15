@@ -34,10 +34,10 @@
             {{range .Sample.Attachments}}{{if .IsImage}}
             <figure class="gallery-item">
                 <button type="button" class="gallery-thumb"
-                        data-gallery-src="/attachment/{{.ID}}"
+                        data-gallery-src="/s/{{$.ShareToken}}/attachment/{{.ID}}"
                         data-gallery-name="{{.OriginalName}}"
                         aria-label="View {{.OriginalName}}">
-                    <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
+                    <img src="/s/{{$.ShareToken}}/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
                 </button>
                 <figcaption class="gallery-item__caption">
                     <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
@@ -52,7 +52,7 @@
                 <span class="attachment-file-list__icon">📄</span>
                 <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
                 <div class="attachment-file-list__actions">
-                    <a href="/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
+                    <a href="/s/{{$.ShareToken}}/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
                 </div>
             </li>
             {{end}}{{end}}

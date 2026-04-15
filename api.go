@@ -532,6 +532,40 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
+	// Delete attachments (files + DB rows) before removing the sample.
+	// New-style rows use source_id/source_type, not the legacy sample_id FK,
+	// so ON DELETE CASCADE does not cover them.
+	rows, err := dbPool.Query(r.Context(),
+		`SELECT attachment_id FROM attachments WHERE source_id = $1 AND source_type = 'sample'`, id)
+	if err != nil {
+		log.Printf("api: deleteSample fetch attachments error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	var attachmentIDs []string
+	for rows.Next() {
+		var aid string
+		if scanErr := rows.Scan(&aid); scanErr != nil {
+			rows.Close()
+			log.Printf("api: deleteSample scan attachment id error: %v", scanErr)
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		attachmentIDs = append(attachmentIDs, aid)
+	}
+	rows.Close()
+	if rows.Err() != nil {
+		log.Printf("api: deleteSample rows error: %v", rows.Err())
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	for _, aid := range attachmentIDs {
+		if delErr := deleteAttachment(aid); delErr != nil {
+			log.Printf("api: deleteSample cleanup attachment %s error: %v", aid, delErr)
+			// Non-fatal: continue deleting remaining attachments.
+		}
+	}
+
 	tag, err := dbPool.Exec(r.Context(), `DELETE FROM samples WHERE sample_id = $1`, id)
 	if err != nil {
 		log.Printf("api: deleteSample error: %v", err)

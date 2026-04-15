@@ -83,21 +83,35 @@ type SharedSamplePageData struct {
 	Sample          Sample
 	IsAuthenticated bool
 	ShareURL        string
+	ShareToken      string
 	Steps           []FabricationStep
 }
 
-// handleSharedSample serves GET /s/{token} — no auth middleware, visibility
-// checked here. Public samples are served to anyone; authenticated samples
-// require a valid session or Bearer token.
+// handleSharedSample serves GET /s/{token} and GET /s/{token}/attachment/{id}.
+// No auth middleware; visibility is checked here. Public samples are served to
+// anyone; authenticated samples require a valid session or Bearer token.
 func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	token := strings.TrimPrefix(r.URL.Path, "/s/")
+	// Strip the "/s/" prefix and split into at most [token, "attachment", id].
+	rest := strings.TrimPrefix(r.URL.Path, "/s/")
+	if rest == "" {
+		http.NotFound(w, r)
+		return
+	}
+	pathParts := strings.SplitN(rest, "/", 3)
+	token := pathParts[0]
 	if token == "" {
 		http.NotFound(w, r)
+		return
+	}
+
+	// Sub-path: /s/{token}/attachment/{id} — serve the attachment file if visible.
+	if len(pathParts) == 3 && pathParts[1] == "attachment" {
+		serveSharedAttachment(w, r, token, pathParts[2])
 		return
 	}
 
@@ -140,6 +154,7 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 		Sample:          sample,
 		IsAuthenticated: isAuth,
 		ShareURL:        publicBaseURL() + "/s/" + token,
+		ShareToken:      token,
 		Steps:           steps,
 	}
 	if isAuth {
@@ -157,6 +172,50 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
+}
+
+// serveSharedAttachment serves GET /s/{token}/attachment/{id}.
+// The attachment is served only if the share token is valid and non-private,
+// and the attachment belongs to the shared sample.
+func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attachmentID string) {
+	// Validate token and get sample ID + visibility in one query.
+	var sampleID int
+	var visibility string
+	err := dbPool.QueryRow(r.Context(),
+		`SELECT s.sample_id, COALESCE(s.share_visibility, 'private')
+		   FROM samples s
+		  WHERE s.share_token = $1`, token).Scan(&sampleID, &visibility)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if visibility == "private" || visibility == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Authenticated-only shares require a valid session.
+	if visibility == "authenticated" {
+		if _, ok := authManagerInstance.TryAuth(r); !ok {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+	}
+
+	// Verify the attachment belongs to this sample.
+	var filePath string
+	err = dbPool.QueryRow(r.Context(),
+		`SELECT attachment_address FROM attachments
+		  WHERE attachment_id = $1 AND source_id = $2 AND source_type = 'sample'`,
+		attachmentID, sampleID).Scan(&filePath)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	original := originalFilenameFromPath(filePath)
+	setDownloadHeaders(w, original)
+	http.ServeFile(w, r, resolveAppPath(filePath))
 }
 
 // handleSampleShare handles POST /samples/{id}/share — generates or replaces

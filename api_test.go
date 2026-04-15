@@ -489,6 +489,11 @@ func TestAPISamplesHandler_RouteToDelete404(t *testing.T) {
 		WithArgs(99).
 		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
 
+	// Attachment cleanup query — returns no attachments.
+	mock.ExpectQuery(`SELECT attachment_id FROM attachments WHERE source_id`).
+		WithArgs(99).
+		WillReturnRows(pgxmock.NewRows([]string{"attachment_id"}))
+
 	mock.ExpectExec(`DELETE FROM samples WHERE sample_id`).
 		WithArgs(99).
 		WillReturnResult(pgxmock.NewResult("DELETE", 0))
