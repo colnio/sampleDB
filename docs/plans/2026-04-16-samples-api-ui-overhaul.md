@@ -140,14 +140,14 @@ Major upgrade across four areas:
 
 ### Task 8: Sample sharing by link
 
-- [ ] add DB functions: `generateShareToken(sampleID int, visibility string) (token string, err error)` — creates a random 32-byte hex token, saves to `share_token`/`share_visibility`; `getSampleByShareToken(token string) (Sample, error)`; `revokeShareToken(sampleID int) error`
-- [ ] add handler `GET /s/{token}` — public route (no `withAuth()` middleware): fetch sample by token; if `share_visibility == 'public'` serve without login; if `'authenticated'` require valid session or bearer token; if `'private'` return 404
-- [ ] create `templates/sample_shared.html` — read-only sample view (name, description, keywords, owner, fabrication steps, image gallery); no edit controls; shows "Login to see more" if unauthenticated and visibility is `'authenticated'`
-- [ ] add share management panel to `sample_detail.html`: show current share status; "Generate link" button (`POST /samples/{id}/share`); visibility radio (Public / Authenticated users); copy-to-clipboard button; "Revoke" button
-- [ ] add handlers: `POST /samples/{id}/share` (generate/update share), `POST /samples/{id}/share/revoke`
-- [ ] write tests for `generateShareToken`, `getSampleByShareToken` (public + authenticated + private visibility)
-- [ ] write tests for `GET /s/{token}` (public access without auth, authenticated access with/without session, revoked token → 404)
-- [ ] run tests — must pass before task 9
+- [x] add DB functions: `generateShareToken(sampleID int, visibility string) (token string, err error)` — creates a random 32-byte hex token, saves to `share_token`/`share_visibility`; `getSampleByShareToken(token string) (Sample, error)`; `revokeShareToken(sampleID int) error`
+- [x] add handler `GET /s/{token}` — public route (no `withAuth()` middleware): fetch sample by token; if `share_visibility == 'public'` serve without login; if `'authenticated'` require valid session or bearer token; if `'private'` return 404
+- [x] create `templates/sample_shared.html` — read-only sample view (name, description, keywords, owner, fabrication steps, image gallery); no edit controls; shows "Login to see more" if unauthenticated and visibility is `'authenticated'`
+- [x] add share management panel to `sample_detail.html`: show current share status; "Generate link" button (`POST /samples/{id}/share`); visibility radio (Public / Authenticated users); copy-to-clipboard button; "Revoke" button
+- [x] add handlers: `POST /samples/{id}/share` (generate/update share), `POST /samples/{id}/share/revoke`
+- [x] write tests for `generateShareToken`, `getSampleByShareToken` (public + authenticated + private visibility)
+- [x] write tests for `GET /s/{token}` (public access without auth, authenticated access with/without session, revoked token → 404)
+- [x] run tests — must pass before task 9
 
 ### Task 9: Wiki UX/UI improvements
 

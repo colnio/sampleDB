@@ -48,17 +48,19 @@ type BasePageData struct {
 
 // Sample represents a sample record in the database
 type Sample struct {
-	ID             int
-	Name           string
-	Description    string
-	Keywords       string
-	Owner          string
-	OwnerUserID    *int
-	OwnerUsername  *string
-	Sample_prep    string
-	SamplePrepHTML template.HTML
-	Attachments    []Attachment
-	CreatedAt      time.Time
+	ID              int
+	Name            string
+	Description     string
+	Keywords        string
+	Owner           string
+	OwnerUserID     *int
+	OwnerUsername   *string
+	Sample_prep     string
+	SamplePrepHTML  template.HTML
+	Attachments     []Attachment
+	CreatedAt       time.Time
+	ShareToken      *string // nil when not shared
+	ShareVisibility string  // 'private', 'public', 'authenticated'
 }
 
 type User struct {
@@ -87,7 +89,8 @@ type SampleDetailPageData struct {
 	Users       []User
 	Steps       []FabricationStep
 	Equipment   []Equipment
-	EditingStep int // step_id currently in inline-edit mode (0 = none)
+	EditingStep int    // step_id currently in inline-edit mode (0 = none)
+	ShareURL    string // full URL for the share link, empty when not shared
 }
 
 type ChangePasswordPageData struct {
@@ -786,6 +789,9 @@ func main() {
 	mux.HandleFunc("/api/v1/users", withAuth(apiUsersHandler))
 	mux.HandleFunc("/api/v1/equipment", withAuth(apiEquipmentHandler))
 
+	// Public shared sample view — no auth middleware; visibility checked in handler
+	mux.HandleFunc("/s/", handleSharedSample)
+
 	// Public pages (no auth required)
 	mux.HandleFunc("/agents", handleAIAgents)
 	mux.HandleFunc("/agents/examples", handleAIAgentExamples)
@@ -837,6 +843,14 @@ func main() {
 
 	log.Printf("HTTP server listening on %s", cfg.Addr)
 	log.Fatal(server.ListenAndServe())
+}
+
+// publicBaseURL returns the scheme+host prefix used to construct share links.
+func publicBaseURL() string {
+	if appConfig.UseTLS {
+		return "https://" + appConfig.PublicHost
+	}
+	return "http://" + appConfig.PublicHost
 }
 
 func parseTemplates(files ...string) (*template.Template, error) {
@@ -958,6 +972,18 @@ func handleSample(w http.ResponseWriter, r *http.Request) {
 	// Handle steps list/add: /samples/{id}/steps
 	if len(pathParts) == 2 && pathParts[1] == "steps" {
 		handleFabricationStepsEndpoint(w, r)
+		return
+	}
+
+	// Handle share revoke: /samples/{id}/share/revoke
+	if len(pathParts) == 3 && pathParts[1] == "share" && pathParts[2] == "revoke" {
+		handleSampleShareRevoke(w, r)
+		return
+	}
+
+	// Handle share generate/update: /samples/{id}/share
+	if len(pathParts) == 2 && pathParts[1] == "share" {
+		handleSampleShare(w, r)
 		return
 	}
 
@@ -1236,13 +1262,15 @@ func getSampleByID(sampleID string) (Sample, error) {
 	err := dbPool.QueryRow(context.Background(),
 		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		        COALESCE(s.sample_owner, ''), s.owner_user_id, u.username,
-		        COALESCE(s.sample_prep, ''), s.created_at
+		        COALESCE(s.sample_prep, ''), s.created_at,
+		        s.share_token, COALESCE(s.share_visibility, 'private')
 		   FROM samples s
 		   LEFT JOIN users u ON s.owner_user_id = u.user_id
 		  WHERE s.sample_id=$1`, sampleID).Scan(
 		&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner,
 		&sample.OwnerUserID, &sample.OwnerUsername,
-		&sample.Sample_prep, &sample.CreatedAt)
+		&sample.Sample_prep, &sample.CreatedAt,
+		&sample.ShareToken, &sample.ShareVisibility)
 	if err != nil {
 		return sample, err
 	}
@@ -1299,12 +1327,18 @@ func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID st
 	fmt.Sscan(sampleID, &sampleIDInt)
 	steps, _ := getFabricationSteps(sampleIDInt) // non-fatal: show empty on error
 
+	shareURL := ""
+	if sample.ShareToken != nil && *sample.ShareToken != "" {
+		shareURL = publicBaseURL() + "/s/" + *sample.ShareToken
+	}
+
 	data := SampleDetailPageData{
 		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID},
 		Sample:       sample,
 		Users:        users,
 		Equipment:    equipment,
 		Steps:        steps,
+		ShareURL:     shareURL,
 	}
 
 	if err := dbPool.QueryRow(ctx,

@@ -281,6 +281,44 @@ func (m *Manager) templatePath(name string) string {
 	return filepath.Join("templates", clean)
 }
 
+// TryAuth attempts to authenticate the request from either a session cookie or
+// Bearer token. It returns the session and true on success. Unlike RequireAuth
+// it never writes to the response writer and never redirects.
+func (m *Manager) TryAuth(r *http.Request) (Session, bool) {
+	// 1. Try session cookie.
+	cookie, err := r.Cookie("session_token")
+	if err == nil {
+		session, exists := m.getSession(cookie.Value)
+		if exists && !time.Now().After(session.ExpiresAt) {
+			return session, true
+		}
+		if exists {
+			m.deleteSession(cookie.Value)
+		}
+	}
+
+	// 2. Try Authorization: Bearer <token>.
+	authHeader := r.Header.Get("Authorization")
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		plain := authHeader[7:]
+		userID, err := m.ValidateAPIToken(r.Context(), plain)
+		if err != nil {
+			return Session{}, false
+		}
+		var username string
+		_ = m.db.QueryRow(r.Context(),
+			"SELECT username FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+			userID).Scan(&username)
+		return Session{
+			UserID:    userID,
+			Username:  username,
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		}, true
+	}
+
+	return Session{}, false
+}
+
 func SessionFromContext(ctx context.Context) (Session, bool) {
 	session, ok := ctx.Value(userContextKey).(Session)
 	return session, ok

@@ -25,6 +25,8 @@
 
     {{template "sample_prep_panel" .}}
 
+    {{template "sample_share_panel" .}}
+
     {{template "sample_edit_form" .}}
 
     <a href="/" class="back-link">← Back to samples</a>
@@ -256,6 +258,69 @@
         </div>
     </form>
 </section>
+{{end}}
+
+{{define "sample_share_panel"}}
+<section class="card sample-share" id="sample-share-panel">
+    <header>
+        <h2>Share Link</h2>
+    </header>
+    {{if .ShareURL}}
+    <div class="share-status share-status--active">
+        <p class="share-visibility-label">
+            <strong>Visibility:</strong>
+            {{if eq .Sample.ShareVisibility "public"}}Public (anyone with the link){{else}}Authenticated users only{{end}}
+        </p>
+        <div class="share-url-row">
+            <input type="text" class="share-url-input" value="{{.ShareURL}}" id="share-url-value" readonly aria-label="Share URL">
+            <button type="button" class="button button--ghost button--small" onclick="copyShareURL()">Copy</button>
+        </div>
+    </div>
+    <div class="share-actions">
+        <form action="/samples/{{.Sample.ID}}/share" method="POST" class="inline-form">
+            <label class="share-visibility-select">
+                Update visibility:
+                <select name="visibility">
+                    <option value="public" {{if eq .Sample.ShareVisibility "public"}}selected{{end}}>Public</option>
+                    <option value="authenticated" {{if eq .Sample.ShareVisibility "authenticated"}}selected{{end}}>Authenticated users</option>
+                </select>
+            </label>
+            <button type="submit" class="button button--secondary button--small">Update link</button>
+        </form>
+        <form action="/samples/{{.Sample.ID}}/share/revoke" method="POST" class="inline-form">
+            <button type="submit" class="button button--destructive button--small"
+                    onclick="return confirm('Revoke this share link? Anyone with the old URL will no longer be able to access this sample.')">Revoke</button>
+        </form>
+    </div>
+    {{else}}
+    <div class="share-status share-status--inactive">
+        <p>This sample is not currently shared. Generate a link to share it with others.</p>
+    </div>
+    <form action="/samples/{{.Sample.ID}}/share" method="POST" class="inline-form share-generate-form">
+        <label class="share-visibility-select">
+            Visibility:
+            <select name="visibility">
+                <option value="public">Public (anyone with the link)</option>
+                <option value="authenticated">Authenticated users only</option>
+            </select>
+        </label>
+        <button type="submit" class="button button--primary button--small">Generate link</button>
+    </form>
+    {{end}}
+</section>
+<script>
+function copyShareURL() {
+    var input = document.getElementById('share-url-value');
+    if (!input) return;
+    navigator.clipboard.writeText(input.value).then(function() {
+        var btn = input.nextElementSibling;
+        if (btn) { btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = 'Copy'; }, 2000); }
+    }).catch(function() {
+        input.select();
+        document.execCommand('copy');
+    });
+}
+</script>
 {{end}}
 
 {{define "footer_scripts"}}

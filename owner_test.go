@@ -41,7 +41,8 @@ func TestGetSampleByID_WithOwnerUserID(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{
 			"sample_id", "sample_name", "sample_description", "sample_keywords",
 			"sample_owner", "owner_user_id", "username", "sample_prep", "created_at",
-		}).AddRow(42, "Test Sample", "desc", "kw", "alice", ownerIDPtr, usernamePtr, "", now))
+			"share_token", "share_visibility",
+		}).AddRow(42, "Test Sample", "desc", "kw", "alice", ownerIDPtr, usernamePtr, "", now, nil, "private"))
 
 	// getAttachments query
 	mock.ExpectQuery(`SELECT attachment_id, source_id`).
@@ -90,7 +91,8 @@ func TestGetSampleByID_WithoutOwnerUserID(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{
 			"sample_id", "sample_name", "sample_description", "sample_keywords",
 			"sample_owner", "owner_user_id", "username", "sample_prep", "created_at",
-		}).AddRow(10, "Legacy Sample", "", "old", "legacy-owner", nil, nil, "", now))
+			"share_token", "share_visibility",
+		}).AddRow(10, "Legacy Sample", "", "old", "legacy-owner", nil, nil, "", now, nil, "private"))
 
 	mock.ExpectQuery(`SELECT attachment_id, source_id`).
 		WithArgs("10").

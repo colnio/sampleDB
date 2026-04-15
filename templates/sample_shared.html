@@ -1,0 +1,110 @@
+{{define "title"}}{{.Sample.Name}} · Sample Tracker{{end}}
+
+{{define "additional_styles"}}
+<link rel="stylesheet" href="/static/css/gallery.css">
+{{end}}
+
+{{define "content"}}
+<section class="sample-detail">
+    <header class="sample-detail__header">
+        <div>
+            <h1>{{.Sample.Name}}</h1>
+            <p class="sample-detail__created">Created {{.Sample.CreatedAt.Format "2006-01-02"}}</p>
+            <p class="sample-detail__meta">
+                <span><strong>Owner:</strong> {{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unknown{{end}}</span>
+                <span><strong>Keywords:</strong> {{if .Sample.Keywords}}{{.Sample.Keywords}}{{else}}—{{end}}</span>
+            </p>
+            <p class="sample-detail__shared-badge">
+                <span class="badge badge--shared">Shared view</span>
+                {{if .IsAuthenticated}}
+                <a href="/samples/{{.Sample.ID}}" class="button button--ghost button--small">Open full view</a>
+                {{end}}
+            </p>
+        </div>
+    </header>
+
+    {{/* Attachments — read-only gallery */}}
+    {{if .Sample.Attachments}}
+    <section class="attachments-container card" aria-labelledby="attachments-heading-shared">
+        <header class="attachments-header">
+            <h2 id="attachments-heading-shared">Attachments</h2>
+        </header>
+
+        <div class="gallery-set">
+            {{range .Sample.Attachments}}{{if .IsImage}}
+            <figure class="gallery-item">
+                <button type="button" class="gallery-thumb"
+                        data-gallery-src="/attachment/{{.ID}}"
+                        data-gallery-name="{{.OriginalName}}"
+                        aria-label="View {{.OriginalName}}">
+                    <img src="/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
+                </button>
+                <figcaption class="gallery-item__caption">
+                    <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                </figcaption>
+            </figure>
+            {{end}}{{end}}
+        </div>
+
+        <ul class="attachment-file-list">
+            {{range .Sample.Attachments}}{{if not .IsImage}}
+            <li class="attachment-file-list__item">
+                <span class="attachment-file-list__icon">📄</span>
+                <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                <div class="attachment-file-list__actions">
+                    <a href="/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
+                </div>
+            </li>
+            {{end}}{{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{/* Fabrication steps — read-only list */}}
+    {{if .Steps}}
+    <section class="card fabrication-steps" aria-labelledby="steps-heading-shared">
+        <header class="fabrication-steps__header">
+            <h2 id="steps-heading-shared">Fabrication Steps</h2>
+        </header>
+        <ol class="step-list">
+            {{range .Steps}}
+            <li class="step-item">
+                <div class="step-meta">
+                    {{if .StepDate}}<span class="step-date">{{formatDate .StepDate}}</span>{{end}}
+                    {{if .PersonUsername}}<span class="step-person">{{.PersonUsername}}</span>{{end}}
+                    {{if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
+                </div>
+                {{if .Description}}<p class="step-description">{{.Description}}</p>{{end}}
+            </li>
+            {{end}}
+        </ol>
+    </section>
+    {{end}}
+
+    {{/* Sample prep — read-only */}}
+    {{if .Sample.SamplePrepHTML}}
+    <section class="card sample-prep" aria-labelledby="prep-heading-shared">
+        <header class="sample-prep__header">
+            <h2 id="prep-heading-shared">Sample Preparation</h2>
+        </header>
+        <div class="sample-prep__body">
+            <article class="markdown-body markdown-body--card">
+                {{.Sample.SamplePrepHTML}}
+            </article>
+        </div>
+    </section>
+    {{end}}
+
+    {{if not .IsAuthenticated}}
+    <div class="card shared-login-prompt">
+        <p>Want to see more or contribute? <a href="/login">Log in</a> to access the full sample database.</p>
+    </div>
+    {{end}}
+</section>
+{{end}}
+
+{{define "footer_scripts"}}
+<script src="/static/js/gallery.js" defer></script>
+{{end}}
+
+{{template "base" .}}
