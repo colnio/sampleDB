@@ -32,6 +32,8 @@ var schemaStatements = []string{
 	addAttachmentSourceIDColumn,
 	addAttachmentSourceTypeColumn,
 	backfillAttachmentSourceID,
+	// Migration 006
+	addShareVisibilityCheckConstraint,
 }
 
 var dataStatements = []string{}
@@ -182,6 +184,14 @@ ALTER TABLE attachments
 
 const backfillAttachmentSourceID = `
 UPDATE attachments SET source_id = sample_id WHERE source_id IS NULL;`
+
+const addShareVisibilityCheckConstraint = `
+DO $$ BEGIN
+    ALTER TABLE samples
+        ADD CONSTRAINT chk_share_visibility
+        CHECK (share_visibility IN ('private', 'public', 'authenticated'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;`
 
 // Ensure ensures that all schema elements required by the application exist.
 func Ensure(ctx context.Context, pool dbiface.Pool) error {

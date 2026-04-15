@@ -234,7 +234,12 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 	if !isImage(mime.TypeByExtension(filepath.Ext(filePath))) {
 		setDownloadHeaders(w, original)
 	}
-	http.ServeFile(w, r, resolveAppPath(filePath))
+	resolved := resolveAppPath(filePath)
+	if resolved == "" {
+		http.Error(w, "Attachment not found", http.StatusNotFound)
+		return
+	}
+	http.ServeFile(w, r, resolved)
 }
 
 // handleSampleShare handles POST /samples/{id}/share — generates or replaces

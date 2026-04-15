@@ -1742,7 +1742,12 @@ func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 		setDownloadHeaders(w, original)
 	}
 	// Serve the file
-	http.ServeFile(w, r, resolveAppPath(filePath))
+	resolved := resolveAppPath(filePath)
+	if resolved == "" {
+		http.Error(w, "Attachment not found", http.StatusNotFound)
+		return
+	}
+	http.ServeFile(w, r, resolved)
 }
 
 func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {

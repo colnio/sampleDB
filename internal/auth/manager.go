@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -187,7 +188,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 		if next == "" {
 			next = r.URL.Query().Get("next")
 		}
-		if next != "" && strings.HasPrefix(next, "/") && !strings.Contains(next, "://") {
+		if u, err := url.Parse(next); next != "" && err == nil && u.Host == "" && strings.HasPrefix(next, "/") {
 			http.Redirect(w, r, next, http.StatusSeeOther)
 		} else {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
