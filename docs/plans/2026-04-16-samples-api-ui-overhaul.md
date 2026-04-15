@@ -50,13 +50,13 @@ Major upgrade across four areas:
 
 ### Task 1: Schema migrations
 
-- [ ] create `DDL/migrations/001_fabrication_steps.sql` — add `fabrication_steps` table: `(step_id SERIAL PK, sample_id INT FK→samples, step_order INT NOT NULL, step_date DATE, person_user_id INT FK→users nullable, description TEXT, equipment_id INT FK→equipment nullable, created_at TIMESTAMP)`
-- [ ] create `DDL/migrations/002_api_tokens.sql` — add `api_tokens` table: `(token_id SERIAL PK, user_id INT FK→users, token_hash VARCHAR(64) NOT NULL UNIQUE, name VARCHAR(100), created_at TIMESTAMP, last_used_at TIMESTAMP, revoked BOOLEAN DEFAULT false)`
-- [ ] create `DDL/migrations/003_sample_owner_fk.sql` — add `owner_user_id INT REFERENCES users(user_id) NULL` to `samples` (keep old `sample_owner` text field for legacy display)
-- [ ] create `DDL/migrations/004_sample_sharing.sql` — add `share_token VARCHAR(64) UNIQUE NULL` and `share_visibility VARCHAR(20) DEFAULT 'private'` (values: `'private'`, `'public'`, `'authenticated'`) to `samples`
-- [ ] apply all migrations to local dev DB
-- [ ] write tests in `migrations_test.go` verifying each table/column exists after migration
-- [ ] run tests — must pass before task 2
+- [x] create `DDL/migrations/001_fabrication_steps.sql` — add `fabrication_steps` table: `(step_id SERIAL PK, sample_id INT FK→samples, step_order INT NOT NULL, step_date DATE, person_user_id INT FK→users nullable, description TEXT, equipment_id INT FK→equipment nullable, created_at TIMESTAMP)`
+- [x] create `DDL/migrations/002_api_tokens.sql` — add `api_tokens` table: `(token_id SERIAL PK, user_id INT FK→users, token_hash VARCHAR(64) NOT NULL UNIQUE, name VARCHAR(100), created_at TIMESTAMP, last_used_at TIMESTAMP, revoked BOOLEAN DEFAULT false)`
+- [x] create `DDL/migrations/003_sample_owner_fk.sql` — add `owner_user_id INT REFERENCES users(user_id) NULL` to `samples` (keep old `sample_owner` text field for legacy display)
+- [x] create `DDL/migrations/004_sample_sharing.sql` — add `share_token VARCHAR(64) UNIQUE NULL` and `share_visibility VARCHAR(20) DEFAULT 'private'` (values: `'private'`, `'public'`, `'authenticated'`) to `samples`
+- [x] apply all migrations to local dev DB
+- [x] write tests in `migrations_test.go` verifying each table/column exists after migration
+- [x] run tests — must pass before task 2
 
 ### Task 2: API key system + dual auth middleware
 

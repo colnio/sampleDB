@@ -19,6 +19,15 @@ var schemaStatements = []string{
 	createBookingsTable,
 	createBookingsIndex,
 	createGroupsTable,
+	// Migration 001
+	createFabricationStepsTable,
+	// Migration 002
+	createAPITokensTable,
+	// Migration 003
+	addSampleOwnerUserIDColumn,
+	// Migration 004
+	addSampleShareTokenColumn,
+	addSampleShareVisibilityColumn,
 }
 
 // Data seeding is disabled; keep statements for reference but do not execute.
@@ -130,6 +139,41 @@ CREATE TABLE IF NOT EXISTS groups (
     name TEXT UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );`
+
+const createFabricationStepsTable = `
+CREATE TABLE IF NOT EXISTS fabrication_steps (
+    step_id        SERIAL PRIMARY KEY,
+    sample_id      INT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
+    step_order     INT NOT NULL DEFAULT 0,
+    step_date      DATE,
+    person_user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
+    description    TEXT,
+    equipment_id   INT REFERENCES equipment(equipment_id) ON DELETE SET NULL,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);`
+
+const createAPITokensTable = `
+CREATE TABLE IF NOT EXISTS api_tokens (
+    token_id     SERIAL PRIMARY KEY,
+    user_id      INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    token_hash   VARCHAR(64) NOT NULL UNIQUE,
+    name         VARCHAR(100),
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP,
+    revoked      BOOLEAN NOT NULL DEFAULT false
+);`
+
+const addSampleOwnerUserIDColumn = `
+ALTER TABLE samples
+    ADD COLUMN IF NOT EXISTS owner_user_id INT REFERENCES users(user_id) ON DELETE SET NULL;`
+
+const addSampleShareTokenColumn = `
+ALTER TABLE samples
+    ADD COLUMN IF NOT EXISTS share_token VARCHAR(64) UNIQUE;`
+
+const addSampleShareVisibilityColumn = `
+ALTER TABLE samples
+    ADD COLUMN IF NOT EXISTS share_visibility VARCHAR(20) NOT NULL DEFAULT 'private';`
 
 const backfillGroups = `
 INSERT INTO groups (name)
