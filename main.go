@@ -1481,12 +1481,17 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	var ownerName string
 	if ownerUserIDStr != "" {
 		id, parseErr := strconv.Atoi(ownerUserIDStr)
-		if parseErr == nil {
-			ownerUserID = &id
-			// Resolve username for legacy sample_owner text field
-			_ = dbPool.QueryRow(context.Background(),
-				"SELECT username FROM users WHERE user_id = $1", id).Scan(&ownerName)
+		if parseErr != nil {
+			http.Error(w, "invalid owner_user_id", http.StatusBadRequest)
+			return
 		}
+		scanErr := dbPool.QueryRow(context.Background(),
+			"SELECT username FROM users WHERE user_id = $1 AND is_approved = true", id).Scan(&ownerName)
+		if scanErr != nil {
+			http.Error(w, "owner user not found or not approved", http.StatusBadRequest)
+			return
+		}
+		ownerUserID = &id
 	}
 
 	var (

@@ -194,12 +194,12 @@ func TestEditSampleHandler_WithValidOwnerUserID(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// editSampleHandler — invalid (non-numeric) owner_user_id is silently ignored
+// editSampleHandler — invalid (non-numeric) owner_user_id returns 400
 // ---------------------------------------------------------------------------
 
-// TestEditSampleHandler_InvalidOwnerUserID_Ignored verifies that a non-numeric
-// owner_user_id is silently discarded; UPDATE proceeds with NULL owner_user_id.
-func TestEditSampleHandler_InvalidOwnerUserID_Ignored(t *testing.T) {
+// TestEditSampleHandler_InvalidOwnerUserID_Rejected verifies that a non-numeric
+// owner_user_id causes the handler to return 400 Bad Request.
+func TestEditSampleHandler_InvalidOwnerUserID_Rejected(t *testing.T) {
 	mock, err := pgxmock.NewPool()
 	if err != nil {
 		t.Fatalf("pgxmock: %v", err)
@@ -208,15 +208,10 @@ func TestEditSampleHandler_InvalidOwnerUserID_Ignored(t *testing.T) {
 	restore := setMockDB(mock)
 	defer restore()
 
-	// requireSampleOwner check — sample has no owner (NULL), so any user can edit
+	// requireSampleOwner check runs before owner_user_id parsing
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
 		WithArgs(42).
 		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
-
-	// No username lookup since owner_user_id is not numeric → ownerUserID stays nil
-	mock.ExpectExec(`UPDATE samples SET`).
-		WithArgs("MySample", "desc", "kw", "", pgxmock.AnyArg(), "42").
-		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
 	form := url.Values{
 		"name":          {"MySample"},
@@ -227,18 +222,14 @@ func TestEditSampleHandler_InvalidOwnerUserID_Ignored(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/samples/edit/42",
 		strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	// No HX-Request header → non-HTMX path → redirect on success
 	req = req.WithContext(auth.ContextWithSession(req.Context(),
 		auth.Session{UserID: 1, Username: "testuser", ExpiresAt: time.Now().Add(time.Hour)}))
 	rr := httptest.NewRecorder()
 
 	editSampleHandler(rr, req)
 
-	if rr.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303; body: %s", rr.Code, rr.Body.String())
-	}
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Fatalf("unmet mock expectations: %v", err)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
 	}
 }
 

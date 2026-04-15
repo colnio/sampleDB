@@ -139,7 +139,8 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 
 	if sample.ShareVisibility == "authenticated" && !isAuth {
 		// API clients (Bearer token attempted) get 401; browsers get redirected to login.
-		if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+		authHdr := r.Header.Get("Authorization")
+		if len(authHdr) > 7 && strings.EqualFold(authHdr[:7], "bearer ") {
 			w.Header().Set("WWW-Authenticate", "Bearer")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -205,7 +206,8 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 	// Authenticated-only shares require a valid session.
 	if visibility == "authenticated" {
 		if _, ok := authManagerInstance.TryAuth(r); !ok {
-			if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+			authHdr := r.Header.Get("Authorization")
+			if len(authHdr) > 7 && strings.EqualFold(authHdr[:7], "bearer ") {
 				w.Header().Set("WWW-Authenticate", "Bearer")
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
