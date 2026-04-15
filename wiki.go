@@ -87,7 +87,7 @@ func handleWiki(w http.ResponseWriter, r *http.Request) {
 		viewArticleHandler(w, r, pathParts[1])
 	default:
 		// Backward compatibility: /wiki/{title} -> /wiki/view/{title}
-		http.Redirect(w, r, "/wiki/view/"+pathParts[0], http.StatusSeeOther)
+		http.Redirect(w, r, "/wiki/view/"+url.PathEscape(pathParts[0]), http.StatusSeeOther)
 	}
 }
 

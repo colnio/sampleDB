@@ -65,7 +65,7 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 
 		// 2. Try Authorization: Bearer <token>.
 		authHeader := r.Header.Get("Authorization")
-		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		if len(authHeader) > 7 && strings.EqualFold(authHeader[:7], "bearer ") {
 			plain := authHeader[7:]
 			userID, err := m.ValidateAPIToken(r.Context(), plain)
 			if err != nil {
@@ -332,7 +332,7 @@ func (m *Manager) TryAuth(r *http.Request) (Session, bool) {
 
 	// 2. Try Authorization: Bearer <token>.
 	authHeader := r.Header.Get("Authorization")
-	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+	if len(authHeader) > 7 && strings.EqualFold(authHeader[:7], "bearer ") {
 		plain := authHeader[7:]
 		userID, err := m.ValidateAPIToken(r.Context(), plain)
 		if err != nil {
