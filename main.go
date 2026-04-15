@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -464,6 +465,108 @@ func renderChangePasswordTemplate(w http.ResponseWriter, data ChangePasswordPage
 	}
 }
 
+// ProfileTokensPageData holds data for the API token management page.
+type ProfileTokensPageData struct {
+	BasePageData
+	Tokens     []auth.APIToken
+	PlainToken string // populated once, right after generation
+	Error      string
+	Success    string
+}
+
+func handleProfileTokens(w http.ResponseWriter, r *http.Request) {
+	session := auth.MustSessionFromContext(r.Context())
+	baseData, err := getBasePageData(session)
+	if err != nil {
+		http.Error(w, "Error loading profile", http.StatusInternalServerError)
+		return
+	}
+
+	data := ProfileTokensPageData{BasePageData: baseData}
+
+	switch r.Method {
+	case http.MethodGet:
+		tokens, err := authManagerInstance.ListAPITokens(r.Context(), session.UserID)
+		if err != nil {
+			data.Error = "Could not load tokens"
+		} else {
+			data.Tokens = tokens
+		}
+		renderProfileTokensTemplate(w, data)
+
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			data.Error = "Invalid form submission"
+			w.WriteHeader(http.StatusBadRequest)
+			renderProfileTokensTemplate(w, data)
+			return
+		}
+		name := strings.TrimSpace(r.FormValue("name"))
+		if name == "" {
+			data.Error = "Token name is required"
+			w.WriteHeader(http.StatusBadRequest)
+			renderProfileTokensTemplate(w, data)
+			return
+		}
+		plain, err := authManagerInstance.CreateAPIToken(r.Context(), session.UserID, name)
+		if err != nil {
+			data.Error = "Could not create token"
+			w.WriteHeader(http.StatusInternalServerError)
+			renderProfileTokensTemplate(w, data)
+			return
+		}
+		data.PlainToken = plain
+		data.Success = "Token generated. Copy it now — it will not be shown again."
+		tokens, _ := authManagerInstance.ListAPITokens(r.Context(), session.UserID)
+		data.Tokens = tokens
+		renderProfileTokensTemplate(w, data)
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleProfileTokenRevoke handles POST /profile/tokens/{id}/revoke
+func handleProfileTokenRevoke(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+
+	// Path: /profile/tokens/{id}/revoke
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	// parts: ["profile", "tokens", "{id}", "revoke"]
+	if len(parts) != 4 || parts[3] != "revoke" {
+		http.NotFound(w, r)
+		return
+	}
+	tokenID, err := strconv.Atoi(parts[2])
+	if err != nil || tokenID <= 0 {
+		http.Error(w, "Invalid token ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := authManagerInstance.RevokeAPIToken(r.Context(), tokenID, session.UserID); err != nil {
+		http.Error(w, "Could not revoke token", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/profile/tokens", http.StatusSeeOther)
+}
+
+func renderProfileTokensTemplate(w http.ResponseWriter, data ProfileTokensPageData) {
+	tmpl, err := parseTemplates("templates/profile_tokens.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+		http.Error(w, "Template execution error", http.StatusInternalServerError)
+	}
+}
+
 // ensureDefaultAdmin seeds a single administrator account when the installation is brand new.
 // It leaves existing data untouched once any user records exist.
 func ensureDefaultAdmin(ctx context.Context, pool dbiface.Pool) (bool, error) {
@@ -662,6 +765,8 @@ func main() {
 
 	// Account management
 	mux.HandleFunc("/change-password", withAuth(handleChangePassword))
+	mux.HandleFunc("/profile/tokens", withAuth(handleProfileTokens))
+	mux.HandleFunc("/profile/tokens/", withAuth(handleProfileTokenRevoke))
 
 	// Public pages (no auth required)
 	mux.HandleFunc("/agents", handleAIAgents)

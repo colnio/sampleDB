@@ -1,0 +1,114 @@
+{{define "title"}}API Tokens{{end}}
+
+{{define "content"}}
+<div class="account-page">
+    <div class="card">
+        <h1 class="heading-with-icon heading-with-icon--sm">
+            <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span>API Tokens</span>
+        </h1>
+
+        {{with .Error}}
+        <div class="alert alert-error">{{.}}</div>
+        {{end}}
+        {{with .Success}}
+        <div class="alert alert-success">{{.}}</div>
+        {{end}}
+
+        {{with .PlainToken}}
+        <div class="alert alert-info token-reveal">
+            <strong>Your new token (copy it now — not shown again):</strong>
+            <code class="token-value">{{.}}</code>
+        </div>
+        {{end}}
+
+        <h2>Generate a new token</h2>
+        <form method="POST" action="/profile/tokens" class="form token-form">
+            <div class="form-group form-group--inline">
+                <label for="name">Token name</label>
+                <input type="text" id="name" name="name" placeholder="e.g. iOS app, MCP client" required maxlength="100" autocomplete="off">
+                <button type="submit" class="button button--primary">Generate</button>
+            </div>
+        </form>
+
+        <h2>Existing tokens</h2>
+        {{if .Tokens}}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Created</th>
+                    <th>Last used</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {{range .Tokens}}
+            <tr{{if .Revoked}} class="token-row--revoked"{{end}}>
+                <td>{{.Name}}</td>
+                <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                <td>{{if .LastUsedAt}}{{.LastUsedAt.Format "2006-01-02"}}{{else}}Never{{end}}</td>
+                <td>{{if .Revoked}}<span class="badge badge--error">Revoked</span>{{else}}<span class="badge badge--success">Active</span>{{end}}</td>
+                <td>
+                {{if not .Revoked}}
+                <form method="POST" action="/profile/tokens/{{.TokenID}}/revoke" style="display:inline">
+                    <button type="submit" class="button button--danger button--sm" onclick="return confirm('Revoke this token?')">Revoke</button>
+                </form>
+                {{end}}
+                </td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-state">No tokens yet. Generate one above to authenticate API requests.</p>
+        {{end}}
+
+        <div class="token-usage">
+            <h2>Usage</h2>
+            <p>Send the token in the <code>Authorization</code> header on every API request:</p>
+            <pre class="code-block">Authorization: Bearer &lt;your-token&gt;</pre>
+        </div>
+    </div>
+</div>
+
+<style>
+.account-page {
+    max-width: 760px;
+    margin: 40px auto;
+    padding: 0 16px;
+}
+.account-page .card {
+    background: var(--surface-default);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(17,24,39,0.08);
+    border: 1px solid rgba(15,23,42,0.08);
+    padding: 32px;
+}
+.account-page h1 { margin-top: 0; margin-bottom: 24px; font-size: 1.75rem; color: var(--color-primary); }
+.account-page h2 { font-size: 1.1rem; margin-top: 28px; margin-bottom: 12px; }
+.token-reveal { word-break: break-all; }
+.token-value { display: block; margin-top: 8px; font-size: 0.9rem; background: var(--neutral-100); padding: 8px 10px; border-radius: 4px; }
+.token-form .form-group--inline { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.token-form .form-group--inline label { display: none; }
+.token-form input[type="text"] { flex: 1; min-width: 200px; border: 1px solid var(--neutral-200); border-radius: 6px; padding: 8px 10px; font-size: 1rem; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.data-table th, .data-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--neutral-100); }
+.data-table th { font-weight: 600; color: var(--neutral-600); }
+.token-row--revoked { opacity: 0.55; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+.badge--success { background: #d1fae5; color: #065f46; }
+.badge--error { background: #fee2e2; color: #991b1b; }
+.button--danger { background: #dc2626; color: #fff; }
+.button--danger:hover { background: #b91c1c; }
+.button--sm { padding: 4px 10px; font-size: 0.85rem; }
+.empty-state { color: var(--neutral-500); font-style: italic; }
+.token-usage { margin-top: 28px; }
+.code-block { background: var(--neutral-100); padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; overflow-x: auto; }
+.alert-info { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e3a5f; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; }
+</style>
+{{end}}

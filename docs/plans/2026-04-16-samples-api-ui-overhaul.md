@@ -60,17 +60,17 @@ Major upgrade across four areas:
 
 ### Task 2: API key system + dual auth middleware
 
-- [ ] create `internal/auth/apitoken.go` — `GenerateToken() (plain, hash string, err)` using `crypto/rand` (32 bytes, hex-encoded); `HashToken(plain string) string` using SHA-256
-- [ ] add DB methods to auth package: `CreateAPIToken(userID int, name string) (plainToken string, err error)`, `ValidateAPIToken(plain string) (userID int, err error)` (checks hash, not revoked), `ListAPITokens(userID int) ([]APIToken, error)`, `RevokeAPIToken(tokenID int, userID int) error`
-- [ ] write tests for `GenerateToken` and `HashToken`
-- [ ] write tests for `CreateAPIToken`, `ValidateAPIToken` (success + revoked + wrong token)
-- [ ] update `withAuth()` middleware: check session cookie first; if absent, check `Authorization: Bearer <token>` header and validate via `ValidateAPIToken`; update `last_used_at` on successful token auth
-- [ ] write tests for dual auth middleware (cookie path, bearer path, invalid token → 401)
-- [ ] add `GET /profile/tokens` — list user's API tokens with name, created date, last used
-- [ ] add `POST /profile/tokens` — generate new token (form: token name); display plain token once on success
-- [ ] add `POST /profile/tokens/{id}/revoke` — revoke token
-- [ ] add template `templates/profile_tokens.html` with token list + generate form
-- [ ] run tests — must pass before task 3
+- [x] create `internal/auth/apitoken.go` — `GenerateToken() (plain, hash string, err)` using `crypto/rand` (32 bytes, hex-encoded); `HashToken(plain string) string` using SHA-256
+- [x] add DB methods to auth package: `CreateAPIToken(userID int, name string) (plainToken string, err error)`, `ValidateAPIToken(plain string) (userID int, err error)` (checks hash, not revoked), `ListAPITokens(userID int) ([]APIToken, error)`, `RevokeAPIToken(tokenID int, userID int) error`
+- [x] write tests for `GenerateToken` and `HashToken`
+- [x] write tests for `CreateAPIToken`, `ValidateAPIToken` (success + revoked + wrong token)
+- [x] update `withAuth()` middleware: check session cookie first; if absent, check `Authorization: Bearer <token>` header and validate via `ValidateAPIToken`; update `last_used_at` on successful token auth
+- [x] write tests for dual auth middleware (cookie path, bearer path, invalid token → 401)
+- [x] add `GET /profile/tokens` — list user's API tokens with name, created date, last used
+- [x] add `POST /profile/tokens` — generate new token (form: token name); display plain token once on success
+- [x] add `POST /profile/tokens/{id}/revoke` — revoke token
+- [x] add template `templates/profile_tokens.html` with token list + generate form
+- [x] run tests — must pass before task 3
 
 ### Task 3: REST API endpoints (core)
 

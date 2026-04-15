@@ -45,23 +45,49 @@ func NewManager(db dbiface.Pool) *Manager {
 
 func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// 1. Try session cookie.
 		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		session, exists := m.getSession(cookie.Value)
-		if !exists || time.Now().After(session.ExpiresAt) {
+		if err == nil {
+			session, exists := m.getSession(cookie.Value)
+			if exists && !time.Now().After(session.ExpiresAt) {
+				ctx := context.WithValue(r.Context(), userContextKey, session)
+				next(w, r.WithContext(ctx))
+				return
+			}
 			if exists {
 				m.deleteSession(cookie.Value)
 			}
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			// Cookie present but invalid — fall through to Bearer check.
+		}
+
+		// 2. Try Authorization: Bearer <token>.
+		authHeader := r.Header.Get("Authorization")
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			plain := authHeader[7:]
+			userID, err := m.ValidateAPIToken(r.Context(), plain)
+			if err != nil {
+				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+				return
+			}
+
+			// Load username so the session context is fully populated.
+			var username string
+			_ = m.db.QueryRow(r.Context(),
+				"SELECT username FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+				userID).Scan(&username)
+
+			session := Session{
+				UserID:    userID,
+				Username:  username,
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+			}
+			ctx := context.WithValue(r.Context(), userContextKey, session)
+			next(w, r.WithContext(ctx))
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), userContextKey, session)
-		next(w, r.WithContext(ctx))
+		// 3. No valid auth found — redirect HTML clients to login, 401 for API callers.
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
 }
 
