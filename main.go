@@ -1801,11 +1801,7 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Attachment not found", http.StatusNotFound)
 			return
 		}
-		if isHTMXRequest(r) {
-			renderSampleAttachmentsSection(w, r, session, "", "", "Failed to remove attachment.")
-			return
-		}
-		http.Error(w, "Error getting sample ID", http.StatusInternalServerError)
+		http.Error(w, "Failed to remove attachment.", http.StatusInternalServerError)
 		return
 	}
 

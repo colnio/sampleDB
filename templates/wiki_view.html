@@ -49,65 +49,7 @@
 
     {{template "article_content_panel" .}}
 
-    {{if .Article.Attachments}}
-    <div class="attachments-container">
-        <h2>Attachments</h2>
-        <!-- Image thumbnail gallery — gallery.js opens lightbox on click -->
-        <div class="gallery-set">
-            {{range .Article.Attachments}}{{if .IsImage}}
-            <figure class="gallery-item">
-                <button type="button" class="gallery-thumb"
-                        data-gallery-src="/wiki/attachment/{{.ID}}"
-                        data-gallery-name="{{.OriginalName}}"
-                        aria-label="View {{.OriginalName}}">
-                    <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
-                </button>
-                <figcaption class="gallery-item__caption">
-                    <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
-                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
-                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
-                    </form>
-                </figcaption>
-            </figure>
-            {{end}}{{end}}
-        </div>
-        <!-- Non-image file list -->
-        <ul class="attachment-file-list">
-            {{range .Article.Attachments}}{{if not .IsImage}}
-            <li class="attachment-file-list__item">
-                <span class="attachment-file-list__icon">📄</span>
-                <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
-                <div class="attachment-file-list__actions">
-                    <a href="/wiki/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
-                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
-                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
-                    </form>
-                </div>
-            </li>
-            {{end}}{{end}}
-        </ul>
-    </div>
-    {{end}}
-
-    <div class="upload-form">
-        <h3>Add Attachment</h3>
-        <form action="/wiki/upload/{{.Article.ID}}" method="POST" enctype="multipart/form-data">
-            <input type="file" name="files" multiple>
-            <button type="submit" class="button button--primary">Upload</button>
-        </form>
-        <div class="upload-drop-zone"
-             data-upload-zone
-             data-upload-endpoint="/wiki/upload/{{.Article.ID}}"
-             data-upload-target="">
-            <p class="upload-drop-zone__hint">Drop files here or paste images (Ctrl+V / ⌘V)</p>
-            <div class="upload-progress" data-upload-progress style="display:none">
-                <div class="upload-progress__track">
-                    <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
-                </div>
-                <span class="upload-progress__label" data-upload-progress-label></span>
-            </div>
-        </div>
-    </div>
+    {{template "wiki_attachments_section" .}}
 
 </div>
 
@@ -550,4 +492,68 @@ figure.attachment-preview {
         {{end}}
     </div>
 </section>
+{{end}}
+
+{{define "wiki_attachments_section"}}
+<div id="wiki-attachments-section">
+    {{if .Article.Attachments}}
+    <div class="attachments-container">
+        <h2>Attachments</h2>
+        <!-- Image thumbnail gallery — gallery.js opens lightbox on click -->
+        <div class="gallery-set">
+            {{range .Article.Attachments}}{{if .IsImage}}
+            <figure class="gallery-item">
+                <button type="button" class="gallery-thumb"
+                        data-gallery-src="/wiki/attachment/{{.ID}}"
+                        data-gallery-name="{{.OriginalName}}"
+                        aria-label="View {{.OriginalName}}">
+                    <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
+                </button>
+                <figcaption class="gallery-item__caption">
+                    <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
+                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
+                    </form>
+                </figcaption>
+            </figure>
+            {{end}}{{end}}
+        </div>
+        <!-- Non-image file list -->
+        <ul class="attachment-file-list">
+            {{range .Article.Attachments}}{{if not .IsImage}}
+            <li class="attachment-file-list__item">
+                <span class="attachment-file-list__icon">📄</span>
+                <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                <div class="attachment-file-list__actions">
+                    <a href="/wiki/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
+                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
+                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
+                    </form>
+                </div>
+            </li>
+            {{end}}{{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    <div class="upload-form">
+        <h3>Add Attachment</h3>
+        <form action="/wiki/upload/{{.Article.ID}}" method="POST" enctype="multipart/form-data">
+            <input type="file" name="files" multiple>
+            <button type="submit" class="button button--primary">Upload</button>
+        </form>
+        <div class="upload-drop-zone"
+             data-upload-zone
+             data-upload-endpoint="/wiki/upload/{{.Article.ID}}"
+             data-upload-target="#wiki-attachments-section">
+            <p class="upload-drop-zone__hint">Drop files here or paste images (Ctrl+V / ⌘V)</p>
+            <div class="upload-progress" data-upload-progress style="display:none">
+                <div class="upload-progress__track">
+                    <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
+                </div>
+                <span class="upload-progress__label" data-upload-progress-label></span>
+            </div>
+        </div>
+    </div>
+</div>
 {{end}}

@@ -168,10 +168,12 @@ func loadArticleData(ctx context.Context, session auth.Session, title string) (*
 		defer rows.Close()
 		for rows.Next() {
 			var att ArticleAttachment
-			if scanErr := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt); scanErr == nil {
-				att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(att.Address)))
-				article.Attachments = append(article.Attachments, att)
+			if scanErr := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt); scanErr != nil {
+				log.Printf("wiki: loadArticleData: scan error: %v", scanErr)
+				continue
 			}
+			att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(att.Address)))
+			article.Attachments = append(article.Attachments, att)
 		}
 		if rowsErr := rows.Err(); rowsErr != nil {
 			return nil, rowsErr
@@ -564,6 +566,28 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(uploadErrs) > 0 {
 		log.Printf("wiki: failed to upload files for article %s: %v", articleID, uploadErrs)
+	}
+
+	if isHTMXRequest(r) {
+		var articleTitle string
+		if titErr := dbPool.QueryRow(r.Context(),
+			"SELECT title FROM articles WHERE article_id = $1", articleID).Scan(&articleTitle); titErr != nil {
+			http.Error(w, "Error loading article", http.StatusInternalServerError)
+			return
+		}
+		article, loadErr := loadArticleData(r.Context(), session, articleTitle)
+		if loadErr != nil {
+			http.Error(w, "Error loading article", http.StatusInternalServerError)
+			return
+		}
+		data := &WikiPageData{
+			Username: session.Username,
+			Article:  article,
+		}
+		if err := renderTemplateSection(w, "templates/wiki_view.html", "wiki_attachments_section", data); err != nil {
+			http.Error(w, "Error rendering attachments", http.StatusInternalServerError)
+		}
+		return
 	}
 
 	redirect := "/wiki"
