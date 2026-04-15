@@ -155,7 +155,13 @@ func loadConfig() AppConfig {
 	cfg.TLSPort = extractPort(cfg.Addr)
 
 	if cfg.PublicHost == "" {
-		if cfg.UseTLS && cfg.TLSPort != "" && cfg.TLSPort != "443" {
+		if cfg.UseTLS {
+			if cfg.TLSPort != "" && cfg.TLSPort != "443" {
+				cfg.PublicHost = fmt.Sprintf("localhost:%s", cfg.TLSPort)
+			} else {
+				cfg.PublicHost = "localhost"
+			}
+		} else if cfg.TLSPort != "" && cfg.TLSPort != "80" {
 			cfg.PublicHost = fmt.Sprintf("localhost:%s", cfg.TLSPort)
 		} else {
 			cfg.PublicHost = "localhost"
@@ -1596,7 +1602,7 @@ func getAttachments(sampleID string) ([]Attachment, error) {
 		att.IsImage = isImage(att.ContentType)
 		attachments = append(attachments, att)
 	}
-	return attachments, nil
+	return attachments, rows.Err()
 }
 
 // addAttachment stores a new attachment in the database
@@ -1798,25 +1804,3 @@ func handleAttachment(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
-// Helper function to create a new user (you'll need to run this manually or create an admin interface)
-func createUser(username, password string) error {
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-
-	// Insert user
-	_, err = dbPool.Exec(context.Background(),
-		"INSERT INTO users (username, password_hash, is_approved) VALUES ($1, $2, false)",
-		username, string(hashedPassword))
-	return err
-}
-
-// Helper function to approve a user (you'll need to run this manually or create an admin interface)
-func approveUser(username string) error {
-	_, err := dbPool.Exec(context.Background(),
-		"UPDATE users SET is_approved = true WHERE username = $1",
-		username)
-	return err
-}

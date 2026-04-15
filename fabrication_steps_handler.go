@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -243,6 +244,12 @@ func handleFabricationStepsReorder(w http.ResponseWriter, r *http.Request) {
 	sampleIDInt, err := strconv.Atoi(sampleIDStr)
 	if err != nil {
 		http.Error(w, "Invalid sample ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := requireSampleOwner(r, sampleIDInt, session.UserID); err != nil {
+		log.Printf("handleFabricationStepsReorder: ownership check failed for sample %d user %d: %v", sampleIDInt, session.UserID, err)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 

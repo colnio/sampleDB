@@ -525,7 +525,7 @@ type stepRequest struct {
 	EquipmentID  *int   `json:"equipment_id"`
 }
 
-func stepRequestToStep(req stepRequest) FabricationStep {
+func stepRequestToStep(req stepRequest) (FabricationStep, error) {
 	step := FabricationStep{
 		StepOrder:    req.StepOrder,
 		PersonUserID: req.PersonUserID,
@@ -533,11 +533,13 @@ func stepRequestToStep(req stepRequest) FabricationStep {
 		EquipmentID:  req.EquipmentID,
 	}
 	if req.StepDate != "" {
-		if t, err := time.Parse("2006-01-02", req.StepDate); err == nil {
-			step.StepDate = &t
+		t, err := time.Parse("2006-01-02", req.StepDate)
+		if err != nil {
+			return FabricationStep{}, fmt.Errorf("invalid step_date: must be YYYY-MM-DD")
 		}
+		step.StepDate = &t
 	}
-	return step
+	return step, nil
 }
 
 func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
@@ -553,7 +555,11 @@ func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
-	step := stepRequestToStep(req)
+	step, err := stepRequestToStep(req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	created, err := addFabricationStep(id, step)
 	if err != nil {
@@ -595,7 +601,11 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
-	step := stepRequestToStep(req)
+	step, parseErr := stepRequestToStep(req)
+	if parseErr != nil {
+		writeError(w, http.StatusBadRequest, parseErr.Error())
+		return
+	}
 
 	if err := updateFabricationStep(id, step); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -724,21 +734,32 @@ func apiGetArticle(w http.ResponseWriter, r *http.Request, articleID string) {
 
 	// Attachments
 	detail.Attachments = make([]apiArticleAttachment, 0)
-	attRows, err := dbPool.Query(r.Context(), `
+	attRows, attErr := dbPool.Query(r.Context(), `
 		SELECT attachment_id, original_name, attachment_address, uploaded_at
 		  FROM article_attachments
 		 WHERE article_id = $1`, detail.ID)
-	if err == nil {
-		defer attRows.Close()
-		for attRows.Next() {
-			var att apiArticleAttachment
-			var addr string
-			if scanErr := attRows.Scan(&att.ID, &att.OriginalName, &addr, &att.UploadedAt); scanErr == nil {
-				att.URL = fmt.Sprintf("/wiki/attachment/%d", att.ID)
-				att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(addr)))
-				detail.Attachments = append(detail.Attachments, att)
-			}
+	if attErr != nil {
+		log.Printf("api: getArticle attachments error: %v", attErr)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	defer attRows.Close()
+	for attRows.Next() {
+		var att apiArticleAttachment
+		var addr string
+		if scanErr := attRows.Scan(&att.ID, &att.OriginalName, &addr, &att.UploadedAt); scanErr != nil {
+			log.Printf("api: getArticle attachment scan error: %v", scanErr)
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
 		}
+		att.URL = fmt.Sprintf("/wiki/attachment/%d", att.ID)
+		att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(addr)))
+		detail.Attachments = append(detail.Attachments, att)
+	}
+	if err := attRows.Err(); err != nil {
+		log.Printf("api: getArticle attachments iteration error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
 	}
 
 	writeJSON(w, http.StatusOK, detail)
@@ -792,6 +813,10 @@ func apiUpdateArticle(w http.ResponseWriter, r *http.Request, articleID string) 
 	var req articleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if strings.TrimSpace(req.Title) == "" {
+		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
 

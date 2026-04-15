@@ -6,11 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+
+	"sampleDB/internal/auth"
 )
 
 // generateShareToken creates or replaces the share token for a sample, setting
@@ -159,6 +162,12 @@ func handleSampleShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+	if err := requireSampleOwner(r, sampleID, session.UserID); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
@@ -177,6 +186,26 @@ func handleSampleShare(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/samples/%d", sampleID), http.StatusSeeOther)
 }
 
+// requireSampleOwner returns an error if the given userID does not own the sample.
+// Samples with no owner_user_id set (legacy) are accessible to any authenticated user.
+func requireSampleOwner(r *http.Request, sampleID, userID int) error {
+	var ownerUserID *int
+	err := dbPool.QueryRow(r.Context(),
+		"SELECT owner_user_id FROM samples WHERE sample_id = $1",
+		sampleID).Scan(&ownerUserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("sample not found")
+		}
+		log.Printf("requireSampleOwner: db error: %v", err)
+		return fmt.Errorf("database error")
+	}
+	if ownerUserID != nil && *ownerUserID != userID {
+		return fmt.Errorf("forbidden")
+	}
+	return nil
+}
+
 // handleSampleShareRevoke handles POST /samples/{id}/share/revoke.
 func handleSampleShareRevoke(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -192,6 +221,12 @@ func handleSampleShareRevoke(w http.ResponseWriter, r *http.Request) {
 	sampleID, err := strconv.Atoi(pathParts[0])
 	if err != nil || sampleID <= 0 {
 		http.Error(w, "Invalid sample ID", http.StatusBadRequest)
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	if err := requireSampleOwner(r, sampleID, session.UserID); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
