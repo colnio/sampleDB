@@ -476,11 +476,37 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect attachment file paths before the cascade delete removes the rows.
+	attRows, attErr := dbPool.Query(context.Background(),
+		`SELECT aa.attachment_address
+		   FROM article_attachments aa
+		   JOIN articles a ON aa.article_id = a.article_id
+		  WHERE a.title = $1`, title)
+	var filePaths []string
+	if attErr == nil {
+		for attRows.Next() {
+			var fp string
+			if scanErr := attRows.Scan(&fp); scanErr == nil {
+				filePaths = append(filePaths, fp)
+			}
+		}
+		attRows.Close()
+	} else {
+		log.Printf("warning: could not list article attachments for cleanup: %v", attErr)
+	}
+
 	_, err = dbPool.Exec(context.Background(),
 		"DELETE FROM articles WHERE title = $1", title)
 	if err != nil {
 		http.Error(w, "Error deleting article", http.StatusInternalServerError)
 		return
+	}
+
+	// Remove attachment files from disk after the DB delete succeeds.
+	for _, fp := range filePaths {
+		if removeErr := os.Remove(resolveAppPath(fp)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+			log.Printf("warning: could not remove article attachment file %s: %v", fp, removeErr)
+		}
 	}
 
 	http.Redirect(w, r, "/wiki", http.StatusSeeOther)

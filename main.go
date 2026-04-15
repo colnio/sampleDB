@@ -1128,6 +1128,17 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	nameParamIndex := len(args) + 1
 	args = append(args, "%"+trimmedQuery+"%")
 
+	// Match owner name as well
+	ownerParamIndex := len(args) + 1
+	args = append(args, "%"+trimmedQuery+"%")
+
+	// Build the OR search conditions
+	searchConds := []string{
+		fmt.Sprintf("s.sample_name ILIKE $%d", nameParamIndex),
+		fmt.Sprintf("s.sample_owner ILIKE $%d", ownerParamIndex),
+	}
+	searchConds = append(searchConds, whereClauses...)
+
 	queryText := fmt.Sprintf(`
         SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
                COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, s.created_at,
@@ -1140,19 +1151,7 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
                  AND attachment_address ~* '\.(jpg|jpeg|png|gif|webp|svg)$'
                ORDER BY attachment_id ASC LIMIT 1
           ) first_img ON true
-         WHERE s.sample_name ILIKE $%d`, nameParamIndex)
-
-	// Match owner name as well
-	ownerParamIndex := len(args) + 1
-	args = append(args, "%"+trimmedQuery+"%")
-	queryText = fmt.Sprintf(`%s OR s.sample_owner ILIKE $%d`, queryText, ownerParamIndex)
-
-	if len(whereClauses) > 0 {
-		queryText = fmt.Sprintf(`%s OR %s`, queryText, strings.Join(whereClauses, " OR "))
-	}
-
-	// Wrap the search conditions in parentheses before adding date filters
-	queryText = fmt.Sprintf(`(%s)`, queryText)
+         WHERE (%s)`, strings.Join(searchConds, " OR "))
 
 	// Add date filtering
 	if dateFrom != "" {
@@ -1567,13 +1566,18 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		if strings.TrimSpace(name) == "" {
+			http.Error(w, "Sample name is required", http.StatusBadRequest)
+			return
+		}
+
 		// Insert the new sample into the database
 		_, err := dbPool.Exec(context.Background(),
 			`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_prep, sample_owner, owner_user_id)
 			 VALUES ($1, $2, $3, $4, $5, $6)`,
 			name, description, keywords, prep, ownerName, ownerUserID)
 		if err != nil {
-			fmt.Printf("%v", err)
+			log.Printf("newSampleHandler: insert error: %v", err)
 			http.Error(w, "Error adding sample", http.StatusInternalServerError)
 			return
 		}
@@ -1695,53 +1699,6 @@ func isImage(contentType string) bool {
 	return strings.HasPrefix(contentType, "image/")
 }
 
-// Add these handler functions to your main.go:
-
-// func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method != http.MethodPost {
-// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-// 		return
-// 	}
-
-// 	// Get sample ID from URL
-// 	parts := strings.Split(r.URL.Path, "/")
-// 	if len(parts) < 4 {
-// 		http.Error(w, "Invalid URL", http.StatusBadRequest)
-// 		return
-// 	}
-// 	sampleID := parts[3]
-
-// 	// Parse multipart form
-// 	err := r.ParseMultipartForm(10 << 20) // 10 MB max
-// 	if err != nil {
-// 		http.Error(w, "Error parsing form", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	file, header, err := r.FormFile("file")
-// 	if err != nil {
-// 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
-// 		return
-// 	}
-// 	defer file.Close()
-
-// 	// Save file and get filepath
-// 	filepath, err := saveUploadedFile(file, header.Filename)
-// 	if err != nil {
-// 		http.Error(w, "Error saving file", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	// Add to database
-// 	err = addAttachment(sampleID, filepath)
-// 	if err != nil {
-// 		http.Error(w, "Error storing attachment info", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	// Redirect back to sample detail page
-// 	http.Redirect(w, r, "/samples/"+sampleID, http.StatusSeeOther)
-// }
 
 func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

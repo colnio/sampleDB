@@ -187,7 +187,11 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 		   FROM samples s
 		  WHERE s.share_token = $1`, token).Scan(&sampleID, &visibility)
 	if err != nil {
-		http.NotFound(w, r)
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.NotFound(w, r)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 	if visibility == "private" || visibility == "" {
