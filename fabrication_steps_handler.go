@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"sampleDB/internal/auth"
 )
 
@@ -93,8 +95,10 @@ func handleFabricationStepsEndpoint(w http.ResponseWriter, r *http.Request) {
 		if err := requireSampleOwner(r, sampleIDInt, session.UserID); err != nil {
 			if errors.Is(err, errSampleNotFound) {
 				http.Error(w, "Sample not found", http.StatusNotFound)
-			} else {
+			} else if errors.Is(err, errForbidden) {
 				http.Error(w, "Forbidden", http.StatusForbidden)
+			} else {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}
 			return
 		}
@@ -164,14 +168,21 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 	case http.MethodGet:
 		existing, err := getStepByID(r.Context(), stepID)
 		if err != nil {
-			http.Error(w, "Step not found", http.StatusNotFound)
+			if errors.Is(err, pgx.ErrNoRows) {
+				http.Error(w, "Step not found", http.StatusNotFound)
+			} else {
+				log.Printf("handleFabricationStepEdit GET: getStepByID error: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
 			return
 		}
 		if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
 			if errors.Is(err, errSampleNotFound) {
 				http.Error(w, "Sample not found", http.StatusNotFound)
-			} else {
+			} else if errors.Is(err, errForbidden) {
 				http.Error(w, "Forbidden", http.StatusForbidden)
+			} else {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}
 			return
 		}
@@ -187,14 +198,21 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 		// Re-fetch the step to get sample_id for ownership check.
 		existing, err := getStepByID(r.Context(), stepID)
 		if err != nil {
-			http.Error(w, "Step not found", http.StatusNotFound)
+			if errors.Is(err, pgx.ErrNoRows) {
+				http.Error(w, "Step not found", http.StatusNotFound)
+			} else {
+				log.Printf("handleFabricationStepEdit POST: getStepByID error: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
 			return
 		}
 		if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
 			if errors.Is(err, errSampleNotFound) {
 				http.Error(w, "Sample not found", http.StatusNotFound)
-			} else {
+			} else if errors.Is(err, errForbidden) {
 				http.Error(w, "Forbidden", http.StatusForbidden)
+			} else {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}
 			return
 		}
@@ -240,14 +258,21 @@ func handleFabricationStepDelete(w http.ResponseWriter, r *http.Request, stepIDS
 	// Fetch sample_id before deleting so we can re-render the panel
 	existing, err := getStepByID(r.Context(), stepID)
 	if err != nil {
-		http.Error(w, "Step not found", http.StatusNotFound)
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "Step not found", http.StatusNotFound)
+		} else {
+			log.Printf("handleFabricationStepDelete: getStepByID error: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 	if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
 		if errors.Is(err, errSampleNotFound) {
 			http.Error(w, "Sample not found", http.StatusNotFound)
-		} else {
+		} else if errors.Is(err, errForbidden) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -286,8 +311,10 @@ func handleFabricationStepsReorder(w http.ResponseWriter, r *http.Request) {
 		log.Printf("handleFabricationStepsReorder: ownership check failed for sample %d user %d: %v", sampleIDInt, session.UserID, err)
 		if errors.Is(err, errSampleNotFound) {
 			http.Error(w, "Sample not found", http.StatusNotFound)
-		} else {
+		} else if errors.Is(err, errForbidden) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
 	}

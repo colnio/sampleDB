@@ -27,13 +27,13 @@ var errForbidden = errors.New("forbidden")
 
 // generateShareToken creates or replaces the share token for a sample, setting
 // the given visibility ('public' or 'authenticated'). Returns the new token.
-func generateShareToken(sampleID int, visibility string) (string, error) {
+func generateShareToken(ctx context.Context, sampleID int, visibility string) (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("generate share token: %w", err)
 	}
 	token := hex.EncodeToString(b)
-	tag, err := dbPool.Exec(context.Background(),
+	tag, err := dbPool.Exec(ctx,
 		`UPDATE samples SET share_token=$1, share_visibility=$2 WHERE sample_id=$3`,
 		token, visibility, sampleID)
 	if err != nil {
@@ -47,9 +47,9 @@ func generateShareToken(sampleID int, visibility string) (string, error) {
 
 // getSampleByShareToken fetches a sample (with attachments) by its share token.
 // Returns pgx.ErrNoRows if the token is not found.
-func getSampleByShareToken(token string) (Sample, error) {
+func getSampleByShareToken(ctx context.Context, token string) (Sample, error) {
 	var sample Sample
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description,''), COALESCE(s.sample_keywords,''),
 		        COALESCE(s.sample_owner,''), s.owner_user_id, u.username,
 		        COALESCE(s.sample_prep,''), s.created_at,
@@ -74,8 +74,8 @@ func getSampleByShareToken(token string) (Sample, error) {
 }
 
 // revokeShareToken clears the share token and resets visibility to 'private'.
-func revokeShareToken(sampleID int) error {
-	_, err := dbPool.Exec(context.Background(),
+func revokeShareToken(ctx context.Context, sampleID int) error {
+	_, err := dbPool.Exec(ctx,
 		`UPDATE samples SET share_token=NULL, share_visibility='private' WHERE sample_id=$1`, sampleID)
 	return err
 }
@@ -118,7 +118,7 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sample, err := getSampleByShareToken(token)
+	sample, err := getSampleByShareToken(r.Context(), token)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.NotFound(w, r)
@@ -260,8 +260,10 @@ func handleSampleShare(w http.ResponseWriter, r *http.Request) {
 	if err := requireSampleOwner(r, sampleID, session.UserID); err != nil {
 		if errors.Is(err, errSampleNotFound) {
 			http.Error(w, "Sample not found", http.StatusNotFound)
-		} else {
+		} else if errors.Is(err, errForbidden) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -276,7 +278,7 @@ func handleSampleShare(w http.ResponseWriter, r *http.Request) {
 		visibility = "public"
 	}
 
-	if _, err := generateShareToken(sampleID, visibility); err != nil {
+	if _, err := generateShareToken(r.Context(), sampleID, visibility); err != nil {
 		http.Error(w, "Error generating share token", http.StatusInternalServerError)
 		return
 	}
@@ -335,13 +337,15 @@ func handleSampleShareRevoke(w http.ResponseWriter, r *http.Request) {
 	if err := requireSampleOwner(r, sampleID, session.UserID); err != nil {
 		if errors.Is(err, errSampleNotFound) {
 			http.Error(w, "Sample not found", http.StatusNotFound)
-		} else {
+		} else if errors.Is(err, errForbidden) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	if err := revokeShareToken(sampleID); err != nil {
+	if err := revokeShareToken(r.Context(), sampleID); err != nil {
 		http.Error(w, "Error revoking share token", http.StatusInternalServerError)
 		return
 	}

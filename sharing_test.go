@@ -44,11 +44,11 @@ func TestGenerateShareToken_ProducesUniqueTokens(t *testing.T) {
 	sampleID, cleanup := createTestSampleForSharing(t)
 	defer cleanup()
 
-	tok1, err := generateShareToken(sampleID, "public")
+	tok1, err := generateShareToken(context.Background(), sampleID, "public")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
-	tok2, err := generateShareToken(sampleID, "public")
+	tok2, err := generateShareToken(context.Background(), sampleID, "public")
 	if err != nil {
 		t.Fatalf("generateShareToken (second): %v", err)
 	}
@@ -64,12 +64,12 @@ func TestGenerateShareToken_SetsVisibility(t *testing.T) {
 	sampleID, cleanup := createTestSampleForSharing(t)
 	defer cleanup()
 
-	token, err := generateShareToken(sampleID, "authenticated")
+	token, err := generateShareToken(context.Background(), sampleID, "authenticated")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
 
-	sample, err := getSampleByShareToken(token)
+	sample, err := getSampleByShareToken(context.Background(), token)
 	if err != nil {
 		t.Fatalf("getSampleByShareToken: %v", err)
 	}
@@ -86,12 +86,12 @@ func TestGetSampleByShareToken_PublicVisibility(t *testing.T) {
 	sampleID, cleanup := createTestSampleForSharing(t)
 	defer cleanup()
 
-	token, err := generateShareToken(sampleID, "public")
+	token, err := generateShareToken(context.Background(), sampleID, "public")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
 
-	sample, err := getSampleByShareToken(token)
+	sample, err := getSampleByShareToken(context.Background(), token)
 	if err != nil {
 		t.Fatalf("getSampleByShareToken: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestGetSampleByShareToken_NotFound(t *testing.T) {
 	dbPool = pool
 	t.Cleanup(func() { dbPool = orig })
 
-	_, err := getSampleByShareToken("nonexistent-token-that-does-not-exist-in-db")
+	_, err := getSampleByShareToken(context.Background(), "nonexistent-token-that-does-not-exist-in-db")
 	if err == nil {
 		t.Error("expected error for unknown token, got nil")
 	}
@@ -123,17 +123,17 @@ func TestRevokeShareToken(t *testing.T) {
 	sampleID, cleanup := createTestSampleForSharing(t)
 	defer cleanup()
 
-	token, err := generateShareToken(sampleID, "public")
+	token, err := generateShareToken(context.Background(), sampleID, "public")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
 
-	if err := revokeShareToken(sampleID); err != nil {
+	if err := revokeShareToken(context.Background(), sampleID); err != nil {
 		t.Fatalf("revokeShareToken: %v", err)
 	}
 
 	// Token should no longer be found.
-	_, err = getSampleByShareToken(token)
+	_, err = getSampleByShareToken(context.Background(), token)
 	if err == nil {
 		t.Error("expected error after revoke, got nil")
 	}
@@ -165,7 +165,7 @@ func TestHandleSharedSample_PublicAccess(t *testing.T) {
 	sampleID, cleanup := createTestSampleForSharing(t)
 	defer cleanup()
 
-	token, err := generateShareToken(sampleID, "public")
+	token, err := generateShareToken(context.Background(), sampleID, "public")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestHandleSharedSample_AuthenticatedRequiresLogin(t *testing.T) {
 	sampleID, cleanup := createTestSampleForSharing(t)
 	defer cleanup()
 
-	token, err := generateShareToken(sampleID, "authenticated")
+	token, err := generateShareToken(context.Background(), sampleID, "authenticated")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
@@ -220,11 +220,11 @@ func TestHandleSharedSample_RevokedTokenReturns404(t *testing.T) {
 	defer cleanup()
 
 	// Generate a token then revoke it (sets share_token=NULL, visibility='private').
-	token, err := generateShareToken(sampleID, "public")
+	token, err := generateShareToken(context.Background(), sampleID, "public")
 	if err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
-	if err := revokeShareToken(sampleID); err != nil {
+	if err := revokeShareToken(context.Background(), sampleID); err != nil {
 		t.Fatalf("revokeShareToken: %v", err)
 	}
 
@@ -308,7 +308,7 @@ func TestHandleSampleShareRevoke_RevokesToken(t *testing.T) {
 	defer cleanup()
 
 	// First generate a token.
-	if _, err := generateShareToken(sampleID, "public"); err != nil {
+	if _, err := generateShareToken(context.Background(), sampleID, "public"); err != nil {
 		t.Fatalf("generateShareToken: %v", err)
 	}
 

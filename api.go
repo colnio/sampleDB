@@ -344,6 +344,7 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
+		log.Printf("api: listSamples rows error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
@@ -853,6 +854,7 @@ func apiListArticles(w http.ResponseWriter, r *http.Request) {
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
+		log.Printf("api: listArticles rows error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
@@ -1065,6 +1067,7 @@ func apiUsersHandler(w http.ResponseWriter, r *http.Request) {
 		users = append(users, u)
 	}
 	if err := rows.Err(); err != nil {
+		log.Printf("api: listUsers rows error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
