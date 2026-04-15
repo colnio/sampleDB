@@ -407,7 +407,7 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	}
 
 	// Attachments
-	atts, attsErr := getAttachments(sampleID)
+	atts, attsErr := getAttachments(strconv.Itoa(id))
 	if attsErr != nil {
 		log.Printf("api: getSample attachments error: %v", attsErr)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -496,16 +496,16 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
+	// owner_user_id is intentionally excluded: ownership can only be set at creation time.
 	tag, err := dbPool.Exec(r.Context(), `
 		UPDATE samples
 		   SET sample_name        = $1,
 		       sample_description = $2,
 		       sample_keywords    = $3,
 		       sample_owner       = $4,
-		       owner_user_id      = COALESCE($5, owner_user_id),
-		       sample_prep        = $6
-		 WHERE sample_id = $7`,
-		req.Name, req.Description, req.Keywords, req.Owner, req.OwnerUserID, req.SamplePrep, id)
+		       sample_prep        = $5
+		 WHERE sample_id = $6`,
+		req.Name, req.Description, req.Keywords, req.Owner, req.SamplePrep, id)
 	if err != nil {
 		log.Printf("api: updateSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -556,6 +556,20 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
+	var exists bool
+	if err := dbPool.QueryRow(r.Context(),
+		"SELECT EXISTS(SELECT 1 FROM samples WHERE sample_id = $1)", id).Scan(&exists); err != nil {
+		log.Printf("api: listSteps existence check error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if !exists {
+		writeError(w, http.StatusNotFound, "sample not found")
+		return
+	}
+
+	limit, offset := parsePagination(r)
+
 	steps, err := getFabricationSteps(id)
 	if err != nil {
 		log.Printf("api: listSteps error: %v", err)
@@ -570,8 +584,8 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items":  items,
 		"total":  len(items),
-		"limit":  len(items),
-		"offset": 0,
+		"limit":  limit,
+		"offset": offset,
 	})
 }
 
@@ -920,12 +934,14 @@ func apiUpdateArticle(w http.ResponseWriter, r *http.Request, articleID string) 
 	session := auth.MustSessionFromContext(r.Context())
 
 	// Check ownership: caller must be the article creator or an admin.
+	// LEFT JOIN ensures we get ErrNoRows only when the article doesn't exist,
+	// not when the session user has been removed from the users table.
 	var createdBy int
 	var isAdmin bool
 	err = dbPool.QueryRow(r.Context(),
 		`SELECT a.created_by, COALESCE(u.admin, false)
 		   FROM articles a
-		   JOIN users u ON u.user_id = $1
+		   LEFT JOIN users u ON u.user_id = $1
 		  WHERE a.article_id = $2`,
 		session.UserID, id).Scan(&createdBy, &isAdmin)
 	if err != nil {
