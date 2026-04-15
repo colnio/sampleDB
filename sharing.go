@@ -164,6 +164,7 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := parseTemplates(
 		"templates/sample_shared.html",
 		"templates/fabrication_steps.html",
+		"templates/step_form.html",
 	)
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
@@ -197,7 +198,14 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 	// Authenticated-only shares require a valid session.
 	if visibility == "authenticated" {
 		if _, ok := authManagerInstance.TryAuth(r); !ok {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+				w.Header().Set("WWW-Authenticate", "Bearer")
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprint(w, `{"error":"authentication required"}`)
+			} else {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+			}
 			return
 		}
 	}
