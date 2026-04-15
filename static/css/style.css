@@ -1022,6 +1022,37 @@ button.button:disabled {
     align-self: flex-start;
 }
 
+/* Sample card thumbnail preview */
+.sample-card__thumbnail {
+    display: block;
+    margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding)) 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    overflow: hidden;
+    height: 140px;
+    background: var(--surface-muted);
+}
+
+.sample-card__thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.25s ease;
+}
+
+.sample-card:hover .sample-card__thumbnail img {
+    transform: scale(1.03);
+}
+
+/* Hover shadow enhancement for sample cards */
+.sample-card.tile:hover {
+    box-shadow: 0 12px 32px rgba(17, 24, 39, 0.14);
+}
+
+[data-theme="dark"] .sample-card.tile:hover {
+    box-shadow: 0 12px 32px rgba(1, 4, 9, 0.8);
+}
+
 .empty-state__hint {
     color: var(--text-muted);
     font-size: var(--font-size-sm);
@@ -1862,4 +1893,111 @@ html[data-theme="dark"] body .markdown-body table th {
         justify-content: flex-end;
         width: 100%;
     }
+}
+
+/* ============================================================
+   Collapsible panel <details> wrapper
+   ============================================================ */
+
+.panel-details {
+    /* No extra wrapper styling — the child .card provides the visual */
+}
+
+.panel-details > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) 0;
+    margin-bottom: var(--space-xs);
+    cursor: pointer;
+    list-style: none;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    user-select: none;
+    outline: none;
+}
+
+.panel-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.panel-details > summary::marker {
+    display: none;
+}
+
+.panel-details > summary::before {
+    content: '▶';
+    display: inline-block;
+    font-size: 0.65em;
+    transition: transform 0.18s ease;
+    margin-right: 2px;
+}
+
+.panel-details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.panel-details > summary:hover {
+    color: var(--color-primary);
+}
+
+/* ============================================================
+   HTMX in-flight overlay — dims the target panel during swap
+   ============================================================ */
+
+.htmx-in-flight {
+    opacity: 0.65;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+/* ============================================================
+   Sample detail — mobile layout improvements
+   ============================================================ */
+
+@media (max-width: 600px) {
+    .sample-detail__meta {
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .attachments-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .attachments-header form {
+        width: 100%;
+    }
+
+    .attachments-header form .button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sample-detail {
+        gap: var(--space-md);
+    }
+
+    .panel-details > summary {
+        padding: var(--space-sm) 0;
+    }
+}
+
+/* Hide section h2 headings inside collapsible panel-details
+   (the <summary> above already provides the visible title) */
+.panel-details > section > header > div > h2,
+.panel-details > section > header > h2,
+.panel-details > section.form-container > header > h2 {
+    display: none;
+}
+
+/* Hide headers that become empty once their h2 is hidden */
+.panel-details > section.fabrication-steps > header,
+.panel-details > section.sample-share > header,
+.panel-details > section.form-container > header {
+    display: none;
 }

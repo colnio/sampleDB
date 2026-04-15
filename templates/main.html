@@ -52,6 +52,11 @@
         <div class="samples-grid">
             {{range .Samples}}
             <article class="card tile sample-card">
+                {{if .FirstImageID}}
+                <a href="/samples/{{.ID}}" class="sample-card__thumbnail" tabindex="-1" aria-hidden="true">
+                    <img src="/attachment/{{.FirstImageID}}" alt="" loading="lazy">
+                </a>
+                {{end}}
                 <header class="sample-card__header">
                     <div class="sample-card__title">
                         <h2><a href="/samples/{{.ID}}">{{.Name}}</a></h2>

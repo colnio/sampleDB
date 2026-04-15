@@ -114,4 +114,18 @@
         const target = event.detail?.target || event.target;
         handleSwapTarget(target);
     });
+
+    // Loading overlay: dim the target panel while an HTMX request is in flight.
+    document.addEventListener('htmx:beforeRequest', function(event) {
+        const target = event.detail && event.detail.target;
+        if (target && target.nodeType === Node.ELEMENT_NODE) {
+            target.classList.add('htmx-in-flight');
+        }
+    });
+    document.addEventListener('htmx:afterRequest', function(event) {
+        const target = event.detail && event.detail.target;
+        if (target && target.nodeType === Node.ELEMENT_NODE) {
+            target.classList.remove('htmx-in-flight');
+        }
+    });
 })();

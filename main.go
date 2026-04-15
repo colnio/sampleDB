@@ -61,6 +61,7 @@ type Sample struct {
 	CreatedAt       time.Time
 	ShareToken      *string // nil when not shared
 	ShareVisibility string  // 'private', 'public', 'authenticated'
+	FirstImageID    *int    // ID of the first image attachment, nil if none
 }
 
 type User struct {
@@ -1103,9 +1104,16 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 
 	queryText := fmt.Sprintf(`
         SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
-               COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, s.created_at
+               COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, s.created_at,
+               first_img.attachment_id
           FROM samples s
           LEFT JOIN users u ON s.owner_user_id = u.user_id
+          LEFT JOIN LATERAL (
+              SELECT attachment_id FROM attachments
+               WHERE source_type = 'sample' AND source_id = s.sample_id
+                 AND attachment_address ~* '\.(jpg|jpeg|png|gif|webp|svg)$'
+               ORDER BY attachment_id ASC LIMIT 1
+          ) first_img ON true
          WHERE s.sample_name ILIKE $%d`, nameParamIndex)
 
 	// Match owner name as well
@@ -1144,7 +1152,7 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	var samples []Sample
 	for rows.Next() {
 		var sample Sample
-		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.OwnerUserID, &sample.OwnerUsername, &sample.CreatedAt)
+		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.OwnerUserID, &sample.OwnerUsername, &sample.CreatedAt, &sample.FirstImageID)
 		if err != nil {
 			return nil, err
 		}
@@ -1157,9 +1165,16 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 // getAllSamples retrieves all samples when there's no search query
 func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 	queryText := `SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
-		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at
+		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at,
+		       first_img.attachment_id
 		  FROM samples s
-		  LEFT JOIN users u ON s.owner_user_id = u.user_id`
+		  LEFT JOIN users u ON s.owner_user_id = u.user_id
+		  LEFT JOIN LATERAL (
+		      SELECT attachment_id FROM attachments
+		       WHERE source_type = 'sample' AND source_id = s.sample_id
+		         AND attachment_address ~* '\.(jpg|jpeg|png|gif|webp|svg)$'
+		       ORDER BY attachment_id ASC LIMIT 1
+		  ) first_img ON true`
 	var args []interface{}
 	var whereClauses []string
 
@@ -1188,7 +1203,7 @@ func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 	var samples []Sample
 	for rows.Next() {
 		var sample Sample
-		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.OwnerUserID, &sample.OwnerUsername, &sample.Sample_prep, &sample.CreatedAt)
+		err := rows.Scan(&sample.ID, &sample.Name, &sample.Description, &sample.Keywords, &sample.Owner, &sample.OwnerUserID, &sample.OwnerUsername, &sample.Sample_prep, &sample.CreatedAt, &sample.FirstImageID)
 		if err != nil {
 			return nil, err
 		}

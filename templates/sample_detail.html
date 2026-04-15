@@ -19,15 +19,30 @@
         </div>
     </header>
 
-    {{template "sample_attachments" .}}
+    <details class="panel-details" open>
+        <summary>Attachments</summary>
+        {{template "sample_attachments" .}}
+    </details>
 
-    {{template "fabrication_steps_panel" .}}
+    <details class="panel-details" open>
+        <summary>Fabrication Steps</summary>
+        {{template "fabrication_steps_panel" .}}
+    </details>
 
-    {{template "sample_prep_panel" .}}
+    <details class="panel-details" open>
+        <summary>Sample Preparation</summary>
+        {{template "sample_prep_panel" .}}
+    </details>
 
-    {{template "sample_share_panel" .}}
+    <details class="panel-details">
+        <summary>Share Link</summary>
+        {{template "sample_share_panel" .}}
+    </details>
 
-    {{template "sample_edit_form" .}}
+    <details class="panel-details">
+        <summary>Edit Sample Details</summary>
+        {{template "sample_edit_form" .}}
+    </details>
 
     <a href="/" class="back-link">← Back to samples</a>
 </section>

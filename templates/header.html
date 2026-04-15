@@ -36,6 +36,15 @@
                     </svg>
                     <span>Equipment Booking</span>
                 </a>
+                {{if .Username}}
+                <a href="/profile/tokens" class="nav-item">
+                    <svg class="nav-item__icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                        <path d="M15.5 5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM2 10.5a8.5 8.5 0 1 1 15.28 5.1l3.56 3.56a1 1 0 0 1-1.42 1.42l-3.56-3.56A8.5 8.5 0 0 1 2 10.5z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path>
+                        <circle cx="15.5" cy="10.5" r="2" fill="currentColor"></circle>
+                    </svg>
+                    <span>API Tokens</span>
+                </a>
+                {{end}}
                 {{if .IsAdmin}}
                 <a href="/admin" class="nav-item">
                     <svg class="nav-item__icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">

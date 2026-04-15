@@ -160,12 +160,12 @@ Major upgrade across four areas:
 
 ### Task 10: General UX/UI polish
 
-- [ ] sample list (`templates/main.html`): show first image thumbnail as a card preview if sample has image attachments; add subtle hover shadow on sample cards
-- [ ] sample detail (`templates/sample_detail.html`): collapse/expand panels (steps, attachments, edit form) using `<details>` or HTMX toggle; improve mobile layout (stack panels vertically on small screens)
-- [ ] add loading spinners for HTMX operations (use `htmx:beforeRequest` / `htmx:afterRequest` events in existing JS)
-- [ ] profile page: add token management section link to nav (only shown to logged-in users)
-- [ ] write basic render tests for main.html and sample_detail.html templates (verify template executes without error with mock data)
-- [ ] run tests — must pass before task 11
+- [x] sample list (`templates/main.html`): show first image thumbnail as a card preview if sample has image attachments; add subtle hover shadow on sample cards
+- [x] sample detail (`templates/sample_detail.html`): collapse/expand panels (steps, attachments, edit form) using `<details>` or HTMX toggle; improve mobile layout (stack panels vertically on small screens)
+- [x] add loading spinners for HTMX operations (use `htmx:beforeRequest` / `htmx:afterRequest` events in existing JS)
+- [x] profile page: add token management section link to nav (only shown to logged-in users)
+- [x] write basic render tests for main.html and sample_detail.html templates (verify template executes without error with mock data)
+- [x] run tests — must pass before task 11
 
 ### Task 11: Verify acceptance criteria
 
