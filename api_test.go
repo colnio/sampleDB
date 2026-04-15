@@ -484,8 +484,13 @@ func TestAPISamplesHandler_RouteToDelete404(t *testing.T) {
 	restore := setMockDB(mock)
 	defer restore()
 
+	// Ownership check runs before DELETE; sample has no owner_user_id (legacy).
+	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
+		WithArgs(99).
+		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+
 	mock.ExpectExec(`DELETE FROM samples WHERE sample_id`).
-		WithArgs("99").
+		WithArgs(99).
 		WillReturnResult(pgxmock.NewResult("DELETE", 0))
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/samples/99", nil)
@@ -496,6 +501,9 @@ func TestAPISamplesHandler_RouteToDelete404(t *testing.T) {
 
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", rr.Code)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
 	}
 }
 

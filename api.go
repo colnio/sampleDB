@@ -247,7 +247,7 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 	}
 	if ownerFilter != "" {
 		idx := len(args) + 1
-		conditions = append(conditions, fmt.Sprintf("s.sample_owner ILIKE $%d", idx))
+		conditions = append(conditions, fmt.Sprintf("(s.sample_owner ILIKE $%[1]d OR u.username ILIKE $%[1]d)", idx))
 		args = append(args, "%"+ownerFilter+"%")
 	}
 	if from != "" {
@@ -266,8 +266,12 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 		whereClause = " WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	// Total count
-	countQuery := "SELECT COUNT(*) FROM samples s" + whereClause
+	// Total count — include users JOIN when the owner filter references u.username.
+	countJoin := ""
+	if ownerFilter != "" {
+		countJoin = " LEFT JOIN users u ON s.owner_user_id = u.user_id"
+	}
+	countQuery := "SELECT COUNT(*) FROM samples s" + countJoin + whereClause
 	var total int
 	if err := dbPool.QueryRow(r.Context(), countQuery, args...).Scan(&total); err != nil {
 		log.Printf("api: listSamples count error: %v", err)
@@ -401,6 +405,7 @@ type sampleRequest struct {
 	Description string `json:"description"`
 	Keywords    string `json:"keywords"`
 	Owner       string `json:"owner"`
+	OwnerUserID *int   `json:"owner_user_id,omitempty"`
 	SamplePrep  string `json:"sample_prep"`
 }
 
@@ -418,10 +423,10 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	var id int
 	var createdAt time.Time
 	err := dbPool.QueryRow(r.Context(), `
-		INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, sample_prep)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id, sample_prep)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING sample_id, created_at`,
-		req.Name, req.Description, req.Keywords, req.Owner, req.SamplePrep,
+		req.Name, req.Description, req.Keywords, req.Owner, req.OwnerUserID, req.SamplePrep,
 	).Scan(&id, &createdAt)
 	if err != nil {
 		log.Printf("api: createSample error: %v", err)
@@ -441,6 +446,18 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
+	id, err := strconv.Atoi(sampleID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid sample id")
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	if err := requireSampleOwner(r, id, session.UserID); err != nil {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
 	var req sampleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -457,9 +474,10 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		       sample_description = $2,
 		       sample_keywords    = $3,
 		       sample_owner       = $4,
-		       sample_prep        = $5
-		 WHERE sample_id = $6`,
-		req.Name, req.Description, req.Keywords, req.Owner, req.SamplePrep, sampleID)
+		       owner_user_id      = $5,
+		       sample_prep        = $6
+		 WHERE sample_id = $7`,
+		req.Name, req.Description, req.Keywords, req.Owner, req.OwnerUserID, req.SamplePrep, id)
 	if err != nil {
 		log.Printf("api: updateSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -474,7 +492,19 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 }
 
 func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
-	tag, err := dbPool.Exec(r.Context(), `DELETE FROM samples WHERE sample_id = $1`, sampleID)
+	id, err := strconv.Atoi(sampleID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid sample id")
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	if err := requireSampleOwner(r, id, session.UserID); err != nil {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	tag, err := dbPool.Exec(r.Context(), `DELETE FROM samples WHERE sample_id = $1`, id)
 	if err != nil {
 		log.Printf("api: deleteSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -549,6 +579,12 @@ func apiAddStep(w http.ResponseWriter, r *http.Request, sampleID string) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+	if err := requireSampleOwner(r, id, session.UserID); err != nil {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
 	var req stepRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -595,6 +631,23 @@ func apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID string) {
 		return
 	}
 
+	existing, err := getStepByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "step not found")
+			return
+		}
+		log.Printf("api: updateStep lookup error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
 	var req stepRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -623,6 +676,23 @@ func apiDeleteStep(w http.ResponseWriter, r *http.Request, stepID string) {
 	id, err := strconv.Atoi(stepID)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid step id")
+		return
+	}
+
+	existing, err := getStepByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "step not found")
+			return
+		}
+		log.Printf("api: deleteStep lookup error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
+		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 

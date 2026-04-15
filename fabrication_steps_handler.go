@@ -166,6 +166,17 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 			return
 		}
 
+		// Re-fetch the step to get sample_id for ownership check.
+		existing, err := getStepByID(stepID)
+		if err != nil {
+			http.Error(w, "Step not found", http.StatusNotFound)
+			return
+		}
+		if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		step, parseErr := parseStepForm(r)
 		if parseErr != nil {
 			http.Error(w, parseErr.Error(), http.StatusBadRequest)
@@ -177,12 +188,6 @@ func handleFabricationStepEdit(w http.ResponseWriter, r *http.Request, stepIDStr
 			return
 		}
 
-		// Look up sample_id from the updated step to redirect/re-render
-		existing, err := getStepByID(stepID)
-		if err != nil {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-			return
-		}
 		sampleIDStr := strconv.Itoa(existing.SampleID)
 
 		if isHTMXRequest(r) {
@@ -214,6 +219,10 @@ func handleFabricationStepDelete(w http.ResponseWriter, r *http.Request, stepIDS
 	existing, err := getStepByID(stepID)
 	if err != nil {
 		http.Error(w, "Step not found", http.StatusNotFound)
+		return
+	}
+	if err := requireSampleOwner(r, existing.SampleID, session.UserID); err != nil {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 	sampleIDStr := strconv.Itoa(existing.SampleID)

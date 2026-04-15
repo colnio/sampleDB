@@ -105,9 +105,9 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 	var articles []Article
 	for rows.Next() {
 		var article Article
-		err := rows.Scan(&article.ID, &article.Title, &article.CreatedAt)
-		if err != nil {
-			continue
+		if err := rows.Scan(&article.ID, &article.Title, &article.CreatedAt); err != nil {
+			http.Error(w, "Error retrieving articles", http.StatusInternalServerError)
+			return
 		}
 		articles = append(articles, article)
 	}
