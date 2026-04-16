@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -31,6 +32,20 @@ type Manager struct {
 	db           dbiface.Pool
 	cookieSecure bool
 	templateDir  string
+	authOnce     sync.Once
+	authTmpl     *template.Template
+	authTmplErr  error
+}
+
+// loadAuthTemplate parses and caches the login/register templates on first use.
+func (m *Manager) loadAuthTemplate() (*template.Template, error) {
+	m.authOnce.Do(func() {
+		m.authTmpl, m.authTmplErr = template.ParseFiles(
+			m.templatePath("auth_base.html"),
+			m.templatePath("login.html"),
+		)
+	})
+	return m.authTmpl, m.authTmplErr
 }
 
 type contextKey string
@@ -137,7 +152,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 				Next:       r.URL.Query().Get("next"),
 			}
 
-			tmpl, err := template.ParseFiles(m.templatePath("auth_base.html"), m.templatePath("login.html"))
+			tmpl, err := m.loadAuthTemplate()
 			if err != nil {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return
@@ -226,7 +241,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 				IsRegister: true,
 			}
 
-			tmpl, err := template.ParseFiles(m.templatePath("auth_base.html"), m.templatePath("login.html"))
+			tmpl, err := m.loadAuthTemplate()
 			if err != nil {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return

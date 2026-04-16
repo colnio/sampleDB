@@ -223,6 +223,12 @@ func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+	if payload.UserID == session.UserID {
+		http.Error(w, "Cannot reset your own password via admin panel", http.StatusBadRequest)
+		return
+	}
+
 	password, err := h.svc.ResetPassword(r.Context(), payload.UserID)
 	if err != nil {
 		if errors.Is(err, web.ErrNotFound) {
@@ -440,7 +446,5 @@ func (h *Handlers) APIEquipment(w http.ResponseWriter, r *http.Request) {
 
 // writeJSON is a package-local helper for JSON responses.
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	web.JSON(w, status, v)
 }

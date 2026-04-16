@@ -32,7 +32,7 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 
 		var isAdmin bool
 		err := a.DB.QueryRow(r.Context(),
-			"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+			"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 			session.UserID).Scan(&isAdmin)
 
 		if err != nil {

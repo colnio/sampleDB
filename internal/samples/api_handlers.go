@@ -17,16 +17,12 @@ import (
 
 // writeJSON writes v as JSON with the given status code.
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("samples api: writeJSON encode error: %v", err)
-	}
+	web.JSON(w, status, v)
 }
 
 // writeError writes a JSON error body with the given status code.
 func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
+	web.JSON(w, status, map[string]string{"error": msg})
 }
 
 // writeOwnerError maps CheckOwner sentinel errors to JSON HTTP responses.

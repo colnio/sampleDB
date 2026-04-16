@@ -1,7 +1,6 @@
 package wiki
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -17,19 +16,15 @@ import (
 // ---------------------------------------------------------------------------
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("wiki api: writeJSON encode error: %v", err)
-	}
+	web.JSON(w, status, v)
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
+	web.JSON(w, status, map[string]string{"error": msg})
 }
 
 func decodeJSON(r *http.Request, v any) error {
-	return json.NewDecoder(r.Body).Decode(v)
+	return web.DecodeJSON(r, v)
 }
 
 // ---------------------------------------------------------------------------

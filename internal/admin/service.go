@@ -60,7 +60,7 @@ func NewService(db dbiface.Pool) *DBService {
 func (s *DBService) IsAdmin(ctx context.Context, userID int) (bool, error) {
 	var isAdmin bool
 	err := s.db.QueryRow(ctx,
-		`SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
+		`SELECT COALESCE(admin, false) FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
 		userID).Scan(&isAdmin)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil

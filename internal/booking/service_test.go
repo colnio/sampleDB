@@ -147,7 +147,7 @@ func TestCheckUserPermission_Denied(t *testing.T) {
 func TestIsAdmin_True(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT admin FROM users`).
+	mock.ExpectQuery(`SELECT COALESCE\(admin, false\) FROM users`).
 		WithArgs(5).
 		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
 

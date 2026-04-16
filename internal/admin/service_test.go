@@ -207,7 +207,7 @@ func TestGetAllGroups_EmptyResult(t *testing.T) {
 func TestIsAdmin_True(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT admin FROM users`).
+	mock.ExpectQuery(`SELECT COALESCE\(admin, false\) FROM users`).
 		WithArgs(5).
 		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
 
@@ -226,7 +226,7 @@ func TestIsAdmin_True(t *testing.T) {
 func TestIsAdmin_False(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT admin FROM users`).
+	mock.ExpectQuery(`SELECT COALESCE\(admin, false\) FROM users`).
 		WithArgs(3).
 		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(false))
 
