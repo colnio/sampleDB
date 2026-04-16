@@ -23,6 +23,16 @@
         </div>
     </header>
 
+    {{/* Description */}}
+    {{if .Sample.Description}}
+    <section class="card" aria-labelledby="description-heading-shared">
+        <header>
+            <h2 id="description-heading-shared">Description</h2>
+        </header>
+        <p>{{.Sample.Description}}</p>
+    </section>
+    {{end}}
+
     {{/* Attachments — read-only gallery */}}
     {{if .Sample.Attachments}}
     <section class="attachments-container card" aria-labelledby="attachments-heading-shared">
@@ -72,7 +82,7 @@
                 <div class="step-meta">
                     {{if .StepDate}}<span class="step-date">{{formatDate .StepDate}}</span>{{end}}
                     {{if .PersonUsername}}<span class="step-person">{{.PersonUsername}}</span>{{end}}
-                    {{if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
+                    {{if .EquipmentText}}<span class="step-equipment">{{.EquipmentText}}</span>{{else if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
                 </div>
                 {{if .Description}}<p class="step-description">{{.Description}}</p>{{end}}
             </li>
