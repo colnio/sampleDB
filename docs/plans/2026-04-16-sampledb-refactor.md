@@ -113,10 +113,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 8: Introduce `internal/app.App` struct
 
-- [ ] write failing test: constructing `app.New(cfg, db, auth, renderer, logger, clock, loc)` returns a non-nil `App` with each field accessible
-- [ ] create `internal/app/app.go` with `App` struct holding `Config`, `DB`, `Auth`, `Renderer`, `Logger`, `Clock`, `Location`
-- [ ] create constructor `app.New(...)` that validates required fields
-- [ ] run tests — must pass before task 9
+- [x] write failing test: constructing `app.New(cfg, db, auth, renderer, logger, clock, loc)` returns a non-nil `App` with each field accessible
+- [x] create `internal/app/app.go` with `App` struct holding `Config`, `DB`, `Auth`, `Renderer`, `Logger`, `Clock`, `Location`
+- [x] create constructor `app.New(...)` that validates required fields
+- [x] run tests — must pass before task 9
 
 ### Task 9: Eliminate package-level globals
 
