@@ -176,7 +176,12 @@ func (h *Handlers) HandleWiki(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
-		h.viewArticle(w, r, pathParts[1])
+		title, err := url.PathUnescape(pathParts[1])
+		if err != nil {
+			http.Error(w, "Invalid article title", http.StatusBadRequest)
+			return
+		}
+		h.viewArticle(w, r, title)
 	default:
 		// Backward compatibility: /wiki/{title} -> /wiki/view/{title}
 		http.Redirect(w, r, "/wiki/view/"+url.PathEscape(pathParts[0]), http.StatusSeeOther)
@@ -332,7 +337,11 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	title := pathParts[0]
+	title, err := url.PathUnescape(pathParts[0])
+	if err != nil {
+		http.Error(w, "Invalid article title", http.StatusBadRequest)
+		return
+	}
 
 	if r.Method == http.MethodGet {
 		if isHTMXRequest(r) {

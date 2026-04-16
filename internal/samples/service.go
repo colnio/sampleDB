@@ -103,18 +103,12 @@ type UpdateParams struct {
 
 // DBService is the concrete Service implementation backed by a PostgreSQL pool.
 type DBService struct {
-	db         dbiface.Pool
-	markdownFn func(string) string // renders markdown → plain text for SamplePrepHTML
+	db dbiface.Pool
 }
 
 // NewService constructs a DBService using the provided pool.
-// markdownFn is called to convert SamplePrep markdown to HTML; pass nil to
-// use a no-op identity function.
-func NewService(db dbiface.Pool, markdownFn func(string) string) *DBService {
-	if markdownFn == nil {
-		markdownFn = func(s string) string { return s }
-	}
-	return &DBService{db: db, markdownFn: markdownFn}
+func NewService(db dbiface.Pool) *DBService {
+	return &DBService{db: db}
 }
 
 // originalFilenameFromPath extracts the original filename from a stored path

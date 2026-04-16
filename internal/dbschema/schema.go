@@ -236,7 +236,7 @@ END $$;`
 const createSessionsTable = `
 CREATE TABLE IF NOT EXISTS sessions (
     id         TEXT PRIMARY KEY,
-    user_id    INT NOT NULL,
+    user_id    INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     username   TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL
 );`

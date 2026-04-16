@@ -62,7 +62,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/logout", withAuth(a.Auth.LogoutHandler()))
 
 	// --- Sample domain routes (wired via samples.Handlers) ---
-	sampleSvc := samples.NewService(a.DB, nil)
+	sampleSvc := samples.NewService(a.DB)
 	samplesHdlrs := samples.NewHandlers(sampleSvc, a.Renderer, a.Auth, samples.HandlerConfig{
 		UploadsDir: a.Config.UploadsDir,
 		BaseDir:    a.Config.BaseDir,

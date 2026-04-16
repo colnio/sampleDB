@@ -57,7 +57,7 @@ func TestCheckOwner_NonAdmin_OwnerlessIsForbidden(t *testing.T) {
 	}
 	defer mock.Close()
 
-	svc := samples.NewService(mock, nil)
+	svc := samples.NewService(mock)
 	userID := 5
 
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
@@ -84,7 +84,7 @@ func TestCheckOwner_Admin_OwnerlessAllowed(t *testing.T) {
 	}
 	defer mock.Close()
 
-	svc := samples.NewService(mock, nil)
+	svc := samples.NewService(mock)
 	userID := 1
 
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
@@ -111,7 +111,7 @@ func TestCheckOwner_OwnerMatch_Allowed(t *testing.T) {
 	}
 	defer mock.Close()
 
-	svc := samples.NewService(mock, nil)
+	svc := samples.NewService(mock)
 	userID := 7
 
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
@@ -134,7 +134,7 @@ func TestCheckOwner_SampleNotFound(t *testing.T) {
 	}
 	defer mock.Close()
 
-	svc := samples.NewService(mock, nil)
+	svc := samples.NewService(mock)
 
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
 		WithArgs(999).
@@ -157,7 +157,7 @@ func TestGetByID_WithOwnerUserID(t *testing.T) {
 	}
 	defer mock.Close()
 
-	svc := samples.NewService(mock, nil)
+	svc := samples.NewService(mock)
 	now := time.Now()
 	ownerID := 7
 	username := "alice"
@@ -199,7 +199,7 @@ func TestGetByID_NotFound(t *testing.T) {
 	}
 	defer mock.Close()
 
-	svc := samples.NewService(mock, nil)
+	svc := samples.NewService(mock)
 
 	mock.ExpectQuery(`SELECT s\.sample_id`).
 		WithArgs(999).
@@ -237,7 +237,7 @@ func createTestSample(t *testing.T, pool *pgxpool.Pool) (sampleID int, cleanup f
 
 func TestService_ListAll_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	_, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -253,7 +253,7 @@ func TestService_ListAll_Integration(t *testing.T) {
 
 func TestService_Search_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	name := fmt.Sprintf("searchable-sample-%d", time.Now().UnixNano())
 	var id int
@@ -282,7 +282,7 @@ func TestService_Search_Integration(t *testing.T) {
 
 func TestService_GetByID_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	sampleID, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -298,7 +298,7 @@ func TestService_GetByID_Integration(t *testing.T) {
 
 func TestService_CreateAndDelete_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	name := fmt.Sprintf("create-delete-test-%d", time.Now().UnixNano())
 	id, err := svc.Create(context.Background(), samples.CreateParams{Name: name, Owner: "tester"})
@@ -321,7 +321,7 @@ func TestService_CreateAndDelete_Integration(t *testing.T) {
 
 func TestService_Update_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	sampleID, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -349,7 +349,7 @@ func TestService_Update_Integration(t *testing.T) {
 
 func TestService_Attachments_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	sampleID, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -404,7 +404,7 @@ func TestService_Attachments_Integration(t *testing.T) {
 
 func TestService_Sharing_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	sampleID, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -444,7 +444,7 @@ func TestService_Sharing_Integration(t *testing.T) {
 
 func TestService_GenerateShareToken_TwoCallsProduceDifferentTokens(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	sampleID, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -468,7 +468,7 @@ func TestService_GenerateShareToken_TwoCallsProduceDifferentTokens(t *testing.T)
 
 func TestService_Steps_CRUD_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	sampleID, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -548,7 +548,7 @@ func TestService_Steps_CRUD_Integration(t *testing.T) {
 
 func TestService_ReorderSteps_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	sampleID, cleanup := createTestSample(t, pool)
 	defer cleanup()
@@ -650,7 +650,7 @@ func TestParsePagination_ClampsExcessLimit(t *testing.T) {
 
 func TestService_GetApprovedUsers_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	users, err := svc.GetApprovedUsers(context.Background())
 	if err != nil {
@@ -662,7 +662,7 @@ func TestService_GetApprovedUsers_Integration(t *testing.T) {
 
 func TestService_GetAllEquipment_Integration(t *testing.T) {
 	pool := testDB(t)
-	svc := samples.NewService(pool, nil)
+	svc := samples.NewService(pool)
 
 	equip, err := svc.GetAllEquipment(context.Background())
 	if err != nil {
