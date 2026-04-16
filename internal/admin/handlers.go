@@ -259,12 +259,12 @@ func (h *Handlers) DeleteEquipment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 4 {
+	idStr, err := web.ExtractIDFromPath(r.URL.Path, "/admin/delete-equipment/")
+	if err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
-	equipmentID, err := strconv.Atoi(parts[3])
+	equipmentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		http.Error(w, "Invalid equipment ID", http.StatusBadRequest)
 		return

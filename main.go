@@ -310,7 +310,7 @@ func handleAIAgents(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAIAgentExamples(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/agents/examples" {
+	if r.URL.Path != "/agents/examples" && r.URL.Path != "/agents/examples/" {
 		http.Redirect(w, r, "/agents/examples", http.StatusTemporaryRedirect)
 		return
 	}

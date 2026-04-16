@@ -185,8 +185,21 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ownerUserID := session.UserID
+	if req.OwnerUserID != nil {
+		isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
+		if err != nil {
+			log.Printf("samples api: createSample admin check error: %v", err)
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		if isAdmin {
+			ownerUserID = *req.OwnerUserID
+		}
+	}
+
 	item, err := h.svc.APICreateSample(r.Context(),
-		req.Name, req.Description, req.Keywords, req.Owner, session.UserID)
+		req.Name, req.Description, req.Keywords, req.Owner, ownerUserID)
 	if err != nil {
 		log.Printf("samples api: createSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")

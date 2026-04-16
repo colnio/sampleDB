@@ -98,8 +98,8 @@ func (s *DBService) GetBookingsForWeek(ctx context.Context, start, end time.Time
 
 	rows, err := s.db.Query(ctx,
 		`SELECT b.booking_id, b.equipment_id, b.user_id, u.username,
-                b.start_time AT TIME ZONE 'UTC',
-                b.end_time AT TIME ZONE 'UTC',
+                b.start_time,
+                b.end_time,
                 b.purpose, b.created_at
          FROM bookings b
          JOIN users u ON b.user_id = u.user_id

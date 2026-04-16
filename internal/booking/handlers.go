@@ -240,6 +240,8 @@ func (h *Handlers) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
 	if err != nil {
 		log.Printf("booking: unable to determine admin status for user %d: %v", session.UserID, err)
+		http.Error(w, "Error checking permissions", http.StatusInternalServerError)
+		return
 	}
 
 	if err := h.svc.Delete(r.Context(), bookingID, session.UserID, isAdmin); err != nil {
@@ -267,13 +269,13 @@ func (h *Handlers) GetBookings(w http.ResponseWriter, r *http.Request) {
 	startStr := r.URL.Query().Get("start")
 	endStr := r.URL.Query().Get("end")
 
-	start, err := time.Parse("2006-01-02", startStr)
+	start, err := time.ParseInLocation("2006-01-02", startStr, h.loc)
 	if err != nil {
 		http.Error(w, "Invalid start date", http.StatusBadRequest)
 		return
 	}
 
-	end, err := time.Parse("2006-01-02", endStr)
+	end, err := time.ParseInLocation("2006-01-02", endStr, h.loc)
 	if err != nil {
 		http.Error(w, "Invalid end date", http.StatusBadRequest)
 		return
