@@ -103,7 +103,7 @@ func (m *mockService) AddEquipment(_ context.Context, _ string) error { return m
 func (m *mockService) DeleteEquipment(_ context.Context, _ int) error { return m.deleteEqErr }
 func (m *mockService) AddGroup(_ context.Context, _ string) error     { return m.addGrpErr }
 func (m *mockService) DeleteGroup(_ context.Context, _ int) error     { return m.deleteGrpErr }
-func (m *mockService) GetEquipmentReport(_ context.Context, _, _, _ string) ([]admin.BookingRecord, error) {
+func (m *mockService) GetEquipmentReport(_ context.Context, _ int, _, _ string) ([]admin.BookingRecord, error) {
 	return m.reportRecs, m.reportErr
 }
 func (m *mockService) ListAPIUsers(_ context.Context) ([]admin.APIUser, error) {

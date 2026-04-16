@@ -40,7 +40,7 @@ type Service interface {
 	DeleteGroup(ctx context.Context, groupID int) error
 
 	// Reports
-	GetEquipmentReport(ctx context.Context, equipmentID, startDate, endDate string) ([]BookingRecord, error)
+	GetEquipmentReport(ctx context.Context, equipmentID int, startDate, endDate string) ([]BookingRecord, error)
 
 	// API
 	ListAPIUsers(ctx context.Context) ([]APIUser, error)
@@ -328,7 +328,7 @@ func (s *DBService) DeleteGroup(ctx context.Context, groupID int) error {
 
 // GetEquipmentReport returns the booking records matching the given equipment ID
 // and date range (both inclusive). The dates should be in YYYY-MM-DD format.
-func (s *DBService) GetEquipmentReport(ctx context.Context, equipmentID, startDate, endDate string) ([]BookingRecord, error) {
+func (s *DBService) GetEquipmentReport(ctx context.Context, equipmentID int, startDate, endDate string) ([]BookingRecord, error) {
 	rows, err := s.db.Query(ctx, `
         SELECT
             b.start_time,

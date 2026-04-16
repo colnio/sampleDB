@@ -98,7 +98,7 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !payload.Approved && h.authMgr != nil {
+	if h.authMgr != nil {
 		h.authMgr.RevokeUserSessions(r.Context(), payload.UserID)
 	}
 
@@ -348,11 +348,12 @@ func (h *Handlers) EquipmentReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	equipmentID := r.URL.Query().Get("id")
+	equipmentIDStr := r.URL.Query().Get("id")
 	startDate := r.URL.Query().Get("start")
 	endDate := r.URL.Query().Get("end")
 
-	if _, err := strconv.Atoi(equipmentID); equipmentID == "" || err != nil {
+	equipmentID, err := strconv.Atoi(equipmentIDStr)
+	if equipmentIDStr == "" || err != nil {
 		http.Error(w, "Invalid or missing equipment ID", http.StatusBadRequest)
 		return
 	}

@@ -655,7 +655,7 @@ func TestSubmitBooking_EndBeforeStart(t *testing.T) {
 }
 
 func TestSubmitBooking_ConflictRedirects(t *testing.T) {
-	svc := &mockService{hasConflict: true, isAdmin: true}
+	svc := &mockService{createErr: web.ErrConflict, isAdmin: true}
 	h := booking.NewHandlers(svc, newRenderer(), nil, time.UTC)
 
 	form := url.Values{

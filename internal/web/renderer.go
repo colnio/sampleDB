@@ -151,7 +151,10 @@ func buildBookingFuncMap(loc *time.Location) template.FuncMap {
 	return template.FuncMap{
 		"toJSON": func(value interface{}) template.JS {
 			data, err := json.Marshal(value)
-			if err != nil || string(data) == "null" {
+			if err != nil {
+				return template.JS("null")
+			}
+			if string(data) == "null" {
 				return template.JS("[]")
 			}
 			return template.JS(data)

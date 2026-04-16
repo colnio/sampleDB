@@ -66,11 +66,11 @@ func (h *Handlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		currentPassword := strings.TrimSpace(r.FormValue("current_password"))
-		newPassword := strings.TrimSpace(r.FormValue("new_password"))
-		confirmPassword := strings.TrimSpace(r.FormValue("confirm_password"))
+		currentPassword := r.FormValue("current_password")
+		newPassword := r.FormValue("new_password")
+		confirmPassword := r.FormValue("confirm_password")
 
-		if currentPassword == "" || newPassword == "" || confirmPassword == "" {
+		if strings.TrimSpace(currentPassword) == "" || strings.TrimSpace(newPassword) == "" || strings.TrimSpace(confirmPassword) == "" {
 			data.Error = "All fields are required"
 			w.WriteHeader(http.StatusBadRequest)
 			h.renderChangePassword(w, data)
