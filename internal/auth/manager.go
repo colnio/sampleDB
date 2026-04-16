@@ -52,9 +52,11 @@ type contextKey string
 
 const userContextKey contextKey = "auth-user"
 
-// dummyHash is a pre-computed bcrypt hash used to perform a constant-time
-// comparison when a username is not found, preventing timing-based enumeration.
-const dummyHash = "$2a$10$7EqJtq98hPqEX7fNZaFWoOe1Y5aLFMZFTJzYjTsHm5x6BvYHv1Hle"
+// dummyHash is a bcrypt hash generated at startup with the current DefaultCost.
+// It is used to perform a constant-time comparison when a username is not found,
+// preventing timing-based enumeration. Generating it at init ensures it stays
+// in sync with DefaultCost if it is ever changed.
+var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy"), bcrypt.DefaultCost)
 
 func NewManager(db dbiface.Pool) *Manager {
 	return &Manager{db: db}
@@ -179,7 +181,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 		if err != nil {
 			// Run bcrypt against a dummy hash so response time is indistinguishable
 			// from a wrong-password attempt, preventing username enumeration.
-			_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
+			_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
 			http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
 			return
 		}
@@ -468,7 +470,9 @@ func (m *Manager) getSession(ctx context.Context, token string) (Session, bool, 
 }
 
 func (m *Manager) deleteSession(ctx context.Context, token string) {
-	_, _ = m.db.Exec(ctx, "DELETE FROM sessions WHERE id = $1", token)
+	if _, err := m.db.Exec(ctx, "DELETE FROM sessions WHERE id = $1", token); err != nil {
+		log.Printf("auth: deleteSession: %v", err)
+	}
 }
 
 func generateSessionToken() (string, error) {

@@ -102,7 +102,7 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.authMgr != nil {
+	if h.authMgr != nil && !payload.Approved {
 		h.authMgr.RevokeUserSessions(r.Context(), payload.UserID)
 	}
 

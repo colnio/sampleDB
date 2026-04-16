@@ -95,23 +95,20 @@ func (h *Handlers) resolveAppPath(path string) string {
 	if path == "" {
 		return path
 	}
-	base := h.cfg.BaseDir + string(os.PathSeparator)
-	if filepath.IsAbs(path) {
-		// Absolute paths must still be contained within BaseDir when set.
-		if h.cfg.BaseDir == "" {
+	if h.cfg.BaseDir == "" {
+		if filepath.IsAbs(path) {
 			return path
 		}
-		if path != h.cfg.BaseDir && !strings.HasPrefix(path, base) {
-			return ""
-		}
-		return path
+		return filepath.Clean(path)
 	}
-	clean := filepath.Clean(path)
-	if h.cfg.BaseDir == "" {
-		return clean
+	var joined string
+	if filepath.IsAbs(path) {
+		joined = filepath.Clean(path)
+	} else {
+		joined = filepath.Join(h.cfg.BaseDir, path)
 	}
-	joined := filepath.Join(h.cfg.BaseDir, clean)
-	if joined != h.cfg.BaseDir && !strings.HasPrefix(joined, base) {
+	rel, err := filepath.Rel(h.cfg.BaseDir, joined)
+	if err != nil || strings.HasPrefix(rel, "..") {
 		return ""
 	}
 	return joined
@@ -259,7 +256,12 @@ func (h *Handlers) viewArticle(w http.ResponseWriter, r *http.Request, title str
 
 	article, err := h.svc.GetArticle(r.Context(), title)
 	if err != nil {
-		http.Error(w, "Article not found", http.StatusNotFound)
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "Article not found", http.StatusNotFound)
+		} else {
+			log.Printf("wiki: viewArticle: %v", err)
+			http.Error(w, "Error loading article", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -283,7 +285,12 @@ func (h *Handlers) viewArticle(w http.ResponseWriter, r *http.Request, title str
 func (h *Handlers) renderContentPanel(w http.ResponseWriter, r *http.Request, session auth.Session, title, flash, errMsg string, editing bool) {
 	article, err := h.svc.GetArticle(r.Context(), title)
 	if err != nil {
-		http.Error(w, "Article not found", http.StatusNotFound)
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "Article not found", http.StatusNotFound)
+		} else {
+			log.Printf("wiki: renderContentPanel: %v", err)
+			http.Error(w, "Error loading article", http.StatusInternalServerError)
+		}
 		return
 	}
 
