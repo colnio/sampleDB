@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"sampleDB/internal/app"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/dbiface"
 	"sampleDB/internal/dbschema"
@@ -105,34 +106,14 @@ type AIAgentExamplesPageData struct {
 	SoftwareDevelopmentHTML template.HTML
 }
 
-// Initialize a global database connection pool
-var dbPool dbiface.Pool
-
-var loc *time.Location
-
 var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
 
-var appConfig AppConfig
+// theApp holds all application-wide dependencies, replacing the former
+// package-level variables dbPool, appConfig, authManagerInstance and loc.
+var theApp *app.App
 
-var authManagerInstance *auth.Manager
-
-type AppConfig struct {
-	Addr         string
-	RedirectAddr string
-	DatabaseURL  string
-	TLSCertFile  string
-	TLSKeyFile   string
-	PublicHost   string
-	TLSPort      string
-	BaseDir      string
-	TemplatesDir string
-	StaticDir    string
-	UploadsDir   string
-	UseTLS       bool
-}
-
-func loadConfig() AppConfig {
-	cfg := AppConfig{
+func loadConfig() app.Config {
+	cfg := app.Config{
 		Addr:         getEnv("APP_ADDR", ":8010"),
 		RedirectAddr: os.Getenv("APP_HTTP_REDIRECT_ADDR"),
 		DatabaseURL:  getEnv("DATABASE_URL", "postgres://app:app@localhost:5432/sampledb"),
@@ -229,13 +210,13 @@ func renderTemplateSection(w http.ResponseWriter, templatePath, section string, 
 	return tmpl.ExecuteTemplate(w, section, data)
 }
 
-// Add this function to booking.go
-func initLocation() {
-	var err error
-	loc, err = time.LoadLocation("Local")
+// initLocation loads the local timezone and returns it.
+func initLocation() *time.Location {
+	loc, err := time.LoadLocation("Local")
 	if err != nil {
 		log.Fatalf("Failed to load local timezone: %v", err)
 	}
+	return loc
 }
 
 func sanitizeFilename(name string) string {
@@ -291,13 +272,13 @@ func resolveAppPath(path string) string {
 		return path
 	}
 	clean := filepath.Clean(path)
-	if appConfig.BaseDir == "" {
+	if theApp == nil || theApp.Config.BaseDir == "" {
 		return clean
 	}
-	joined := filepath.Join(appConfig.BaseDir, clean)
+	joined := filepath.Join(theApp.Config.BaseDir, clean)
 	// Reject paths that escape the base directory.
-	base := appConfig.BaseDir + string(os.PathSeparator)
-	if joined != appConfig.BaseDir && !strings.HasPrefix(joined, base) {
+	base := theApp.Config.BaseDir + string(os.PathSeparator)
+	if joined != theApp.Config.BaseDir && !strings.HasPrefix(joined, base) {
 		return ""
 	}
 	return joined
@@ -313,7 +294,10 @@ func resolveTemplatePath(path string) string {
 	clean = strings.TrimPrefix(clean, string(os.PathSeparator))
 	clean = filepath.Clean(clean)
 
-	return filepath.Join(appConfig.TemplatesDir, clean)
+	if theApp == nil || theApp.Config.TemplatesDir == "" {
+		return filepath.Join("templates", clean)
+	}
+	return filepath.Join(theApp.Config.TemplatesDir, clean)
 }
 
 func securityHeaders(next http.Handler, enableHSTS bool) http.Handler {
@@ -411,7 +395,7 @@ func handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var storedHash string
-		err := dbPool.QueryRow(r.Context(),
+		err := theApp.DB.QueryRow(r.Context(),
 			`SELECT password_hash
 	             FROM users
 	             WHERE user_id = $1
@@ -450,7 +434,7 @@ func handleChangePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cmdTag, err := dbPool.Exec(r.Context(),
+		cmdTag, err := theApp.DB.Exec(r.Context(),
 			`UPDATE users
              SET password_hash = $1
              WHERE user_id = $2
@@ -503,7 +487,7 @@ func handleProfileTokens(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		tokens, err := authManagerInstance.ListAPITokens(r.Context(), session.UserID)
+		tokens, err := theApp.Auth.ListAPITokens(r.Context(), session.UserID)
 		if err != nil {
 			data.Error = "Could not load tokens"
 		} else {
@@ -525,7 +509,7 @@ func handleProfileTokens(w http.ResponseWriter, r *http.Request) {
 			renderProfileTokensTemplate(w, data)
 			return
 		}
-		plain, err := authManagerInstance.CreateAPIToken(r.Context(), session.UserID, name)
+		plain, err := theApp.Auth.CreateAPIToken(r.Context(), session.UserID, name)
 		if err != nil {
 			data.Error = "Could not create token"
 			w.WriteHeader(http.StatusInternalServerError)
@@ -534,7 +518,7 @@ func handleProfileTokens(w http.ResponseWriter, r *http.Request) {
 		}
 		data.PlainToken = plain
 		data.Success = "Token generated. Copy it now — it will not be shown again."
-		tokens, _ := authManagerInstance.ListAPITokens(r.Context(), session.UserID)
+		tokens, _ := theApp.Auth.ListAPITokens(r.Context(), session.UserID)
 		data.Tokens = tokens
 		renderProfileTokensTemplate(w, data)
 
@@ -565,7 +549,7 @@ func handleProfileTokenRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := authManagerInstance.RevokeAPIToken(r.Context(), tokenID, session.UserID); err != nil {
+	if err := theApp.Auth.RevokeAPIToken(r.Context(), tokenID, session.UserID); err != nil {
 		if errors.Is(err, auth.ErrTokenNotFound) {
 			http.Error(w, "Token not found", http.StatusNotFound)
 		} else {
@@ -714,23 +698,21 @@ func rewriteRelativeMarkdownImages(md, baseURL string) string {
 }
 
 func main() {
-	initLocation()
+	loc := initLocation()
 	cfg := loadConfig()
-	appConfig = cfg
 
 	ctx := context.Background()
-	var err error
-	dbPool, err = pgxpool.New(ctx, cfg.DatabaseURL)
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
-	defer dbPool.Close()
+	defer pool.Close()
 
-	if err = dbschema.Ensure(ctx, dbPool); err != nil {
+	if err = dbschema.Ensure(ctx, pool); err != nil {
 		log.Fatalf("Unable to ensure database schema: %v\n", err)
 	}
 
-	createdAdmin, err := ensureDefaultAdmin(ctx, dbPool)
+	createdAdmin, err := ensureDefaultAdmin(ctx, pool)
 	if err != nil {
 		log.Fatalf("Unable to bootstrap default admin user: %v\n", err)
 	}
@@ -738,11 +720,16 @@ func main() {
 		log.Println("Created default admin user 'admin' with password 'admin'. Please change this password after first login.")
 	}
 
-	authManagerInstance = auth.NewManager(dbPool)
+	authMgr := auth.NewManager(pool)
 	if cfg.UseTLS {
-		authManagerInstance.SetCookieSecure(true)
+		authMgr.SetCookieSecure(true)
 	}
-	authManagerInstance.SetTemplateDir(cfg.TemplatesDir)
+	authMgr.SetTemplateDir(cfg.TemplatesDir)
+
+	theApp, err = app.New(cfg, pool, authMgr, nil, nil, nil, loc)
+	if err != nil {
+		log.Fatalf("Unable to initialize application: %v\n", err)
+	}
 
 	mux := http.NewServeMux()
 
@@ -751,12 +738,12 @@ func main() {
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Auth routes
-	mux.HandleFunc("/login", authManagerInstance.LoginHandler())
-	mux.HandleFunc("/register", authManagerInstance.RegisterHandler())
-	mux.HandleFunc("/logout", authManagerInstance.RequireAuth(authManagerInstance.LogoutHandler()))
+	mux.HandleFunc("/login", theApp.Auth.LoginHandler())
+	mux.HandleFunc("/register", theApp.Auth.RegisterHandler())
+	mux.HandleFunc("/logout", theApp.Auth.RequireAuth(theApp.Auth.LogoutHandler()))
 
 	// Sample management routes
-	withAuth := authManagerInstance.RequireAuth
+	withAuth := theApp.Auth.RequireAuth
 	mux.HandleFunc("/", withAuth(mainPageHandler))
 	mux.HandleFunc("/samples/new", withAuth(newSampleHandler))
 	mux.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
@@ -861,10 +848,10 @@ func main() {
 
 // publicBaseURL returns the scheme+host prefix used to construct share links.
 func publicBaseURL() string {
-	if appConfig.UseTLS {
-		return "https://" + appConfig.PublicHost
+	if theApp.Config.UseTLS {
+		return "https://" + theApp.Config.PublicHost
 	}
-	return "http://" + appConfig.PublicHost
+	return "http://" + theApp.Config.PublicHost
 }
 
 func parseTemplates(files ...string) (*template.Template, error) {
@@ -923,7 +910,7 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the query
-	row := dbPool.QueryRow(r.Context(), `SELECT admin
+	row := theApp.DB.QueryRow(r.Context(), `SELECT admin
 	FROM users
 	WHERE username = $1
 	  AND COALESCE(deleted, false) = false`, session.Username)
@@ -1176,7 +1163,7 @@ func searchSamples(ctx context.Context, query string, dateFrom, dateTo string) (
 	}
 
 	// Execute the query
-	rows, err := dbPool.Query(ctx, queryText, args...)
+	rows, err := theApp.DB.Query(ctx, queryText, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1231,7 +1218,7 @@ func getAllSamples(ctx context.Context, dateFrom, dateTo string) ([]Sample, erro
 
 	queryText = queryText + " ORDER BY s.sample_name ASC"
 
-	rows, err := dbPool.Query(ctx, queryText, args...)
+	rows, err := theApp.DB.Query(ctx, queryText, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1288,7 +1275,7 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 func getSampleByID(ctx context.Context, sampleID string) (Sample, error) {
 	var sample Sample
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		        COALESCE(s.sample_owner, ''), s.owner_user_id, u.username,
 		        COALESCE(s.sample_prep, ''), s.created_at,
@@ -1316,7 +1303,7 @@ func getSampleByID(ctx context.Context, sampleID string) (Sample, error) {
 
 // getApprovedUsers returns all approved, non-deleted users ordered by username.
 func getApprovedUsers(ctx context.Context) ([]User, error) {
-	rows, err := dbPool.Query(ctx,
+	rows, err := theApp.DB.Query(ctx,
 		`SELECT user_id, username FROM users
 		  WHERE is_approved = true AND COALESCE(deleted, false) = false
 		  ORDER BY username`)
@@ -1372,7 +1359,7 @@ func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID st
 		ShareURL:     shareURL,
 	}
 
-	if err := dbPool.QueryRow(ctx,
+	if err := theApp.DB.QueryRow(ctx,
 		"SELECT admin FROM users WHERE user_id = $1",
 		session.UserID,
 	).Scan(&data.BasePageData.IsAdmin); err != nil {
@@ -1466,7 +1453,7 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid owner_user_id", http.StatusBadRequest)
 			return
 		}
-		scanErr := dbPool.QueryRow(r.Context(),
+		scanErr := theApp.DB.QueryRow(r.Context(),
 			"SELECT username FROM users WHERE user_id = $1 AND is_approved = true", id).Scan(&ownerName)
 		if scanErr != nil {
 			http.Error(w, "owner user not found or not approved", http.StatusBadRequest)
@@ -1475,7 +1462,7 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 		ownerUserID = &id
 	}
 
-	_, err = dbPool.Exec(r.Context(),
+	_, err = theApp.DB.Exec(r.Context(),
 		"UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5 WHERE sample_id=$6",
 		name, description, keywords, ownerName, ownerUserID, sampleID)
 	if err != nil {
@@ -1536,7 +1523,7 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Determine whether the requesting user is an admin.
 		var isAdmin bool
-		if err := dbPool.QueryRow(r.Context(),
+		if err := theApp.DB.QueryRow(r.Context(),
 			"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 			session.UserID).Scan(&isAdmin); err != nil {
 			log.Printf("newSampleHandler: admin check error: %v", err)
@@ -1553,7 +1540,7 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 			// Non-admins always own their own samples; ignore any submitted owner_user_id.
 			userID := session.UserID
 			ownerUserID = &userID
-			_ = dbPool.QueryRow(r.Context(),
+			_ = theApp.DB.QueryRow(r.Context(),
 				"SELECT username FROM users WHERE user_id = $1", session.UserID).Scan(&ownerName)
 		} else {
 			// Admins may assign ownership to any user.
@@ -1562,7 +1549,7 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 				id, err := strconv.Atoi(ownerUserIDStr)
 				if err == nil {
 					ownerUserID = &id
-					_ = dbPool.QueryRow(r.Context(),
+					_ = theApp.DB.QueryRow(r.Context(),
 						"SELECT username FROM users WHERE user_id = $1", id).Scan(&ownerName)
 				}
 			}
@@ -1575,7 +1562,7 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert the new sample into the database and get its ID
 		var newSampleID int
-		err := dbPool.QueryRow(r.Context(),
+		err := theApp.DB.QueryRow(r.Context(),
 			`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id)
 			 VALUES ($1, $2, $3, $4, $5)
 			 RETURNING sample_id`,
@@ -1597,7 +1584,7 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 // saveUploadedFile saves the file to disk and returns the file path
 func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 	// Create uploads directory if it doesn't exist
-	uploadDir := appConfig.UploadsDir
+	uploadDir := theApp.Config.UploadsDir
 	if uploadDir == "" {
 		uploadDir = "uploads"
 	}
@@ -1625,8 +1612,8 @@ func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 		return "", err
 	}
 
-	if appConfig.BaseDir != "" {
-		if rel, err := filepath.Rel(appConfig.BaseDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
+	if theApp.Config.BaseDir != "" {
+		if rel, err := filepath.Rel(theApp.Config.BaseDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
 			return filepath.ToSlash(rel), nil
 		}
 	}
@@ -1636,7 +1623,7 @@ func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 
 // getAttachments retrieves all attachments for a sample
 func getAttachments(ctx context.Context, sampleID string) ([]Attachment, error) {
-	rows, err := dbPool.Query(ctx,
+	rows, err := theApp.DB.Query(ctx,
 		`SELECT attachment_id, source_id, attachment_address, uploaded_at 
          FROM attachments 
          WHERE source_type = 'sample' AND source_id = $1`,
@@ -1664,7 +1651,7 @@ func getAttachments(ctx context.Context, sampleID string) ([]Attachment, error) 
 
 // addAttachment stores a new attachment in the database
 func addAttachment(ctx context.Context, sampleID string, filepath string) error {
-	_, err := dbPool.Exec(ctx,
+	_, err := theApp.DB.Exec(ctx,
 		`INSERT INTO attachments (source_id, attachment_address, source_type)
          VALUES ($1, $2, 'sample')`,
 		sampleID, filepath)
@@ -1675,7 +1662,7 @@ func addAttachment(ctx context.Context, sampleID string, filepath string) error 
 func deleteAttachment(ctx context.Context, attachmentID string) error {
 	// First get the file path
 	var filepath string
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID,
 	).Scan(&filepath)
@@ -1684,7 +1671,7 @@ func deleteAttachment(ctx context.Context, attachmentID string) error {
 	}
 
 	// Delete from database
-	_, err = dbPool.Exec(ctx,
+	_, err = theApp.DB.Exec(ctx,
 		"DELETE FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID)
 	if err != nil {
@@ -1720,7 +1707,7 @@ func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get file path from database
 	var filePath string
-	err := dbPool.QueryRow(r.Context(),
+	err := theApp.DB.QueryRow(r.Context(),
 		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID,
 	).Scan(&filePath)
@@ -1762,7 +1749,7 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get sample ID before deleting the attachment
 	var sampleID string
-	err := dbPool.QueryRow(r.Context(),
+	err := theApp.DB.QueryRow(r.Context(),
 		"SELECT source_id FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID,
 	).Scan(&sampleID)

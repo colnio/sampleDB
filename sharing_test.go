@@ -22,9 +22,9 @@ import (
 func createTestSampleForSharing(t *testing.T) (sampleID int, cleanup func()) {
 	t.Helper()
 	pool := testDB(t)
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	name := fmt.Sprintf("share-test-sample-%d", time.Now().UnixNano())
 	err := pool.QueryRow(context.Background(),
@@ -113,9 +113,9 @@ func TestRequireSampleOwner_Admin_OwnerlessAllowed(t *testing.T) {
 func createTestOwnerAndSample(t *testing.T) (sampleID, ownerUserID int, cleanup func()) {
 	t.Helper()
 	pool := testDB(t)
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	username := fmt.Sprintf("sample-owner-%d", time.Now().UnixNano())
 	if err := pool.QueryRow(context.Background(),
@@ -208,9 +208,9 @@ func TestGetSampleByShareToken_PublicVisibility(t *testing.T) {
 
 func TestGetSampleByShareToken_NotFound(t *testing.T) {
 	pool := testDB(t)
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	_, err := getSampleByShareToken(context.Background(), "nonexistent-token-that-does-not-exist-in-db")
 	if err == nil {
@@ -274,11 +274,11 @@ func TestHandleSharedSample_PublicAccess(t *testing.T) {
 	}
 
 	setTestTemplatesDir(t)
-	// authManagerInstance must not be nil; use a real manager with the test pool.
+	// theApp.Auth must not be nil; use a real manager with the test pool.
 	pool := testDB(t)
-	origManager := authManagerInstance
-	authManagerInstance = auth.NewManager(pool)
-	t.Cleanup(func() { authManagerInstance = origManager })
+	origManager := theApp.Auth
+	theApp.Auth = auth.NewManager(pool)
+	t.Cleanup(func() { theApp.Auth = origManager })
 
 	req := httptest.NewRequest(http.MethodGet, "/s/"+token, nil)
 	rr := httptest.NewRecorder()
@@ -299,9 +299,9 @@ func TestHandleSharedSample_AuthenticatedRequiresLogin(t *testing.T) {
 	}
 
 	pool := testDB(t)
-	origManager := authManagerInstance
-	authManagerInstance = auth.NewManager(pool)
-	t.Cleanup(func() { authManagerInstance = origManager })
+	origManager := theApp.Auth
+	theApp.Auth = auth.NewManager(pool)
+	t.Cleanup(func() { theApp.Auth = origManager })
 
 	// No auth headers — expect redirect to /login with ?next= pointing back to the share URL.
 	req := httptest.NewRequest(http.MethodGet, "/s/"+token, nil)
@@ -332,9 +332,9 @@ func TestHandleSharedSample_RevokedTokenReturns404(t *testing.T) {
 	}
 
 	pool := testDB(t)
-	origManager := authManagerInstance
-	authManagerInstance = auth.NewManager(pool)
-	t.Cleanup(func() { authManagerInstance = origManager })
+	origManager := theApp.Auth
+	theApp.Auth = auth.NewManager(pool)
+	t.Cleanup(func() { theApp.Auth = origManager })
 
 	// The token was revoked (set to NULL) so getSampleByShareToken returns no rows.
 	req := httptest.NewRequest(http.MethodGet, "/s/"+token, nil)

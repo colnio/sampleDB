@@ -250,9 +250,9 @@ func TestEditSampleHandler_InvalidOwnerUserID_Rejected(t *testing.T) {
 func TestGetSampleByID_RealDB_OwnerUserID(t *testing.T) {
 	pool := testDB(t)
 
-	orig := dbPool
-	dbPool = pool
-	defer func() { dbPool = orig }()
+	orig := theApp.DB
+	theApp.DB = pool
+	defer func() { theApp.DB = orig }()
 
 	// Create a test user
 	username := fmt.Sprintf("owner-test-user-%d", time.Now().UnixNano())
@@ -458,9 +458,9 @@ func TestNewSampleHandler_Admin_CanSetArbitraryOwner(t *testing.T) {
 func TestGetSampleByID_RealDB_NoOwnerUserID(t *testing.T) {
 	pool := testDB(t)
 
-	orig := dbPool
-	dbPool = pool
-	defer func() { dbPool = orig }()
+	orig := theApp.DB
+	theApp.DB = pool
+	defer func() { theApp.DB = orig }()
 
 	// Create a sample with no owner_user_id (legacy text owner only)
 	sampleName := fmt.Sprintf("legacy-owner-sample-%d", time.Now().UnixNano())

@@ -33,7 +33,7 @@ func generateShareToken(ctx context.Context, sampleID int, visibility string) (s
 		return "", fmt.Errorf("generate share token: %w", err)
 	}
 	token := hex.EncodeToString(b)
-	tag, err := dbPool.Exec(ctx,
+	tag, err := theApp.DB.Exec(ctx,
 		`UPDATE samples SET share_token=$1, share_visibility=$2 WHERE sample_id=$3`,
 		token, visibility, sampleID)
 	if err != nil {
@@ -49,7 +49,7 @@ func generateShareToken(ctx context.Context, sampleID int, visibility string) (s
 // Returns pgx.ErrNoRows if the token is not found.
 func getSampleByShareToken(ctx context.Context, token string) (Sample, error) {
 	var sample Sample
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description,''), COALESCE(s.sample_keywords,''),
 		        COALESCE(s.sample_owner,''), s.owner_user_id, u.username,
 		        COALESCE(s.sample_prep,''), s.created_at,
@@ -75,7 +75,7 @@ func getSampleByShareToken(ctx context.Context, token string) (Sample, error) {
 
 // revokeShareToken clears the share token and resets visibility to 'private'.
 func revokeShareToken(ctx context.Context, sampleID int) error {
-	_, err := dbPool.Exec(ctx,
+	_, err := theApp.DB.Exec(ctx,
 		`UPDATE samples SET share_token=NULL, share_visibility='private' WHERE sample_id=$1`, sampleID)
 	return err
 }
@@ -135,7 +135,7 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Optional auth — never redirects.
-	session, isAuth := authManagerInstance.TryAuth(r)
+	session, isAuth := theApp.Auth.TryAuth(r)
 
 	if sample.ShareVisibility == "authenticated" && !isAuth {
 		// API clients (Bearer token attempted) get 401; browsers get redirected to login.
@@ -189,7 +189,7 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 	// Validate token and get sample ID + visibility in one query.
 	var sampleID int
 	var visibility string
-	err := dbPool.QueryRow(r.Context(),
+	err := theApp.DB.QueryRow(r.Context(),
 		`SELECT s.sample_id, COALESCE(s.share_visibility, 'private')
 		   FROM samples s
 		  WHERE s.share_token = $1`, token).Scan(&sampleID, &visibility)
@@ -208,7 +208,7 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 
 	// Authenticated-only shares require a valid session.
 	if visibility == "authenticated" {
-		if _, ok := authManagerInstance.TryAuth(r); !ok {
+		if _, ok := theApp.Auth.TryAuth(r); !ok {
 			authHdr := r.Header.Get("Authorization")
 			if len(authHdr) > 7 && strings.EqualFold(authHdr[:7], "bearer ") {
 				w.Header().Set("WWW-Authenticate", "Bearer")
@@ -224,7 +224,7 @@ func serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attach
 
 	// Verify the attachment belongs to this sample.
 	var filePath string
-	err = dbPool.QueryRow(r.Context(),
+	err = theApp.DB.QueryRow(r.Context(),
 		`SELECT attachment_address FROM attachments
 		  WHERE attachment_id = $1 AND source_id = $2 AND source_type = 'sample'`,
 		attachmentID, sampleID).Scan(&filePath)
@@ -300,7 +300,7 @@ func handleSampleShare(w http.ResponseWriter, r *http.Request) {
 // Samples with no owner_user_id (legacy/ownerless) are restricted to admins only.
 func requireSampleOwner(r *http.Request, sampleID, userID int) error {
 	var ownerUserID *int
-	err := dbPool.QueryRow(r.Context(),
+	err := theApp.DB.QueryRow(r.Context(),
 		"SELECT owner_user_id FROM samples WHERE sample_id = $1",
 		sampleID).Scan(&ownerUserID)
 	if err != nil {
@@ -316,7 +316,7 @@ func requireSampleOwner(r *http.Request, sampleID, userID int) error {
 	}
 	// NULL owner or owner mismatch — only admins may proceed.
 	var isAdmin bool
-	if err := dbPool.QueryRow(r.Context(),
+	if err := theApp.DB.QueryRow(r.Context(),
 		"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1", userID).Scan(&isAdmin); err != nil {
 		log.Printf("requireSampleOwner: admin check db error: %v", err)
 		return fmt.Errorf("database error")

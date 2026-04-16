@@ -120,10 +120,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 9: Eliminate package-level globals
 
-- [ ] write failing test: the application can be initialized twice in the same process (proves no global side-effects)
-- [ ] replace `dbPool`, `appConfig`, `authManagerInstance`, and `loc` globals in `main.go` with fields on `app.App`
-- [ ] thread `*app.App` (or its individual fields) into handlers that previously read globals
-- [ ] run tests — must pass before task 10
+- [x] write failing test: the application can be initialized twice in the same process (proves no global side-effects)
+- [x] replace `dbPool`, `appConfig`, `authManagerInstance`, and `loc` globals in `main.go` with fields on `app.App`
+- [x] thread `*app.App` (or its individual fields) into handlers that previously read globals
+- [x] run tests — must pass before task 10
 
 ### Task 10: Introduce `internal/web` helpers
 

@@ -15,16 +15,18 @@ import (
 	"sampleDB/internal/auth"
 )
 
-// setTestTemplatesDir sets appConfig.TemplatesDir to the templates/ directory
-// next to the test binary's working directory, and returns a restore function.
+// setTestTemplatesDir sets theApp.Config.TemplatesDir to the templates/
+// directory next to the test binary's working directory, and returns a restore
+// function.
 func setTestTemplatesDir(t *testing.T) {
 	t.Helper()
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("os.Getwd: %v", err)
 	}
-	appConfig.TemplatesDir = filepath.Join(wd, "templates")
-	t.Cleanup(func() { appConfig.TemplatesDir = "" })
+	orig := theApp.Config.TemplatesDir
+	theApp.Config.TemplatesDir = filepath.Join(wd, "templates")
+	t.Cleanup(func() { theApp.Config.TemplatesDir = orig })
 }
 
 // ---------------------------------------------------------------------------
@@ -36,9 +38,9 @@ func createTestSample(t *testing.T) (sampleID int, cleanup func()) {
 	t.Helper()
 	pool := testDB(t)
 
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	name := fmt.Sprintf("step-test-sample-%d", time.Now().UnixNano())
 	err := pool.QueryRow(context.Background(),
@@ -100,7 +102,7 @@ func TestAddAndGetFabricationSteps(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		dbPool.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
+		theApp.DB.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
 	})
 
 	steps, err := getFabricationSteps(context.Background(), sampleID)
@@ -135,7 +137,7 @@ func TestUpdateFabricationStep(t *testing.T) {
 		t.Fatalf("addFabricationStep: %v", err)
 	}
 	t.Cleanup(func() {
-		dbPool.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
+		theApp.DB.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
 	})
 
 	updated := FabricationStep{StepOrder: 2, Description: "updated description"}
@@ -189,9 +191,9 @@ func TestDeleteFabricationStep_NotFound(t *testing.T) {
 	testDB(t) // ensure DB is reachable, sets up cleanup
 
 	pool := testDB(t)
-	orig := dbPool
-	dbPool = pool
-	defer func() { dbPool = orig }()
+	orig := theApp.DB
+	theApp.DB = pool
+	defer func() { theApp.DB = orig }()
 
 	err := deleteFabricationStep(context.Background(), 999999999)
 	if err == nil {
@@ -216,7 +218,7 @@ func TestReorderFabricationSteps(t *testing.T) {
 		t.Fatalf("add step 2: %v", err)
 	}
 	t.Cleanup(func() {
-		dbPool.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id IN ($1, $2)", s1.ID, s2.ID)
+		theApp.DB.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id IN ($1, $2)", s1.ID, s2.ID)
 	})
 
 	// Reverse the order: put s2 first, s1 second
@@ -253,7 +255,7 @@ func TestGetStepByID(t *testing.T) {
 		t.Fatalf("addFabricationStep: %v", err)
 	}
 	t.Cleanup(func() {
-		dbPool.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
+		theApp.DB.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE step_id = $1", created.ID)
 	})
 
 	fetched, err := getStepByID(context.Background(), created.ID)
@@ -305,7 +307,7 @@ func TestHandleFabricationStepAdd_ReturnsHTMLWithStep(t *testing.T) {
 	}
 	// Cleanup: delete any steps added
 	t.Cleanup(func() {
-		dbPool.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE sample_id = $1", sampleID)
+		theApp.DB.Exec(context.Background(), "DELETE FROM fabrication_steps WHERE sample_id = $1", sampleID)
 	})
 }
 

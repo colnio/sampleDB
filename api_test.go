@@ -27,11 +27,11 @@ func withTestSession(req *http.Request) *http.Request {
 	return req.WithContext(auth.ContextWithSession(req.Context(), s))
 }
 
-// setMockDB replaces the global dbPool with mock and returns a restore func.
+// setMockDB replaces theApp.DB with mock and returns a restore func.
 func setMockDB(mock pgxmock.PgxPoolIface) func() {
-	orig := dbPool
-	dbPool = mock
-	return func() { dbPool = orig }
+	orig := theApp.DB
+	theApp.DB = mock
+	return func() { theApp.DB = orig }
 }
 
 // ---------------------------------------------------------------------------
@@ -556,10 +556,10 @@ func TestAPICreateAndGetSample_RoundTrip(t *testing.T) {
 	pool := testDB(t)
 	defer pool.Close()
 
-	// Point global dbPool at the real test DB.
-	orig := dbPool
-	dbPool = pool
-	defer func() { dbPool = orig }()
+	// Point theApp.DB at the real test DB.
+	orig := theApp.DB
+	theApp.DB = pool
+	defer func() { theApp.DB = orig }()
 
 	// Inject a session so handlers that call MustSessionFromContext don't panic.
 	sampleName := fmt.Sprintf("api-test-sample-%d", time.Now().UnixNano())
@@ -625,9 +625,9 @@ func TestAPIDeleteSample_Returns404AfterDelete(t *testing.T) {
 	pool := testDB(t)
 	defer pool.Close()
 
-	orig := dbPool
-	dbPool = pool
-	defer func() { dbPool = orig }()
+	orig := theApp.DB
+	theApp.DB = pool
+	defer func() { theApp.DB = orig }()
 
 	// Create a sample directly in DB
 	sampleName := fmt.Sprintf("api-delete-test-%d", time.Now().UnixNano())
@@ -665,9 +665,9 @@ func TestAPICreateAndGetArticle_RoundTrip(t *testing.T) {
 	pool := testDB(t)
 	defer pool.Close()
 
-	orig := dbPool
-	dbPool = pool
-	defer func() { dbPool = orig }()
+	orig := theApp.DB
+	theApp.DB = pool
+	defer func() { theApp.DB = orig }()
 
 	title := fmt.Sprintf("api-test-article-%d", time.Now().UnixNano())
 	session := auth.Session{UserID: 1, Username: "testuser", ExpiresAt: time.Now().Add(time.Hour)}
@@ -727,9 +727,9 @@ func TestAPIListSamples_Integration(t *testing.T) {
 	pool := testDB(t)
 	defer pool.Close()
 
-	orig := dbPool
-	dbPool = pool
-	defer func() { dbPool = orig }()
+	orig := theApp.DB
+	theApp.DB = pool
+	defer func() { theApp.DB = orig }()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/samples", nil)
 	req = withTestSession(req)

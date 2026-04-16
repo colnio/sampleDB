@@ -94,7 +94,7 @@ func handleWiki(w http.ResponseWriter, r *http.Request) {
 func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
-	rows, err := dbPool.Query(r.Context(),
+	rows, err := theApp.DB.Query(r.Context(),
 		`SELECT article_id, title, created_at FROM articles ORDER BY created_at DESC`)
 	if err != nil {
 		http.Error(w, "Error retrieving articles", http.StatusInternalServerError)
@@ -123,7 +123,7 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 		BasePageData: BasePageData{Username: session.Username, IsAdmin: false},
 		Articles:     articles,
 	}
-	row := dbPool.QueryRow(r.Context(), `SELECT admin
+	row := theApp.DB.QueryRow(r.Context(), `SELECT admin
 	FROM users
 	WHERE user_id = $1`, session.UserID)
 
@@ -143,7 +143,7 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 func loadArticleData(ctx context.Context, session auth.Session, title string) (*Article, error) {
 	var article Article
 	var rawContent string
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		`SELECT article_id, title, content, created_at, created_by,
 		        COALESCE(last_modified_at, created_at) AS last_modified_at,
 		        COALESCE(last_modified_by, created_by) AS last_modified_by
@@ -161,7 +161,7 @@ func loadArticleData(ctx context.Context, session auth.Session, title string) (*
 	}
 
 	// Get attachments
-	rows, err := dbPool.Query(ctx,
+	rows, err := theApp.DB.Query(ctx,
 		`SELECT attachment_id, original_name, attachment_address, uploaded_at
          FROM article_attachments WHERE article_id = $1`, article.ID)
 	if err == nil {
@@ -207,7 +207,7 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request, title string) {
 	}
 
 	isAdmin := false
-	if err := dbPool.QueryRow(r.Context(),
+	if err := theApp.DB.QueryRow(r.Context(),
 		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		session.UserID).Scan(&isAdmin); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -250,7 +250,7 @@ func renderArticleContentPanel(w http.ResponseWriter, r *http.Request, session a
 	}
 
 	isAdmin := false
-	if err := dbPool.QueryRow(r.Context(),
+	if err := theApp.DB.QueryRow(r.Context(),
 		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		session.UserID).Scan(&isAdmin); err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
@@ -309,7 +309,7 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	content := r.FormValue("content")
 
-	_, err := dbPool.Exec(r.Context(),
+	_, err := theApp.DB.Exec(r.Context(),
 		`INSERT INTO articles (title, content, created_by, last_modified_by)
          VALUES ($1, $2, $3, $3)`,
 		title, content, session.UserID)
@@ -384,7 +384,7 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 	// Verify the caller is the article creator or an admin.
 	var createdBy int
 	var isAdmin bool
-	if authErr := dbPool.QueryRow(r.Context(),
+	if authErr := theApp.DB.QueryRow(r.Context(),
 		`SELECT a.created_by, COALESCE(u.admin, false)
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
@@ -415,7 +415,7 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := r.FormValue("content")
-	if _, execErr := dbPool.Exec(r.Context(),
+	if _, execErr := theApp.DB.Exec(r.Context(),
 		`UPDATE articles SET content = $1, last_modified_at = NOW(),
          last_modified_by = $2 WHERE title = $3`,
 		content, session.UserID, title); execErr != nil {
@@ -457,7 +457,7 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 	// Verify the caller is the article creator or an admin.
 	var createdBy int
 	var isAdmin bool
-	err = dbPool.QueryRow(r.Context(),
+	err = theApp.DB.QueryRow(r.Context(),
 		`SELECT a.created_by, COALESCE(u.admin, false)
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
@@ -477,7 +477,7 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Collect attachment file paths before the cascade delete removes the rows.
-	attRows, attErr := dbPool.Query(r.Context(),
+	attRows, attErr := theApp.DB.Query(r.Context(),
 		`SELECT aa.attachment_address
 		   FROM article_attachments aa
 		   JOIN articles a ON aa.article_id = a.article_id
@@ -495,7 +495,7 @@ func deleteArticleHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("warning: could not list article attachments for cleanup: %v", attErr)
 	}
 
-	_, err = dbPool.Exec(r.Context(),
+	_, err = theApp.DB.Exec(r.Context(),
 		"DELETE FROM articles WHERE title = $1", title)
 	if err != nil {
 		http.Error(w, "Error deleting article", http.StatusInternalServerError)
@@ -529,7 +529,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Verify the caller is the article creator or an admin.
 	var createdBy int
 	var isAdmin bool
-	if authErr := dbPool.QueryRow(r.Context(),
+	if authErr := theApp.DB.QueryRow(r.Context(),
 		`SELECT a.created_by, COALESCE(u.admin, false)
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
@@ -577,7 +577,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 			uploadErrs = append(uploadErrs, fh.Filename)
 			continue
 		}
-		_, dbErr := dbPool.Exec(r.Context(),
+		_, dbErr := theApp.DB.Exec(r.Context(),
 			`INSERT INTO article_attachments
              (article_id, attachment_address, original_name, uploaded_by)
              VALUES ($1, $2, $3, $4)`,
@@ -596,7 +596,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	if isHTMXRequest(r) {
 		var articleTitle string
-		if titErr := dbPool.QueryRow(r.Context(),
+		if titErr := theApp.DB.QueryRow(r.Context(),
 			"SELECT title FROM articles WHERE article_id = $1", articleID).Scan(&articleTitle); titErr != nil {
 			http.Error(w, "Error loading article", http.StatusInternalServerError)
 			return
@@ -642,7 +642,7 @@ func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
 		// Verify the caller is the article creator or an admin before deleting.
 		var createdBy int
 		var isAdmin bool
-		authErr := dbPool.QueryRow(r.Context(),
+		authErr := theApp.DB.QueryRow(r.Context(),
 			`SELECT a.created_by, COALESCE(u.admin, false)
 			   FROM article_attachments aa
 			   JOIN articles a ON aa.article_id = a.article_id
@@ -697,7 +697,7 @@ func handleAttachmentWiki(w http.ResponseWriter, r *http.Request) {
 func deleteAttachmentWiki(ctx context.Context, attachmentID string) (string, error) {
 	var filepath string
 	var articleTitle string
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		`SELECT aa.attachment_address, a.title
          FROM article_attachments aa
          JOIN articles a ON aa.article_id = a.article_id
@@ -708,7 +708,7 @@ func deleteAttachmentWiki(ctx context.Context, attachmentID string) (string, err
 	}
 
 	// Delete from database
-	if _, err = dbPool.Exec(ctx,
+	if _, err = theApp.DB.Exec(ctx,
 		"DELETE FROM article_attachments WHERE attachment_id = $1",
 		attachmentID); err != nil {
 		return "", err
@@ -727,7 +727,7 @@ func downloadAttachmentHandlerWiki(w http.ResponseWriter, r *http.Request, attac
 		filePath string
 		original string
 	)
-	err := dbPool.QueryRow(r.Context(),
+	err := theApp.DB.QueryRow(r.Context(),
 		"SELECT attachment_address, original_name FROM article_attachments WHERE attachment_id = $1",
 		attachmentID).Scan(&filePath, &original)
 	if err != nil {

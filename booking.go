@@ -125,7 +125,7 @@ func parseTemplatesBooking(files ...string) (*template.Template, error) {
 				timeSlot.Hour(),
 				timeSlot.Minute(),
 				0, 0,
-				loc, // Use local timezone
+				theApp.Location, // Use local timezone
 			)
 		},
 
@@ -157,12 +157,12 @@ func parseTemplatesBooking(files ...string) (*template.Template, error) {
 func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
-	now := time.Now().In(loc)
-	selectedDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	now := time.Now().In(theApp.Location)
+	selectedDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, theApp.Location)
 
 	if dateStr := r.URL.Query().Get("date"); dateStr != "" {
-		if parsed, err := time.ParseInLocation("2006-01-02", dateStr, loc); err == nil {
-			selectedDate = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, loc)
+		if parsed, err := time.ParseInLocation("2006-01-02", dateStr, theApp.Location); err == nil {
+			selectedDate = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, theApp.Location)
 		}
 	}
 
@@ -175,13 +175,13 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 
 	// Calculate week boundaries using local timezone around selected date
 	weekStart := selectedDate.AddDate(0, 0, -int(selectedDate.Weekday()))
-	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, loc)
+	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, theApp.Location)
 	weekEnd := weekStart.AddDate(0, 0, 7)
 
 	// Generate hourly time slots in local timezone
 	timeSlots := make([]time.Time, 96) // 15-minute slots
 	hours := make([]time.Time, 24)
-	baseTime := time.Date(selectedDate.Year(), selectedDate.Month(), selectedDate.Day(), 0, 0, 0, 0, loc)
+	baseTime := time.Date(selectedDate.Year(), selectedDate.Month(), selectedDate.Day(), 0, 0, 0, 0, theApp.Location)
 	for i := range timeSlots {
 		timeSlots[i] = baseTime.Add(time.Duration(i*15) * time.Minute)
 		if i%4 == 0 {
@@ -278,13 +278,13 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse dates and times using global location
-	startTime, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("start_time"), loc)
+	startTime, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("start_time"), theApp.Location)
 	if err != nil {
 		http.Redirect(w, r, "/booking?error=Invalid+start+time:+"+err.Error(), http.StatusSeeOther)
 		return
 	}
 
-	endTime, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("end_time"), loc)
+	endTime, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("end_time"), theApp.Location)
 	if err != nil {
 		http.Redirect(w, r, "/booking?error=Invalid+end+time:+"+err.Error(), http.StatusSeeOther)
 		return
@@ -337,7 +337,7 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create booking
-	_, err = dbPool.Exec(r.Context(),
+	_, err = theApp.DB.Exec(r.Context(),
 		`INSERT INTO bookings (equipment_id, user_id, start_time, end_time, purpose)
          VALUES ($1, $2, $3, $4, $5)`,
 		equipmentID, session.UserID, startTime, endTime, purpose)
@@ -364,7 +364,7 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 // Helper functions
 
 func getAllEquipment(ctx context.Context) ([]Equipment, error) {
-	rows, err := dbPool.Query(ctx,
+	rows, err := theApp.DB.Query(ctx,
 		`SELECT equipment_id, name, coalesce(description, 'N/A'), coalesce(location, 'N/A')
          FROM equipment
          ORDER BY name`)
@@ -387,7 +387,7 @@ func getAllEquipment(ctx context.Context) ([]Equipment, error) {
 
 func checkUserPermission(ctx context.Context, userID, equipmentID int) (bool, error) {
 	var exists bool
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		`SELECT EXISTS(
             SELECT 1 FROM user_equipment_permissions
             WHERE user_id = $1 AND equipment_id = $2
@@ -397,7 +397,7 @@ func checkUserPermission(ctx context.Context, userID, equipmentID int) (bool, er
 
 func isUserAdmin(ctx context.Context, userID int) (bool, error) {
 	var isAdmin bool
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		`SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
 		userID).Scan(&isAdmin)
 	return isAdmin, err
@@ -405,10 +405,10 @@ func isUserAdmin(ctx context.Context, userID int) (bool, error) {
 
 func getBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, error) {
 	// Force timezone to local for query
-	start = start.In(loc)
-	end = end.In(loc)
+	start = start.In(theApp.Location)
+	end = end.In(theApp.Location)
 
-	rows, err := dbPool.Query(ctx,
+	rows, err := theApp.DB.Query(ctx,
 		`SELECT b.booking_id, b.equipment_id, b.user_id, u.username,
                 b.start_time AT TIME ZONE 'UTC',
                 b.end_time AT TIME ZONE 'UTC',
@@ -432,8 +432,8 @@ func getBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, e
 			continue
 		}
 		// Ensure times are in local timezone
-		b.StartTime = b.StartTime.In(loc)
-		b.EndTime = b.EndTime.In(loc)
+		b.StartTime = b.StartTime.In(theApp.Location)
+		b.EndTime = b.EndTime.In(theApp.Location)
 		bookings = append(bookings, b)
 	}
 	if len(bookings) == 0 {
@@ -454,7 +454,7 @@ func handleDeleteBooking(w http.ResponseWriter, r *http.Request) {
 
 	// Verify the booking belongs to the user
 	var userID int
-	err := dbPool.QueryRow(r.Context(),
+	err := theApp.DB.QueryRow(r.Context(),
 		"SELECT user_id FROM bookings WHERE booking_id = $1", bookingID).Scan(&userID)
 	if err != nil {
 		http.Error(w, "Booking not found", http.StatusNotFound)
@@ -467,7 +467,7 @@ func handleDeleteBooking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete the booking
-	_, err = dbPool.Exec(r.Context(),
+	_, err = theApp.DB.Exec(r.Context(),
 		"DELETE FROM bookings WHERE booking_id = $1", bookingID)
 	if err != nil {
 		http.Error(w, "Error deleting booking", http.StatusInternalServerError)
@@ -479,7 +479,7 @@ func handleDeleteBooking(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUserBookings(ctx context.Context, userID int) ([]Booking, error) {
-	rows, err := dbPool.Query(ctx,
+	rows, err := theApp.DB.Query(ctx,
 		`SELECT booking_id, equipment_id, user_id, start_time, end_time, purpose, created_at
          FROM bookings
          WHERE user_id = $1 AND end_time >= NOW()
@@ -507,7 +507,7 @@ func getUserBookings(ctx context.Context, userID int) ([]Booking, error) {
 
 func checkBookingConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error) {
 	var exists bool
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		`SELECT EXISTS(
             SELECT 1 FROM bookings
             WHERE equipment_id = $1

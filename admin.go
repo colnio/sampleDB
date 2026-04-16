@@ -44,7 +44,7 @@ type AdminPageData struct {
 
 func getBasePageData(ctx context.Context, session auth.Session) (BasePageData, error) {
 	var isAdmin bool
-	err := dbPool.QueryRow(ctx,
+	err := theApp.DB.QueryRow(ctx,
 		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		session.UserID).Scan(&isAdmin)
 	if err != nil {
@@ -78,7 +78,7 @@ func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := dbPool.Query(r.Context(), `
+	rows, err := theApp.DB.Query(r.Context(), `
         SELECT 
             u.user_id, 
             u.username, 
@@ -177,7 +177,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 	// fmt.Println(data)
 	// Start a transaction
-	tx, err := dbPool.Begin(r.Context())
+	tx, err := theApp.DB.Begin(r.Context())
 	if err != nil {
 		fmt.Printf("error starting access update transaction: %v\n", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -235,7 +235,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAllGroups(ctx context.Context) ([]Group, error) {
-	rows, err := dbPool.Query(ctx,
+	rows, err := theApp.DB.Query(ctx,
 		`SELECT group_id, name
          FROM groups
          ORDER BY name`)
@@ -259,7 +259,7 @@ func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		session := auth.MustSessionFromContext(r.Context())
 
 		var isAdmin bool
-		err := dbPool.QueryRow(r.Context(),
+		err := theApp.DB.QueryRow(r.Context(),
 			"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 			session.UserID).Scan(&isAdmin)
 
@@ -282,7 +282,7 @@ func handleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("user_id")
 	isAdmin := r.FormValue("is_admin") == "true"
 
-	_, err := dbPool.Exec(r.Context(),
+	_, err := theApp.DB.Exec(r.Context(),
 		"UPDATE users SET admin = $1 WHERE user_id = $2 AND COALESCE(deleted, false) = false",
 		isAdmin, userID)
 
@@ -337,7 +337,7 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmdTag, err := dbPool.Exec(r.Context(),
+	cmdTag, err := theApp.DB.Exec(r.Context(),
 		`UPDATE users
          SET deleted = true,
              is_approved = false
@@ -354,8 +354,8 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if authManagerInstance != nil {
-		authManagerInstance.RevokeUserSessions(userID)
+	if theApp.Auth != nil {
+		theApp.Auth.RevokeUserSessions(userID)
 	}
 
 	if strings.Contains(contentType, "application/json") {
@@ -399,7 +399,7 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmdTag, err := dbPool.Exec(r.Context(),
+	cmdTag, err := theApp.DB.Exec(r.Context(),
 		`UPDATE users
          SET password_hash = $1
          WHERE user_id = $2
@@ -415,8 +415,8 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if authManagerInstance != nil {
-		authManagerInstance.RevokeUserSessions(payload.UserID)
+	if theApp.Auth != nil {
+		theApp.Auth.RevokeUserSessions(payload.UserID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -456,7 +456,7 @@ func handleAddEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert new equipment
-	_, err := dbPool.Exec(r.Context(),
+	_, err := theApp.DB.Exec(r.Context(),
 		"INSERT INTO equipment (name) VALUES ($1)",
 		equipmentName)
 
@@ -488,7 +488,7 @@ func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Start a transaction
-	tx, err := dbPool.Begin(r.Context())
+	tx, err := theApp.DB.Begin(r.Context())
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -544,7 +544,7 @@ func handleAddGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := dbPool.Exec(r.Context(),
+	_, err := theApp.DB.Exec(r.Context(),
 		"INSERT INTO groups (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
 		name)
 	if err != nil {
@@ -570,14 +570,14 @@ func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 	groupID := parts[len(parts)-1]
 
 	var groupName string
-	if err := dbPool.QueryRow(r.Context(),
+	if err := theApp.DB.QueryRow(r.Context(),
 		"SELECT name FROM groups WHERE group_id = $1",
 		groupID).Scan(&groupName); err != nil {
 		http.Redirect(w, r, "/admin?error=Unknown+group", http.StatusSeeOther)
 		return
 	}
 
-	_, err := dbPool.Exec(r.Context(),
+	_, err := theApp.DB.Exec(r.Context(),
 		`UPDATE users SET "group" = NULL WHERE btrim("group") = $1`,
 		groupName)
 	if err != nil {
@@ -585,7 +585,7 @@ func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = dbPool.Exec(r.Context(),
+	_, err = theApp.DB.Exec(r.Context(),
 		"DELETE FROM groups WHERE group_id = $1",
 		groupID)
 	if err != nil {
@@ -608,7 +608,7 @@ func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {
 	endDate := r.URL.Query().Get("end")
 
 	// Query bookings
-	rows, err := dbPool.Query(r.Context(), `
+	rows, err := theApp.DB.Query(r.Context(), `
         SELECT 
             b.start_time,
             b.end_time,

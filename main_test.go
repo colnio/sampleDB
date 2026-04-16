@@ -3,10 +3,27 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
+
+	"sampleDB/internal/app"
+	"sampleDB/internal/auth"
 )
+
+// TestMain initialises theApp with sensible defaults before any test in
+// package main runs.  Individual tests that need a real DB or a specific mock
+// override theApp.DB (or theApp.Auth) via setMockDB / their own setup.
+func TestMain(m *testing.M) {
+	theApp = &app.App{
+		Location: time.UTC,
+		// DB and Auth start nil; setMockDB / real-DB helpers will set them.
+		Auth: auth.NewManager(nil),
+	}
+	os.Exit(m.Run())
+}
 
 func TestSanitizeFilename(t *testing.T) {
 	tests := map[string]string{

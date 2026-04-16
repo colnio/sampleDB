@@ -295,7 +295,7 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 	}
 	countQuery := "SELECT COUNT(*) FROM samples s" + countJoin + whereClause
 	var total int
-	if err := dbPool.QueryRow(r.Context(), countQuery, args...).Scan(&total); err != nil {
+	if err := theApp.DB.QueryRow(r.Context(), countQuery, args...).Scan(&total); err != nil {
 		log.Printf("api: listSamples count error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
@@ -323,7 +323,7 @@ func apiListSamples(w http.ResponseWriter, r *http.Request) {
 		 ORDER BY s.sample_name
 		 LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2)
 
-	rows, err := dbPool.Query(r.Context(), mainQuery, pagedArgs...)
+	rows, err := theApp.DB.Query(r.Context(), mainQuery, pagedArgs...)
 	if err != nil {
 		log.Printf("api: listSamples query error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -369,7 +369,7 @@ func apiGetSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	var detail apiSampleDetail
 	var samplePrep string
 
-	err = dbPool.QueryRow(r.Context(), `
+	err = theApp.DB.QueryRow(r.Context(), `
 		SELECT s.sample_id,
 		       s.sample_name,
 		       COALESCE(s.sample_description, ''),
@@ -453,7 +453,7 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	var id int
 	var createdAt time.Time
 	var ownerUsername *string
-	err := dbPool.QueryRow(r.Context(), `
+	err := theApp.DB.QueryRow(r.Context(), `
 		WITH ins AS (
 			INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id)
 			VALUES ($1, $2, $3, $4, $5)
@@ -508,7 +508,7 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	}
 
 	// owner_user_id is intentionally excluded: ownership can only be set at creation time.
-	tag, err := dbPool.Exec(r.Context(), `
+	tag, err := theApp.DB.Exec(r.Context(), `
 		UPDATE samples
 		   SET sample_name        = $1,
 		       sample_description = $2,
@@ -545,7 +545,7 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 	// Collect attachment IDs before deleting the sample, but delete the sample
 	// row first so that a concurrent double-delete cannot cause partial cleanup
 	// (attachments gone, sample row still present).
-	rows, err := dbPool.Query(r.Context(),
+	rows, err := theApp.DB.Query(r.Context(),
 		`SELECT attachment_id FROM attachments WHERE source_id = $1 AND source_type = 'sample'`, id)
 	if err != nil {
 		log.Printf("api: deleteSample fetch attachments error: %v", err)
@@ -572,7 +572,7 @@ func apiDeleteSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 
 	// Delete the sample record first; if it no longer exists return 404 without
 	// touching any attachments.
-	tag, err := dbPool.Exec(r.Context(), `DELETE FROM samples WHERE sample_id = $1`, id)
+	tag, err := theApp.DB.Exec(r.Context(), `DELETE FROM samples WHERE sample_id = $1`, id)
 	if err != nil {
 		log.Printf("api: deleteSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -608,7 +608,7 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 	}
 
 	var exists bool
-	if err := dbPool.QueryRow(r.Context(),
+	if err := theApp.DB.QueryRow(r.Context(),
 		"SELECT EXISTS(SELECT 1 FROM samples WHERE sample_id = $1)", id).Scan(&exists); err != nil {
 		log.Printf("api: listSteps existence check error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -844,12 +844,12 @@ func apiListArticles(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 
 	var total int
-	if err := dbPool.QueryRow(r.Context(), "SELECT COUNT(*) FROM articles").Scan(&total); err != nil {
+	if err := theApp.DB.QueryRow(r.Context(), "SELECT COUNT(*) FROM articles").Scan(&total); err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
 
-	rows, err := dbPool.Query(r.Context(), `
+	rows, err := theApp.DB.Query(r.Context(), `
 		SELECT article_id, title, created_at,
 		       COALESCE(last_modified_at, created_at)
 		  FROM articles
@@ -892,7 +892,7 @@ func apiGetArticle(w http.ResponseWriter, r *http.Request, articleID string) {
 		return
 	}
 	var detail apiArticleDetail
-	err = dbPool.QueryRow(r.Context(), `
+	err = theApp.DB.QueryRow(r.Context(), `
 		SELECT article_id, title, content, created_at,
 		       COALESCE(last_modified_at, created_at)
 		  FROM articles
@@ -912,7 +912,7 @@ func apiGetArticle(w http.ResponseWriter, r *http.Request, articleID string) {
 
 	// Attachments
 	detail.Attachments = make([]apiArticleAttachment, 0)
-	attRows, attErr := dbPool.Query(r.Context(), `
+	attRows, attErr := theApp.DB.Query(r.Context(), `
 		SELECT attachment_id, original_name, attachment_address, uploaded_at
 		  FROM article_attachments
 		 WHERE article_id = $1`, detail.ID)
@@ -964,7 +964,7 @@ func apiCreateArticle(w http.ResponseWriter, r *http.Request) {
 
 	var id int
 	var createdAt time.Time
-	err := dbPool.QueryRow(r.Context(), `
+	err := theApp.DB.QueryRow(r.Context(), `
 		INSERT INTO articles (title, content, created_by, last_modified_by)
 		VALUES ($1, $2, $3, $3)
 		RETURNING article_id, created_at`,
@@ -1000,7 +1000,7 @@ func apiUpdateArticle(w http.ResponseWriter, r *http.Request, articleID string) 
 	// not when the session user has been removed from the users table.
 	var createdBy int
 	var isAdmin bool
-	err = dbPool.QueryRow(r.Context(),
+	err = theApp.DB.QueryRow(r.Context(),
 		`SELECT a.created_by, COALESCE(u.admin, false)
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
@@ -1031,7 +1031,7 @@ func apiUpdateArticle(w http.ResponseWriter, r *http.Request, articleID string) 
 		return
 	}
 
-	tag, err := dbPool.Exec(r.Context(), `
+	tag, err := theApp.DB.Exec(r.Context(), `
 		UPDATE articles
 		   SET title            = $1,
 		       content          = $2,
@@ -1062,7 +1062,7 @@ func apiUsersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := dbPool.Query(r.Context(), `
+	rows, err := theApp.DB.Query(r.Context(), `
 		SELECT user_id, username, COALESCE(btrim("group"), '')
 		  FROM users
 		 WHERE is_approved = true

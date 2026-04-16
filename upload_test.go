@@ -57,15 +57,15 @@ func TestUploadAttachment_MultiFile(t *testing.T) {
 	pool := testDB(t)
 
 	// Replace global pool
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	// Use a temp dir so the test doesn't litter the repo uploads/ directory.
 	tmpDir := t.TempDir()
-	origUploads := appConfig.UploadsDir
-	appConfig.UploadsDir = tmpDir
-	t.Cleanup(func() { appConfig.UploadsDir = origUploads })
+	origUploads := theApp.Config.UploadsDir
+	theApp.Config.UploadsDir = tmpDir
+	t.Cleanup(func() { theApp.Config.UploadsDir = origUploads })
 
 	setTestTemplatesDir(t)
 
@@ -139,14 +139,14 @@ func TestUploadAttachment_MultiFile(t *testing.T) {
 func TestUploadAttachment_PasteImage(t *testing.T) {
 	pool := testDB(t)
 
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	tmpDir := t.TempDir()
-	origUploads := appConfig.UploadsDir
-	appConfig.UploadsDir = tmpDir
-	t.Cleanup(func() { appConfig.UploadsDir = origUploads })
+	origUploads := theApp.Config.UploadsDir
+	theApp.Config.UploadsDir = tmpDir
+	t.Cleanup(func() { theApp.Config.UploadsDir = origUploads })
 
 	setTestTemplatesDir(t)
 
@@ -226,9 +226,9 @@ func TestUploadAttachment_PasteImage(t *testing.T) {
 func TestUploadAttachment_NoFiles(t *testing.T) {
 	pool := testDB(t)
 
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	setTestTemplatesDir(t)
 
@@ -280,14 +280,14 @@ func TestUploadAttachment_NoFiles(t *testing.T) {
 func TestUploadWikiAttachment_MultiFile(t *testing.T) {
 	pool := testDB(t)
 
-	orig := dbPool
-	dbPool = pool
-	t.Cleanup(func() { dbPool = orig })
+	orig := theApp.DB
+	theApp.DB = pool
+	t.Cleanup(func() { theApp.DB = orig })
 
 	tmpDir := t.TempDir()
-	origUploads := appConfig.UploadsDir
-	appConfig.UploadsDir = tmpDir
-	t.Cleanup(func() { appConfig.UploadsDir = origUploads })
+	origUploads := theApp.Config.UploadsDir
+	theApp.Config.UploadsDir = tmpDir
+	t.Cleanup(func() { theApp.Config.UploadsDir = origUploads })
 
 	// Create a wiki article to attach to.
 	articleTitle := fmt.Sprintf("upload-wiki-test-%d", time.Now().UnixNano())
@@ -339,9 +339,9 @@ func TestUploadWikiAttachment_MultiFile(t *testing.T) {
 
 func TestSaveUploadedFile_CreatesFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	origUploads := appConfig.UploadsDir
-	appConfig.UploadsDir = tmpDir
-	t.Cleanup(func() { appConfig.UploadsDir = origUploads })
+	origUploads := theApp.Config.UploadsDir
+	theApp.Config.UploadsDir = tmpDir
+	t.Cleanup(func() { theApp.Config.UploadsDir = origUploads })
 
 	content := "test file content"
 	fp, err := saveUploadedFile(strings.NewReader(content), "testfile.txt")

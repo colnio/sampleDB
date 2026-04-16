@@ -28,9 +28,9 @@ func TestGetBookingsForWeek_SpansBoundary(t *testing.T) {
 	restore := setMockDB(mock)
 	defer restore()
 
-	// loc is a package-level global set in main(); initialise it for the test.
-	if loc == nil {
-		loc = time.UTC
+	// Ensure Location is set; TestMain initialises it to UTC but guard anyway.
+	if theApp.Location == nil {
+		theApp.Location = time.UTC
 	}
 
 	tz := time.UTC
