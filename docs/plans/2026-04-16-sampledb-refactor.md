@@ -180,10 +180,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 16: Extract `internal/admin` package
 
-- [ ] write failing tests for user/group/equipment management handlers
-- [ ] create `internal/admin/` with handlers migrated from `admin.go`
-- [ ] update route registration
-- [ ] run tests — must pass before task 17
+- [x] write failing tests for user/group/equipment management handlers
+- [x] create `internal/admin/` with handlers migrated from `admin.go`
+- [x] update route registration
+- [x] run tests — must pass before task 17
 
 ### Task 17: Extract `internal/profile` package
 

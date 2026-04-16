@@ -51,6 +51,23 @@ type AIAgentExamplesPageData struct {
 
 var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
 
+// getBasePageData fetches the admin flag for sessionUserID and returns a
+// BasePageData suitable for embedding in any page template.
+func getBasePageData(ctx context.Context, session auth.Session) (BasePageData, error) {
+	var isAdmin bool
+	err := theApp.DB.QueryRow(ctx,
+		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+		session.UserID).Scan(&isAdmin)
+	if err != nil {
+		return BasePageData{}, err
+	}
+	return BasePageData{
+		Username: session.Username,
+		UserID:   session.UserID,
+		IsAdmin:  isAdmin,
+	}, nil
+}
+
 // theApp holds all application-wide dependencies, replacing the former
 // package-level variables dbPool, appConfig, authManagerInstance and loc.
 var theApp *app.App
@@ -659,21 +676,9 @@ func main() {
 	}
 
 	theApp.Handlers = app.Handlers{
-		AdminPage:          handleAdminPage,
-		UpdateAccess:       handleUpdateAccess,
-		SetAdmin:           handleSetAdmin,
-		ResetPassword:      handleResetPassword,
-		AddEquipment:       handleAddEquipment,
-		DeleteEquipment:    handleDeleteEquipment,
-		AddGroup:           handleAddGroup,
-		DeleteGroup:        handleDeleteGroup,
-		EquipmentReport:    handleEquipmentReport,
-		DeleteUser:         handleDeleteUser,
 		ChangePassword:     handleChangePassword,
 		ProfileTokens:      handleProfileTokens,
 		ProfileTokenRevoke: handleProfileTokenRevoke,
-		APIUsers:           apiUsersHandler,
-		APIEquipment:       apiEquipmentHandler,
 		APINotFound:        apiNotFoundHandler,
 		AIAgents:           handleAIAgents,
 		AIAgentExamples:    handleAIAgentExamples,

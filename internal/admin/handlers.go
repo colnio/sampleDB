@@ -1,0 +1,406 @@
+package admin
+
+import (
+	"encoding/csv"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"sampleDB/internal/auth"
+	"sampleDB/internal/web"
+)
+
+// Handlers groups all HTTP handler methods for the admin domain.
+type Handlers struct {
+	svc      Service
+	renderer *web.Renderer
+	authMgr  *auth.Manager
+}
+
+// NewHandlers constructs a Handlers value.
+func NewHandlers(svc Service, r *web.Renderer, a *auth.Manager) *Handlers {
+	return &Handlers{svc: svc, renderer: r, authMgr: a}
+}
+
+// AdminPage handles GET /admin.
+func (h *Handlers) AdminPage(w http.ResponseWriter, r *http.Request) {
+	session := auth.MustSessionFromContext(r.Context())
+
+	equipment, err := h.svc.GetAllEquipment(r.Context())
+	if err != nil {
+		http.Error(w, "Error getting equipment", http.StatusInternalServerError)
+		return
+	}
+
+	groups, err := h.svc.GetAllGroups(r.Context())
+	if err != nil {
+		http.Error(w, "Error getting groups", http.StatusInternalServerError)
+		return
+	}
+
+	users, err := h.svc.GetAllUsers(r.Context(), equipment)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	data := AdminPageData{
+		BasePageData: BasePageData{
+			Username: session.Username,
+			UserID:   session.UserID,
+			IsAdmin:  true, // guaranteed by RequireAdmin middleware
+		},
+		Users:     users,
+		Equipment: equipment,
+		Groups:    groups,
+		Error:     r.URL.Query().Get("error"),
+		Success:   r.URL.Query().Get("success"),
+	}
+
+	if err := h.renderer.Render(w, "admin", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// UpdateAccess handles POST /admin/update-access.
+func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		UserID    int     `json:"user_id"`
+		Approved  bool    `json:"approved"`
+		GroupName *string `json:"group_name"`
+		Equipment []int   `json:"equipment"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		fmt.Printf("admin: error parsing access update JSON: %v\n", err)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.UpdateAccess(r.Context(), UpdateAccessParams{
+		UserID:    payload.UserID,
+		Approved:  payload.Approved,
+		GroupName: payload.GroupName,
+		Equipment: payload.Equipment,
+	}); err != nil {
+		fmt.Printf("admin: error updating access: %v\n", err)
+		http.Error(w, "Error updating access", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// SetAdmin handles POST /admin/set-admin.
+func (h *Handlers) SetAdmin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, err := strconv.Atoi(r.FormValue("user_id"))
+	if err != nil {
+		http.Error(w, "Invalid user id", http.StatusBadRequest)
+		return
+	}
+	isAdmin := r.FormValue("is_admin") == "true"
+
+	if err := h.svc.SetAdmin(r.Context(), userID, isAdmin); err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin?success=Admin+status+updated", http.StatusSeeOther)
+}
+
+// DeleteUser handles POST /admin/delete-user.
+// Accepts both form-encoded and JSON request bodies.
+func (h *Handlers) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+
+	var userID int
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		var payload struct {
+			UserID int `json:"user_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		userID = payload.UserID
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+		parsed, err := strconv.Atoi(r.FormValue("user_id"))
+		if err != nil {
+			http.Error(w, "Invalid user id", http.StatusBadRequest)
+			return
+		}
+		userID = parsed
+	}
+
+	if userID == 0 {
+		http.Error(w, "User id required", http.StatusBadRequest)
+		return
+	}
+	if userID == session.UserID {
+		http.Error(w, "You cannot remove your own account", http.StatusBadRequest)
+		return
+	}
+
+	rowsAffected, err := h.svc.DeleteUser(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if rowsAffected == 0 {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	if h.authMgr != nil {
+		h.authMgr.RevokeUserSessions(userID)
+	}
+
+	if strings.Contains(contentType, "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true}`))
+		return
+	}
+	http.Redirect(w, r, "/admin?success=User+removed", http.StatusSeeOther)
+}
+
+// ResetPassword handles POST /admin/reset-password.
+func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		UserID int `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if payload.UserID <= 0 {
+		http.Error(w, "User id required", http.StatusBadRequest)
+		return
+	}
+
+	password, err := h.svc.ResetPassword(r.Context(), payload.UserID)
+	if err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to reset password", http.StatusInternalServerError)
+		return
+	}
+
+	if h.authMgr != nil {
+		h.authMgr.RevokeUserSessions(payload.UserID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"password": password})
+}
+
+// AddEquipment handles POST /admin/add-equipment.
+func (h *Handlers) AddEquipment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	name := r.FormValue("name")
+	if name == "" {
+		http.Redirect(w, r, "/admin?error=Equipment+name+is+required", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.svc.AddEquipment(r.Context(), name); err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+add+equipment", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Equipment+added+successfully", http.StatusSeeOther)
+}
+
+// DeleteEquipment handles POST /admin/delete-equipment/{id}.
+func (h *Handlers) DeleteEquipment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	equipmentID, err := strconv.Atoi(parts[3])
+	if err != nil {
+		http.Error(w, "Invalid equipment ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.DeleteEquipment(r.Context(), equipmentID); err != nil {
+		http.Error(w, "Error deleting equipment", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// AddGroup handles POST /admin/add-group.
+func (h *Handlers) AddGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	name := strings.TrimSpace(r.FormValue("name"))
+	if name == "" {
+		http.Redirect(w, r, "/admin?error=Group+name+is+required", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.svc.AddGroup(r.Context(), name); err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+add+group", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Group+added", http.StatusSeeOther)
+}
+
+// DeleteGroup handles POST /admin/delete-group/{id}.
+func (h *Handlers) DeleteGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	parts := strings.Split(strings.TrimSuffix(r.URL.Path, "/"), "/")
+	if len(parts) < 4 {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	groupID, err := strconv.Atoi(parts[len(parts)-1])
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.DeleteGroup(r.Context(), groupID); err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			http.Redirect(w, r, "/admin?error=Unknown+group", http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, "/admin?error=Failed+to+delete+group", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Group+removed", http.StatusSeeOther)
+}
+
+// EquipmentReport handles GET /admin/equipment-report and returns a CSV download.
+func (h *Handlers) EquipmentReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	equipmentID := r.URL.Query().Get("id")
+	startDate := r.URL.Query().Get("start")
+	endDate := r.URL.Query().Get("end")
+
+	records, err := h.svc.GetEquipmentReport(r.Context(), equipmentID, startDate, endDate)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=equipment_usage.csv")
+
+	csvWriter := csv.NewWriter(w)
+	defer csvWriter.Flush()
+
+	headers := []string{"Start Time", "End Time", "Duration (hours)", "User", "Group", "Equipment", "Purpose"}
+	if err := csvWriter.Write(headers); err != nil {
+		return
+	}
+
+	for _, rec := range records {
+		duration := rec.EndTime.Sub(rec.StartTime).Hours()
+		row := []string{
+			rec.StartTime.Format("2006-01-02 15:04"),
+			rec.EndTime.Format("2006-01-02 15:04"),
+			fmt.Sprintf("%.2f", duration),
+			rec.Username,
+			rec.GroupName,
+			rec.EquipmentName,
+			rec.Purpose,
+		}
+		_ = csvWriter.Write(row)
+	}
+}
+
+// APIUsers handles GET /api/v1/users.
+func (h *Handlers) APIUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	users, err := h.svc.ListAPIUsers(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items": users,
+		"total": len(users),
+	})
+}
+
+// APIEquipment handles GET /api/v1/equipment.
+func (h *Handlers) APIEquipment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	equipment, err := h.svc.GetAllEquipment(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items": equipment,
+		"total": len(equipment),
+	})
+}
+
+// writeJSON is a package-local helper for JSON responses.
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}

@@ -206,71 +206,8 @@ func TestAPIGetArticle_NotFound(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/v1/users — success path
-// ---------------------------------------------------------------------------
-
-func TestAPIListUsers_OK(t *testing.T) {
-	mock, _ := pgxmock.NewPool()
-	defer mock.Close()
-	restore := setMockDB(mock)
-	defer restore()
-
-	mock.ExpectQuery(`SELECT user_id, username`).
-		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "group"}).
-			AddRow(1, "alice", "phd").
-			AddRow(2, "bob", ""))
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
-	req = withTestSession(req)
-	rr := httptest.NewRecorder()
-
-	apiUsersHandler(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rr.Code)
-	}
-	var body map[string]any
-	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
-		t.Fatalf("decode error: %v", err)
-	}
-	if body["total"] != float64(2) {
-		t.Errorf("total = %v, want 2", body["total"])
-	}
-}
-
-// ---------------------------------------------------------------------------
-// GET /api/v1/equipment — success path
-// ---------------------------------------------------------------------------
-
-func TestAPIListEquipment_OK(t *testing.T) {
-	mock, _ := pgxmock.NewPool()
-	defer mock.Close()
-	restore := setMockDB(mock)
-	defer restore()
-
-	mock.ExpectQuery(`SELECT equipment_id, name`).
-		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location"}).
-			AddRow(1, "SEM", "Scanning electron microscope", "Room 102").
-			AddRow(2, "XRD", "X-ray diffractometer", "Room 105"))
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/equipment", nil)
-	req = withTestSession(req)
-	rr := httptest.NewRecorder()
-
-	apiEquipmentHandler(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rr.Code)
-	}
-	var body map[string]any
-	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
-		t.Fatalf("decode error: %v", err)
-	}
-	items, _ := body["items"].([]any)
-	if len(items) != 2 {
-		t.Errorf("items length = %d, want 2", len(items))
-	}
-}
+// TestAPIListUsers_OK and TestAPIListEquipment_OK have been migrated to
+// internal/admin/service_test.go (Task 16).
 
 // ---------------------------------------------------------------------------
 // Integration tests — real DB (skipped when no DB available)

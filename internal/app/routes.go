@@ -3,37 +3,24 @@ package app
 import (
 	"net/http"
 
+	"sampleDB/internal/admin"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/booking"
 	"sampleDB/internal/samples"
 	"sampleDB/internal/wiki"
 )
 
-// Handlers groups all HTTP handler functions the application needs.
-// Sample-domain, wiki-domain, and booking-domain handlers are wired directly in
-// RegisterRoutes via their respective Handlers types; they are no longer kept here.
+// Handlers groups the HTTP handler functions that have not yet been migrated
+// into their own domain packages.  Admin, samples, wiki, and booking handlers
+// are wired directly in RegisterRoutes via their respective Handlers types.
 type Handlers struct {
-	// Admin
-	AdminPage       http.HandlerFunc
-	UpdateAccess    http.HandlerFunc
-	SetAdmin        http.HandlerFunc
-	ResetPassword   http.HandlerFunc
-	AddEquipment    http.HandlerFunc
-	DeleteEquipment http.HandlerFunc
-	AddGroup        http.HandlerFunc
-	DeleteGroup     http.HandlerFunc
-	EquipmentReport http.HandlerFunc
-	DeleteUser      http.HandlerFunc
-
 	// Account / profile
 	ChangePassword     http.HandlerFunc
 	ProfileTokens      http.HandlerFunc
 	ProfileTokenRevoke http.HandlerFunc
 
-	// REST API v1 — users / equipment (samples API in samples.Handlers, wiki in wiki.Handlers)
-	APIUsers     http.HandlerFunc
-	APIEquipment http.HandlerFunc
-	APINotFound  http.HandlerFunc
+	// REST API v1 — not-found catch-all
+	APINotFound http.HandlerFunc
 
 	// Public (no auth required) — non-sample pages
 	AIAgents        http.HandlerFunc
@@ -62,11 +49,9 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // RegisterRoutes wires all application HTTP routes onto mux.
-// Sample-domain routes are registered using a freshly constructed
-// samples.Handlers backed by the application's DB and Renderer.
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	withAuth := a.Auth.RequireAuth
-	adminH := a.RequireAdmin
+	adminMW := a.RequireAdmin
 	h := a.Handlers
 
 	// Static files
@@ -115,32 +100,32 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/wiki", withAuth(wikiHdlrs.HandleWiki))
 	mux.HandleFunc("/wiki/", withAuth(wikiHdlrs.HandleWiki))
 	mux.HandleFunc("/wiki/attachment/", withAuth(wikiHdlrs.HandleAttachment))
-
-	// REST API v1 routes — wiki
 	mux.HandleFunc("/api/v1/wiki", withAuth(wikiHdlrs.APIWiki))
 	mux.HandleFunc("/api/v1/wiki/", withAuth(wikiHdlrs.APIWiki))
 
-	// Admin routes
-	mux.HandleFunc("/admin", withAuth(adminH(h.AdminPage)))
-	mux.HandleFunc("/admin/update-access", withAuth(adminH(h.UpdateAccess)))
-	mux.HandleFunc("/admin/set-admin", withAuth(adminH(h.SetAdmin)))
-	mux.HandleFunc("/admin/reset-password", withAuth(adminH(h.ResetPassword)))
-	mux.HandleFunc("/admin/add-equipment", withAuth(adminH(h.AddEquipment)))
-	mux.HandleFunc("/admin/delete-equipment/", withAuth(adminH(h.DeleteEquipment)))
-	mux.HandleFunc("/admin/add-group", withAuth(adminH(h.AddGroup)))
-	mux.HandleFunc("/admin/delete-group/", withAuth(adminH(h.DeleteGroup)))
-	mux.HandleFunc("/admin/equipment-report", withAuth(adminH(h.EquipmentReport)))
-	mux.HandleFunc("/admin/delete-user", withAuth(adminH(h.DeleteUser)))
+	// --- Admin domain routes (wired via admin.Handlers) ---
+	adminSvc := admin.NewService(a.DB)
+	adminHdlrs := admin.NewHandlers(adminSvc, a.Renderer, a.Auth)
+	mux.HandleFunc("/admin", withAuth(adminMW(adminHdlrs.AdminPage)))
+	mux.HandleFunc("/admin/update-access", withAuth(adminMW(adminHdlrs.UpdateAccess)))
+	mux.HandleFunc("/admin/set-admin", withAuth(adminMW(adminHdlrs.SetAdmin)))
+	mux.HandleFunc("/admin/reset-password", withAuth(adminMW(adminHdlrs.ResetPassword)))
+	mux.HandleFunc("/admin/add-equipment", withAuth(adminMW(adminHdlrs.AddEquipment)))
+	mux.HandleFunc("/admin/delete-equipment/", withAuth(adminMW(adminHdlrs.DeleteEquipment)))
+	mux.HandleFunc("/admin/add-group", withAuth(adminMW(adminHdlrs.AddGroup)))
+	mux.HandleFunc("/admin/delete-group/", withAuth(adminMW(adminHdlrs.DeleteGroup)))
+	mux.HandleFunc("/admin/equipment-report", withAuth(adminMW(adminHdlrs.EquipmentReport)))
+	mux.HandleFunc("/admin/delete-user", withAuth(adminMW(adminHdlrs.DeleteUser)))
+
+	// REST API v1 — users / equipment
+	mux.HandleFunc("/api/v1/users", withAuth(adminHdlrs.APIUsers))
+	mux.HandleFunc("/api/v1/equipment", withAuth(adminHdlrs.APIEquipment))
+	mux.HandleFunc("/api/", withAuth(h.APINotFound))
 
 	// Account / profile routes
 	mux.HandleFunc("/change-password", withAuth(h.ChangePassword))
 	mux.HandleFunc("/profile/tokens", withAuth(h.ProfileTokens))
 	mux.HandleFunc("/profile/tokens/", withAuth(h.ProfileTokenRevoke))
-
-	// REST API v1 routes — users / equipment
-	mux.HandleFunc("/api/v1/users", withAuth(h.APIUsers))
-	mux.HandleFunc("/api/v1/equipment", withAuth(h.APIEquipment))
-	mux.HandleFunc("/api/", withAuth(h.APINotFound))
 
 	// Public routes (no auth required)
 	mux.HandleFunc("/agents", h.AIAgents)

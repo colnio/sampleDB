@@ -20,21 +20,9 @@ var stub http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 
 func allStubHandlers() app.Handlers {
 	return app.Handlers{
-		AdminPage:          stub,
-		UpdateAccess:       stub,
-		SetAdmin:           stub,
-		ResetPassword:      stub,
-		AddEquipment:       stub,
-		DeleteEquipment:    stub,
-		AddGroup:           stub,
-		DeleteGroup:        stub,
-		EquipmentReport:    stub,
-		DeleteUser:         stub,
 		ChangePassword:     stub,
 		ProfileTokens:      stub,
 		ProfileTokenRevoke: stub,
-		APIUsers:           stub,
-		APIEquipment:       stub,
 		APINotFound:        stub,
 		AIAgents:           stub,
 		AIAgentExamples:    stub,
