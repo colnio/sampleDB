@@ -140,6 +140,10 @@ func (h *Handlers) SetAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.authMgr != nil && !isAdmin {
+		h.authMgr.RevokeUserSessions(r.Context(), userID)
+	}
+
 	http.Redirect(w, r, "/admin?success=Admin+status+updated", http.StatusSeeOther)
 }
 

@@ -94,7 +94,9 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 	for _, eq := range equipment {
 		permitted, err := h.svc.CheckUserPermission(r.Context(), session.UserID, eq.ID)
 		if err != nil {
-			continue
+			log.Printf("booking: CheckUserPermission error for equipment %d: %v", eq.ID, err)
+			http.Error(w, "Error checking permissions", http.StatusInternalServerError)
+			return
 		}
 		hasPermission[eq.ID] = permitted
 	}

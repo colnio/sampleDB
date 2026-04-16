@@ -81,17 +81,21 @@ func TestBookingExclusionConstraint_ConcurrentInserts(t *testing.T) {
 	wg.Wait()
 
 	// ---- assertions ----
+	// With concurrent GiST index inserts, PostgreSQL may raise either an
+	// exclusion_violation (23P01) or a deadlock (40P01) on the losing insert.
+	// Both errors indicate the constraint prevented a duplicate booking.
+	// The service layer retries on deadlock; here we accept either error code.
 	successes := 0
-	exclusionErrors := 0
+	constraintErrors := 0
 	for _, r := range results {
 		if r.err == nil {
 			successes++
 		} else {
 			var pgErr *pgconn.PgError
-			if errors.As(r.err, &pgErr) && pgErr.Code == "23P01" {
-				exclusionErrors++
+			if errors.As(r.err, &pgErr) && (pgErr.Code == "23P01" || pgErr.Code == "40P01") {
+				constraintErrors++
 			} else {
-				t.Errorf("unexpected error (not exclusion_violation): %v", r.err)
+				t.Errorf("unexpected error (expected exclusion_violation or deadlock): %v", r.err)
 			}
 		}
 	}
@@ -99,8 +103,8 @@ func TestBookingExclusionConstraint_ConcurrentInserts(t *testing.T) {
 	if successes != 1 {
 		t.Errorf("expected exactly 1 successful insert, got %d", successes)
 	}
-	if exclusionErrors != 1 {
-		t.Errorf("expected exactly 1 exclusion_violation, got %d", exclusionErrors)
+	if constraintErrors != 1 {
+		t.Errorf("expected exactly 1 constraint error (exclusion_violation or deadlock), got %d", constraintErrors)
 	}
 }
 

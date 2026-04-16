@@ -878,7 +878,7 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 	}
 	if p.From != "" {
 		if _, err := time.Parse("2006-01-02", p.From); err != nil {
-			return APIListResult{}, fmt.Errorf("%w: invalid from date: use YYYY-MM-DD", web.ErrValidation)
+			return APIListResult{}, fmt.Errorf("invalid from date: use YYYY-MM-DD: %w", web.ErrValidation)
 		}
 		idx := len(args) + 1
 		conditions = append(conditions, fmt.Sprintf("s.created_at >= $%d", idx))
@@ -886,7 +886,7 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 	}
 	if p.To != "" {
 		if _, err := time.Parse("2006-01-02", p.To); err != nil {
-			return APIListResult{}, fmt.Errorf("%w: invalid to date: use YYYY-MM-DD", web.ErrValidation)
+			return APIListResult{}, fmt.Errorf("invalid to date: use YYYY-MM-DD: %w", web.ErrValidation)
 		}
 		idx := len(args) + 1
 		conditions = append(conditions, fmt.Sprintf("s.created_at < $%d::date + interval '1 day'", idx))
