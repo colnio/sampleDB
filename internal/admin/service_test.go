@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
 
 	"sampleDB/internal/admin"
@@ -391,6 +392,7 @@ func TestAddGroup_Success(t *testing.T) {
 func TestDeleteGroup_Success(t *testing.T) {
 	svc, mock := newSvc(t)
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(`SELECT name FROM groups WHERE group_id`).
 		WithArgs(3).
 		WillReturnRows(pgxmock.NewRows([]string{"name"}).AddRow("PhDs"))
@@ -403,6 +405,8 @@ func TestDeleteGroup_Success(t *testing.T) {
 		WithArgs(3).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
+	mock.ExpectCommit()
+
 	if err := svc.DeleteGroup(context.Background(), 3); err != nil {
 		t.Fatalf("DeleteGroup: %v", err)
 	}
@@ -414,9 +418,11 @@ func TestDeleteGroup_Success(t *testing.T) {
 func TestDeleteGroup_NotFound(t *testing.T) {
 	svc, mock := newSvc(t)
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(`SELECT name FROM groups WHERE group_id`).
 		WithArgs(999).
-		WillReturnError(errors.New("no rows"))
+		WillReturnError(pgx.ErrNoRows)
+	mock.ExpectRollback()
 
 	err := svc.DeleteGroup(context.Background(), 999)
 	if !errors.Is(err, web.ErrNotFound) {

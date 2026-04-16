@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 
 	"sampleDB/internal/dbiface"
@@ -77,9 +79,12 @@ func (s *DBService) GetAllEquipment(ctx context.Context) ([]Equipment, error) {
 	for rows.Next() {
 		var eq Equipment
 		if err := rows.Scan(&eq.ID, &eq.Name, &eq.Description, &eq.Location); err != nil {
-			continue
+			return nil, err
 		}
 		equipment = append(equipment, eq)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return equipment, nil
 }
@@ -97,9 +102,12 @@ func (s *DBService) GetAllGroups(ctx context.Context) ([]Group, error) {
 	for rows.Next() {
 		var g Group
 		if err := rows.Scan(&g.ID, &g.Name); err != nil {
-			continue
+			return nil, err
 		}
 		groups = append(groups, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return groups, nil
 }
@@ -137,8 +145,7 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
 			equipmentIDs []int32
 		)
 		if err := rows.Scan(&u.UserID, &u.Username, &u.Approved, &u.Admin, &groupName, &equipmentIDs); err != nil {
-			fmt.Printf("admin: error scanning user row: %v\n", err)
-			continue
+			return nil, err
 		}
 		if groupName.Valid {
 			u.GroupName = groupName.String
@@ -282,20 +289,31 @@ func (s *DBService) AddGroup(ctx context.Context, name string) error {
 	return err
 }
 
-// DeleteGroup looks up a group by ID, unlinks all users from it, then deletes it.
-// Returns web.ErrNotFound if the group does not exist.
+// DeleteGroup looks up a group by ID, unlinks all users from it, then deletes it
+// inside a single transaction. Returns web.ErrNotFound if the group does not exist.
 func (s *DBService) DeleteGroup(ctx context.Context, groupID int) error {
-	var groupName string
-	if err := s.db.QueryRow(ctx,
-		"SELECT name FROM groups WHERE group_id = $1", groupID).Scan(&groupName); err != nil {
-		return web.ErrNotFound
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
 	}
-	if _, err := s.db.Exec(ctx,
+	defer tx.Rollback(ctx)
+
+	var groupName string
+	if err := tx.QueryRow(ctx,
+		"SELECT name FROM groups WHERE group_id = $1", groupID).Scan(&groupName); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return web.ErrNotFound
+		}
+		return err
+	}
+	if _, err := tx.Exec(ctx,
 		`UPDATE users SET "group" = NULL WHERE btrim("group") = $1`, groupName); err != nil {
 		return err
 	}
-	_, err := s.db.Exec(ctx, "DELETE FROM groups WHERE group_id = $1", groupID)
-	return err
+	if _, err := tx.Exec(ctx, "DELETE FROM groups WHERE group_id = $1", groupID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // GetEquipmentReport returns the booking records matching the given equipment ID
@@ -327,9 +345,12 @@ func (s *DBService) GetEquipmentReport(ctx context.Context, equipmentID, startDa
 		var rec BookingRecord
 		if err := rows.Scan(&rec.StartTime, &rec.EndTime, &rec.Purpose,
 			&rec.Username, &rec.GroupName, &rec.EquipmentName); err != nil {
-			continue
+			return nil, err
 		}
 		records = append(records, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return records, nil
 }

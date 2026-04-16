@@ -134,7 +134,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			deleted    bool
 		)
 
-		err := m.db.QueryRow(context.Background(),
+		err := m.db.QueryRow(r.Context(),
 			"SELECT user_id, password_hash, is_approved, COALESCE(deleted, false) FROM users WHERE username = $1",
 			username).Scan(&userID, &passwdHash, &isApproved, &deleted)
 		if err != nil {
@@ -220,7 +220,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 		}
 
 		var exists bool
-		err := m.db.QueryRow(context.Background(),
+		err := m.db.QueryRow(r.Context(),
 			"SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)",
 			username).Scan(&exists)
 		if err != nil {
@@ -239,7 +239,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 			return
 		}
 
-		_, err = m.db.Exec(context.Background(),
+		_, err = m.db.Exec(r.Context(),
 			"INSERT INTO users (username, password_hash, is_approved) VALUES ($1, $2, false)",
 			username, string(hashedPassword))
 		if err != nil {

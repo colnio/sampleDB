@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
 
 	"sampleDB/internal/auth"
@@ -138,7 +139,7 @@ func TestGetPasswordHash_UserNotFound_ReturnsErrNotFound(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT password_hash FROM users`).
 		WithArgs(99).
-		WillReturnError(errors.New("no rows"))
+		WillReturnError(pgx.ErrNoRows)
 
 	_, err := svc.GetPasswordHash(context.Background(), 99)
 	if !errors.Is(err, web.ErrNotFound) {

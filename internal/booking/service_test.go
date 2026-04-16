@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pashagolub/pgxmock/v3"
@@ -383,7 +384,7 @@ func TestDelete_MissingBookingReturnsNotFound(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT user_id FROM bookings WHERE booking_id`).
 		WithArgs(99).
-		WillReturnError(fmt.Errorf("no rows"))
+		WillReturnError(pgx.ErrNoRows)
 
 	err := svc.Delete(context.Background(), 99, 7)
 	if !errors.Is(err, web.ErrNotFound) {

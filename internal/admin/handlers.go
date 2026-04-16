@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,7 +81,7 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		fmt.Printf("admin: error parsing access update JSON: %v\n", err)
+		log.Printf("admin: error parsing access update JSON: %v", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
@@ -91,7 +92,7 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		GroupName: payload.GroupName,
 		Equipment: payload.Equipment,
 	}); err != nil {
-		fmt.Printf("admin: error updating access: %v\n", err)
+		log.Printf("admin: error updating access: %v", err)
 		http.Error(w, "Error updating access", http.StatusInternalServerError)
 		return
 	}

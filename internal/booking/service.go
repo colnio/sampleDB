@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"sampleDB/internal/dbiface"
@@ -57,9 +58,12 @@ func (s *DBService) GetAllEquipment(ctx context.Context) ([]Equipment, error) {
 	for rows.Next() {
 		var eq Equipment
 		if err := rows.Scan(&eq.ID, &eq.Name, &eq.Description, &eq.Location); err != nil {
-			continue
+			return nil, err
 		}
 		equipment = append(equipment, eq)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return equipment, nil
 }
@@ -109,11 +113,14 @@ func (s *DBService) GetBookingsForWeek(ctx context.Context, start, end time.Time
 		var b Booking
 		if err := rows.Scan(&b.ID, &b.EquipmentID, &b.UserID, &b.Username,
 			&b.StartTime, &b.EndTime, &b.Purpose, &b.CreatedAt); err != nil {
-			continue
+			return nil, err
 		}
 		b.StartTime = b.StartTime.In(s.loc)
 		b.EndTime = b.EndTime.In(s.loc)
 		bookings = append(bookings, b)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	if len(bookings) == 0 {
 		return []Booking{}, nil
@@ -138,9 +145,12 @@ func (s *DBService) GetUserBookings(ctx context.Context, userID int) ([]Booking,
 	for rows.Next() {
 		var b Booking
 		if err := rows.Scan(&b.ID, &b.EquipmentID, &b.UserID, &b.StartTime, &b.EndTime, &b.Purpose, &b.CreatedAt); err != nil {
-			continue
+			return nil, err
 		}
 		bookings = append(bookings, b)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	if len(bookings) == 0 {
 		return []Booking{}, nil
@@ -149,15 +159,16 @@ func (s *DBService) GetUserBookings(ctx context.Context, userID int) ([]Booking,
 }
 
 // CheckConflict returns true if a booking for equipmentID already overlaps [start, end).
+// Uses half-open interval semantics (start inclusive, end exclusive) matching the
+// bookings_no_overlap exclusion constraint, so back-to-back bookings are allowed.
 func (s *DBService) CheckConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error) {
 	var exists bool
 	err := s.db.QueryRow(ctx,
 		`SELECT EXISTS(
             SELECT 1 FROM bookings
             WHERE equipment_id = $1
-            AND (
-                (start_time, end_time) OVERLAPS ($2, $3)
-            )
+            AND start_time < $3
+            AND end_time > $2
         )`, equipmentID, start, end).Scan(&exists)
 	return exists, err
 }
@@ -187,7 +198,10 @@ func (s *DBService) Delete(ctx context.Context, bookingID, userID int) error {
 	err := s.db.QueryRow(ctx,
 		"SELECT user_id FROM bookings WHERE booking_id = $1", bookingID).Scan(&ownerID)
 	if err != nil {
-		return web.ErrNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return web.ErrNotFound
+		}
+		return err
 	}
 	if ownerID != userID {
 		return web.ErrForbidden

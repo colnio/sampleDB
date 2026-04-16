@@ -2,7 +2,10 @@ package profile
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 
 	"sampleDB/internal/dbiface"
 	"sampleDB/internal/web"
@@ -54,7 +57,10 @@ func (s *DBService) GetPasswordHash(ctx context.Context, userID int) (string, er
 		`SELECT password_hash FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
 		userID).Scan(&hash)
 	if err != nil {
-		return "", web.ErrNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", web.ErrNotFound
+		}
+		return "", fmt.Errorf("profile: get password hash: %w", err)
 	}
 	return hash, nil
 }

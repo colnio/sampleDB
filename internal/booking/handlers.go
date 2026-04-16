@@ -139,17 +139,17 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 
 	startTime, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("start_time"), h.loc)
 	if err != nil {
-		http.Redirect(w, r, "/booking?error=Invalid+start+time:+"+err.Error(), http.StatusSeeOther)
+		http.Redirect(w, r, "/booking?error=Invalid+start+time+format", http.StatusSeeOther)
 		return
 	}
 
 	endTime, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("end_time"), h.loc)
 	if err != nil {
-		http.Redirect(w, r, "/booking?error=Invalid+end+time:+"+err.Error(), http.StatusSeeOther)
+		http.Redirect(w, r, "/booking?error=Invalid+end+time+format", http.StatusSeeOther)
 		return
 	}
 
-	if endTime.Before(startTime) {
+	if !endTime.After(startTime) {
 		http.Redirect(w, r, "/booking?error=End+time+must+be+after+start+time", http.StatusSeeOther)
 		return
 	}
@@ -200,7 +200,8 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/booking?error=Time+slot+already+booked", http.StatusSeeOther)
 			return
 		}
-		http.Redirect(w, r, "/booking?error=Error+creating+booking:+"+err.Error(), http.StatusSeeOther)
+		log.Printf("booking: error creating booking for user %d: %v", session.UserID, err)
+		http.Redirect(w, r, "/booking?error=Error+creating+booking", http.StatusSeeOther)
 		return
 	}
 
