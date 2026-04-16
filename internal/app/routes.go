@@ -6,19 +6,15 @@ import (
 	"sampleDB/internal/admin"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/booking"
+	"sampleDB/internal/profile"
 	"sampleDB/internal/samples"
 	"sampleDB/internal/wiki"
 )
 
 // Handlers groups the HTTP handler functions that have not yet been migrated
-// into their own domain packages.  Admin, samples, wiki, and booking handlers
-// are wired directly in RegisterRoutes via their respective Handlers types.
+// into their own domain packages.  Admin, samples, wiki, booking, and profile
+// handlers are wired directly in RegisterRoutes via their respective Handlers types.
 type Handlers struct {
-	// Account / profile
-	ChangePassword     http.HandlerFunc
-	ProfileTokens      http.HandlerFunc
-	ProfileTokenRevoke http.HandlerFunc
-
 	// REST API v1 — not-found catch-all
 	APINotFound http.HandlerFunc
 
@@ -122,10 +118,12 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/equipment", withAuth(adminHdlrs.APIEquipment))
 	mux.HandleFunc("/api/", withAuth(h.APINotFound))
 
-	// Account / profile routes
-	mux.HandleFunc("/change-password", withAuth(h.ChangePassword))
-	mux.HandleFunc("/profile/tokens", withAuth(h.ProfileTokens))
-	mux.HandleFunc("/profile/tokens/", withAuth(h.ProfileTokenRevoke))
+	// --- Profile domain routes (wired via profile.Handlers) ---
+	profileSvc := profile.NewService(a.DB)
+	profileHdlrs := profile.NewHandlers(profileSvc, a.Renderer, a.Auth)
+	mux.HandleFunc("/change-password", withAuth(profileHdlrs.ChangePassword))
+	mux.HandleFunc("/profile/tokens", withAuth(profileHdlrs.ProfileTokens))
+	mux.HandleFunc("/profile/tokens/", withAuth(profileHdlrs.ProfileTokenRevoke))
 
 	// Public routes (no auth required)
 	mux.HandleFunc("/agents", h.AIAgents)

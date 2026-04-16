@@ -187,10 +187,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 17: Extract `internal/profile` package
 
-- [ ] write failing tests for change-password and API token management handlers
-- [ ] create `internal/profile/` with handlers migrated from relevant sections of `main.go` and `api.go`
-- [ ] update route registration
-- [ ] run tests — must pass before task 18
+- [x] write failing tests for change-password and API token management handlers
+- [x] create `internal/profile/` with handlers migrated from relevant sections of `main.go` and `api.go`
+- [x] update route registration
+- [x] run tests — must pass before task 18
 
 ### Task 18: Persist sessions in PostgreSQL
 

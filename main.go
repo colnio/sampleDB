@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -16,11 +15,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
@@ -31,16 +28,13 @@ import (
 	"sampleDB/internal/web"
 )
 
+// BasePageData holds session-derived fields shared by all page templates.
+// This type is used by legacy top-level handlers (wiki.go, etc.) that have
+// not yet been removed.
 type BasePageData struct {
 	Username string
 	UserID   int
 	IsAdmin  bool
-}
-
-type ChangePasswordPageData struct {
-	BasePageData
-	Error   string
-	Success string
 }
 
 type AIAgentExamplesPageData struct {
@@ -50,23 +44,6 @@ type AIAgentExamplesPageData struct {
 }
 
 var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
-
-// getBasePageData fetches the admin flag for sessionUserID and returns a
-// BasePageData suitable for embedding in any page template.
-func getBasePageData(ctx context.Context, session auth.Session) (BasePageData, error) {
-	var isAdmin bool
-	err := theApp.DB.QueryRow(ctx,
-		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
-		session.UserID).Scan(&isAdmin)
-	if err != nil {
-		return BasePageData{}, err
-	}
-	return BasePageData{
-		Username: session.Username,
-		UserID:   session.UserID,
-		IsAdmin:  isAdmin,
-	}, nil
-}
 
 // theApp holds all application-wide dependencies, replacing the former
 // package-level variables dbPool, appConfig, authManagerInstance and loc.
@@ -291,226 +268,6 @@ func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
 	})
 }
 
-func handleChangePassword(w http.ResponseWriter, r *http.Request) {
-	session := auth.MustSessionFromContext(r.Context())
-
-	baseData, err := getBasePageData(r.Context(), session)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			http.Redirect(w, r, "/logout", http.StatusSeeOther)
-			return
-		}
-		http.Error(w, "Unable to load account information", http.StatusInternalServerError)
-		return
-	}
-
-	data := ChangePasswordPageData{
-		BasePageData: baseData,
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		renderChangePasswordTemplate(w, data)
-	case http.MethodPost:
-		if err := r.ParseForm(); err != nil {
-			data.Error = "Invalid form submission"
-			w.WriteHeader(http.StatusBadRequest)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		currentPassword := strings.TrimSpace(r.FormValue("current_password"))
-		newPassword := strings.TrimSpace(r.FormValue("new_password"))
-		confirmPassword := strings.TrimSpace(r.FormValue("confirm_password"))
-
-		if currentPassword == "" || newPassword == "" || confirmPassword == "" {
-			data.Error = "All fields are required"
-			w.WriteHeader(http.StatusBadRequest)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		if len(newPassword) < 8 {
-			data.Error = "New password must be at least 8 characters long"
-			w.WriteHeader(http.StatusBadRequest)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		if newPassword != confirmPassword {
-			data.Error = "New passwords do not match"
-			w.WriteHeader(http.StatusBadRequest)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		var storedHash string
-		err := theApp.DB.QueryRow(r.Context(),
-			`SELECT password_hash
-	             FROM users
-	             WHERE user_id = $1
-	               AND COALESCE(deleted, false) = false`,
-			session.UserID).Scan(&storedHash)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				http.Redirect(w, r, "/logout", http.StatusSeeOther)
-				return
-			}
-			data.Error = "Unable to verify current password"
-			w.WriteHeader(http.StatusBadRequest)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)); err != nil {
-			data.Error = "Current password is incorrect"
-			w.WriteHeader(http.StatusBadRequest)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		if currentPassword == newPassword {
-			data.Error = "New password must be different from the current password"
-			w.WriteHeader(http.StatusBadRequest)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-		if err != nil {
-			data.Error = "Failed to update password"
-			w.WriteHeader(http.StatusInternalServerError)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		cmdTag, err := theApp.DB.Exec(r.Context(),
-			`UPDATE users
-             SET password_hash = $1
-             WHERE user_id = $2
-               AND COALESCE(deleted, false) = false`,
-			string(newHash), session.UserID)
-		if err != nil || cmdTag.RowsAffected() == 0 {
-			data.Error = "Failed to update password"
-			w.WriteHeader(http.StatusInternalServerError)
-			renderChangePasswordTemplate(w, data)
-			return
-		}
-
-		data.Success = "Password updated successfully"
-		renderChangePasswordTemplate(w, data)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func renderChangePasswordTemplate(w http.ResponseWriter, data ChangePasswordPageData) {
-	if err := theApp.Renderer.Render(w, "change_password", data); err != nil {
-		http.Error(w, "Template execution error", http.StatusInternalServerError)
-	}
-}
-
-// ProfileTokensPageData holds data for the API token management page.
-type ProfileTokensPageData struct {
-	BasePageData
-	Tokens     []auth.APIToken
-	PlainToken string // populated once, right after generation
-	Error      string
-	Success    string
-}
-
-func handleProfileTokens(w http.ResponseWriter, r *http.Request) {
-	session := auth.MustSessionFromContext(r.Context())
-	baseData, err := getBasePageData(r.Context(), session)
-	if err != nil {
-		http.Error(w, "Error loading profile", http.StatusInternalServerError)
-		return
-	}
-
-	data := ProfileTokensPageData{BasePageData: baseData}
-
-	switch r.Method {
-	case http.MethodGet:
-		tokens, err := theApp.Auth.ListAPITokens(r.Context(), session.UserID)
-		if err != nil {
-			data.Error = "Could not load tokens"
-		} else {
-			data.Tokens = tokens
-		}
-		renderProfileTokensTemplate(w, data)
-
-	case http.MethodPost:
-		if err := r.ParseForm(); err != nil {
-			data.Error = "Invalid form submission"
-			w.WriteHeader(http.StatusBadRequest)
-			renderProfileTokensTemplate(w, data)
-			return
-		}
-		name := strings.TrimSpace(r.FormValue("name"))
-		if name == "" {
-			data.Error = "Token name is required"
-			w.WriteHeader(http.StatusBadRequest)
-			renderProfileTokensTemplate(w, data)
-			return
-		}
-		plain, err := theApp.Auth.CreateAPIToken(r.Context(), session.UserID, name)
-		if err != nil {
-			data.Error = "Could not create token"
-			w.WriteHeader(http.StatusInternalServerError)
-			renderProfileTokensTemplate(w, data)
-			return
-		}
-		data.PlainToken = plain
-		data.Success = "Token generated. Copy it now — it will not be shown again."
-		tokens, _ := theApp.Auth.ListAPITokens(r.Context(), session.UserID)
-		data.Tokens = tokens
-		renderProfileTokensTemplate(w, data)
-
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-// handleProfileTokenRevoke handles POST /profile/tokens/{id}/revoke
-func handleProfileTokenRevoke(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	session := auth.MustSessionFromContext(r.Context())
-
-	// Path: /profile/tokens/{id}/revoke
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	// parts: ["profile", "tokens", "{id}", "revoke"]
-	if len(parts) != 4 || parts[3] != "revoke" {
-		http.NotFound(w, r)
-		return
-	}
-	tokenID, err := strconv.Atoi(parts[2])
-	if err != nil || tokenID <= 0 {
-		http.Error(w, "Invalid token ID", http.StatusBadRequest)
-		return
-	}
-
-	if err := theApp.Auth.RevokeAPIToken(r.Context(), tokenID, session.UserID); err != nil {
-		if errors.Is(err, auth.ErrTokenNotFound) {
-			http.Error(w, "Token not found", http.StatusNotFound)
-		} else {
-			http.Error(w, "Could not revoke token", http.StatusInternalServerError)
-		}
-		return
-	}
-
-	http.Redirect(w, r, "/profile/tokens", http.StatusSeeOther)
-}
-
-func renderProfileTokensTemplate(w http.ResponseWriter, data ProfileTokensPageData) {
-	if err := theApp.Renderer.Render(w, "profile_tokens", data); err != nil {
-		http.Error(w, "Template execution error", http.StatusInternalServerError)
-	}
-}
-
 // ensureDefaultAdmin seeds a single administrator account when the installation is brand new.
 // It leaves existing data untouched once any user records exist.
 func ensureDefaultAdmin(ctx context.Context, pool dbiface.Pool) (bool, error) {
@@ -676,12 +433,9 @@ func main() {
 	}
 
 	theApp.Handlers = app.Handlers{
-		ChangePassword:     handleChangePassword,
-		ProfileTokens:      handleProfileTokens,
-		ProfileTokenRevoke: handleProfileTokenRevoke,
-		APINotFound:        apiNotFoundHandler,
-		AIAgents:           handleAIAgents,
-		AIAgentExamples:    handleAIAgentExamples,
+		APINotFound:     apiNotFoundHandler,
+		AIAgents:        handleAIAgents,
+		AIAgentExamples: handleAIAgentExamples,
 	}
 
 	mux := http.NewServeMux()
