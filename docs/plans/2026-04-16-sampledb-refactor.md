@@ -127,11 +127,11 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 10: Introduce `internal/web` helpers
 
-- [ ] write failing test: `web.RenderError(w, err)` maps sentinel errors (`ErrNotFound`, `ErrForbidden`, `ErrConflict`, `ErrValidation`) to correct HTTP status codes
-- [ ] create `internal/web/errors.go` with sentinel error types and `RenderError`
-- [ ] create `internal/web/json.go` with `JSON(w, status, v)` and `DecodeJSON(r, v)` helpers
-- [ ] create `internal/web/paths.go` with path segment parsing helpers, consolidating duplicated logic from `main.go`, `wiki.go`, `fabrication_steps_handler.go`
-- [ ] run tests — must pass before task 11
+- [x] write failing test: `web.RenderError(w, err)` maps sentinel errors (`ErrNotFound`, `ErrForbidden`, `ErrConflict`, `ErrValidation`) to correct HTTP status codes
+- [x] create `internal/web/errors.go` with sentinel error types and `RenderError`
+- [x] create `internal/web/json.go` with `JSON(w, status, v)` and `DecodeJSON(r, v)` helpers
+- [x] create `internal/web/paths.go` with path segment parsing helpers, consolidating duplicated logic from `main.go`, `wiki.go`, `fabrication_steps_handler.go`
+- [x] run tests — must pass before task 11
 
 ### Task 11: Centralize route registration
 
