@@ -1532,21 +1532,39 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 
 		return
 	} else if r.Method == http.MethodPost {
+		session := auth.MustSessionFromContext(r.Context())
+
+		// Determine whether the requesting user is an admin.
+		var isAdmin bool
+		if err := dbPool.QueryRow(r.Context(),
+			"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+			session.UserID).Scan(&isAdmin); err != nil {
+			log.Printf("newSampleHandler: admin check error: %v", err)
+		}
+
 		// Process the form submission
 		name := r.FormValue("name")
 		description := r.FormValue("description")
 		keywords := r.FormValue("keywords")
 
-		ownerUserIDStr := r.FormValue("owner_user_id")
 		var ownerUserID *int
 		var ownerName string
-		if ownerUserIDStr != "" {
-			id, err := strconv.Atoi(ownerUserIDStr)
-			if err == nil {
-				ownerUserID = &id
-				// Resolve username for legacy sample_owner text field
-				_ = dbPool.QueryRow(context.Background(),
-					"SELECT username FROM users WHERE user_id = $1", id).Scan(&ownerName)
+		if !isAdmin {
+			// Non-admins always own their own samples; ignore any submitted owner_user_id.
+			userID := session.UserID
+			ownerUserID = &userID
+			_ = dbPool.QueryRow(r.Context(),
+				"SELECT username FROM users WHERE user_id = $1", session.UserID).Scan(&ownerName)
+		} else {
+			// Admins may assign ownership to any user.
+			ownerUserIDStr := r.FormValue("owner_user_id")
+			if ownerUserIDStr != "" {
+				id, err := strconv.Atoi(ownerUserIDStr)
+				if err == nil {
+					ownerUserID = &id
+					_ = dbPool.QueryRow(r.Context(),
+						"SELECT username FROM users WHERE user_id = $1", id).Scan(&ownerName)
+				}
 			}
 		}
 
@@ -1557,7 +1575,7 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Insert the new sample into the database and get its ID
 		var newSampleID int
-		err := dbPool.QueryRow(context.Background(),
+		err := dbPool.QueryRow(r.Context(),
 			`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id)
 			 VALUES ($1, $2, $3, $4, $5)
 			 RETURNING sample_id`,

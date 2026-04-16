@@ -31,6 +31,7 @@
                 <input id="sample-keywords" type="text" name="keywords">
             </div>
 
+            {{if .IsAdmin}}
             <div class="form-group">
                 <label for="owner-select">Owner</label>
                 <select id="owner-select" name="owner_user_id">
@@ -40,6 +41,7 @@
                     {{end}}
                 </select>
             </div>
+            {{end}}
 
             <div class="form-actions">
                 <button type="submit" class="button button--primary button--block">Create Sample</button>

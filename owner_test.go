@@ -290,6 +290,161 @@ func TestGetSampleByID_RealDB_OwnerUserID(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// newSampleHandler — ownership enforcement
+// ---------------------------------------------------------------------------
+
+// TestNewSampleHandler_NonAdmin_OwnerSetToSelf verifies that a non-admin creating
+// a sample always has owner_user_id set to their own user ID, even when no
+// owner_user_id is submitted in the form.
+func TestNewSampleHandler_NonAdmin_OwnerSetToSelf(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+	restore := setMockDB(mock)
+	defer restore()
+
+	sessionUserID := 7
+
+	// 1. Admin check for the session user — returns false
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(sessionUserID).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(false))
+
+	// 2. Username lookup for the session user (to populate legacy sample_owner)
+	mock.ExpectQuery(`SELECT username FROM users WHERE user_id`).
+		WithArgs(sessionUserID).
+		WillReturnRows(pgxmock.NewRows([]string{"username"}).AddRow("alice"))
+
+	// 3. INSERT — sample_owner must be "alice", owner_user_id set (any pointer value)
+	mock.ExpectQuery(`INSERT INTO samples`).
+		WithArgs("MyNewSample", "", "", "alice", pgxmock.AnyArg()).
+		WillReturnRows(pgxmock.NewRows([]string{"sample_id"}).AddRow(99))
+
+	form := url.Values{"name": {"MyNewSample"}}
+	req := httptest.NewRequest(http.MethodPost, "/samples/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: sessionUserID, Username: "alice", ExpiresAt: time.Now().Add(time.Hour)}))
+	rr := httptest.NewRecorder()
+
+	newSampleHandler(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303; body: %s", rr.Code, rr.Body.String())
+	}
+	if loc := rr.Header().Get("Location"); loc != "/samples/99" {
+		t.Errorf("Location = %q, want /samples/99", loc)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+// TestNewSampleHandler_NonAdmin_CannotOverrideOwner verifies that a non-admin
+// submitting an explicit owner_user_id for a different user has that value
+// silently ignored — the session user's ID is used instead.
+func TestNewSampleHandler_NonAdmin_CannotOverrideOwner(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+	restore := setMockDB(mock)
+	defer restore()
+
+	sessionUserID := 7
+	// submits owner_user_id=999 but it must be ignored
+
+	// 1. Admin check returns false
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(sessionUserID).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(false))
+
+	// 2. Username lookup must use the SESSION user (7), not the form-submitted user (999)
+	mock.ExpectQuery(`SELECT username FROM users WHERE user_id`).
+		WithArgs(sessionUserID).
+		WillReturnRows(pgxmock.NewRows([]string{"username"}).AddRow("alice"))
+
+	// 3. INSERT with session owner, not the form-submitted owner
+	mock.ExpectQuery(`INSERT INTO samples`).
+		WithArgs("MySample", "", "", "alice", pgxmock.AnyArg()).
+		WillReturnRows(pgxmock.NewRows([]string{"sample_id"}).AddRow(88))
+
+	form := url.Values{
+		"name":          {"MySample"},
+		"owner_user_id": {"999"}, // different user — must be ignored for non-admin
+	}
+	req := httptest.NewRequest(http.MethodPost, "/samples/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: sessionUserID, Username: "alice", ExpiresAt: time.Now().Add(time.Hour)}))
+	rr := httptest.NewRecorder()
+
+	newSampleHandler(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303; body: %s", rr.Code, rr.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+// TestNewSampleHandler_Admin_CanSetArbitraryOwner verifies that an admin can
+// create a sample with an owner_user_id pointing to any user.
+func TestNewSampleHandler_Admin_CanSetArbitraryOwner(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+	restore := setMockDB(mock)
+	defer restore()
+
+	sessionUserID := 1  // admin
+	targetOwnerID := 5  // different user to assign ownership to
+
+	// 1. Admin check returns true
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(sessionUserID).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
+
+	// 2. Username lookup for the TARGET owner (not the admin)
+	mock.ExpectQuery(`SELECT username FROM users WHERE user_id`).
+		WithArgs(targetOwnerID).
+		WillReturnRows(pgxmock.NewRows([]string{"username"}).AddRow("bob"))
+
+	// 3. INSERT with the target owner
+	mock.ExpectQuery(`INSERT INTO samples`).
+		WithArgs("AdminSample", "", "", "bob", pgxmock.AnyArg()).
+		WillReturnRows(pgxmock.NewRows([]string{"sample_id"}).AddRow(77))
+
+	form := url.Values{
+		"name":          {"AdminSample"},
+		"owner_user_id": {fmt.Sprintf("%d", targetOwnerID)},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/samples/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: sessionUserID, Username: "admin", ExpiresAt: time.Now().Add(time.Hour)}))
+	rr := httptest.NewRecorder()
+
+	newSampleHandler(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303; body: %s", rr.Code, rr.Body.String())
+	}
+	if loc := rr.Header().Get("Location"); loc != "/samples/77" {
+		t.Errorf("Location = %q, want /samples/77", loc)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
 func TestGetSampleByID_RealDB_NoOwnerUserID(t *testing.T) {
 	pool := testDB(t)
 

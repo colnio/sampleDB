@@ -58,12 +58,12 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 1: Enforce sample ownership at creation
 
-- [ ] write failing test: non-admin creating a sample gets `owner_user_id` set to their own user ID
-- [ ] write failing test: non-admin cannot POST a sample with an explicit `owner_user_id` different from their own
-- [ ] write failing test: admin can create sample with arbitrary or empty owner
-- [ ] update `newSampleHandler` in `main.go` to always assign `owner_user_id = sessionUserID` for non-admins, ignoring any form field value
-- [ ] update `templates/new_sample.html` to hide or remove the owner selector for non-admins
-- [ ] run tests — must pass before task 2
+- [x] write failing test: non-admin creating a sample gets `owner_user_id` set to their own user ID
+- [x] write failing test: non-admin cannot POST a sample with an explicit `owner_user_id` different from their own
+- [x] write failing test: admin can create sample with arbitrary or empty owner
+- [x] update `newSampleHandler` in `main.go` to always assign `owner_user_id = sessionUserID` for non-admins, ignoring any form field value
+- [x] update `templates/new_sample.html` to hide or remove the owner selector for non-admins
+- [x] run tests — must pass before task 2
 
 ### Task 2: Lock down ownerless samples to admins only
 
