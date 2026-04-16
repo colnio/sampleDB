@@ -15,8 +15,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
-
 	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
 )
@@ -94,7 +92,18 @@ func setDownloadHeaders(w http.ResponseWriter, filename string) {
 // path using cfg.BaseDir.  Returns "" if the resolved path would escape the
 // base directory.
 func (h *Handlers) resolveAppPath(path string) string {
-	if path == "" || filepath.IsAbs(path) {
+	if path == "" {
+		return path
+	}
+	base := h.cfg.BaseDir + string(os.PathSeparator)
+	if filepath.IsAbs(path) {
+		// Absolute paths must still be contained within BaseDir when set.
+		if h.cfg.BaseDir == "" {
+			return path
+		}
+		if path != h.cfg.BaseDir && !strings.HasPrefix(path, base) {
+			return ""
+		}
 		return path
 	}
 	clean := filepath.Clean(path)
@@ -102,7 +111,6 @@ func (h *Handlers) resolveAppPath(path string) string {
 		return clean
 	}
 	joined := filepath.Join(h.cfg.BaseDir, clean)
-	base := h.cfg.BaseDir + string(os.PathSeparator)
 	if joined != h.cfg.BaseDir && !strings.HasPrefix(joined, base) {
 		return ""
 	}
@@ -257,10 +265,6 @@ func (h *Handlers) viewArticle(w http.ResponseWriter, r *http.Request, title str
 
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			http.Redirect(w, r, "/logout", http.StatusSeeOther)
-			return
-		}
 		log.Printf("wiki: unable to load admin status for user %d: %v", session.UserID, err)
 	}
 
@@ -284,7 +288,7 @@ func (h *Handlers) renderContentPanel(w http.ResponseWriter, r *http.Request, se
 	}
 
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil {
 		log.Printf("wiki: unable to load admin status for user %d: %v", session.UserID, err)
 	}
 
@@ -386,7 +390,7 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 
 	createdBy, isAdmin, authErr := h.svc.ArticleEditAccess(r.Context(), title, session.UserID)
 	if authErr != nil {
-		if errors.Is(authErr, pgx.ErrNoRows) {
+		if errors.Is(authErr, web.ErrNotFound) {
 			if isHTMXRequest(r) {
 				h.renderContentPanel(w, r, session, title, "", "Article not found.", true)
 				return
@@ -449,7 +453,7 @@ func (h *Handlers) deleteArticle(w http.ResponseWriter, r *http.Request) {
 
 	createdBy, isAdmin, err := h.svc.ArticleEditAccess(r.Context(), title, session.UserID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, web.ErrNotFound) {
 			http.Error(w, "Article not found", http.StatusNotFound)
 			return
 		}
@@ -492,7 +496,7 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 
 	createdBy, isAdmin, authErr := h.svc.ArticleUploadAccess(r.Context(), articleID, session.UserID)
 	if authErr != nil {
-		if errors.Is(authErr, pgx.ErrNoRows) {
+		if errors.Is(authErr, web.ErrNotFound) {
 			http.Error(w, "Article not found", http.StatusNotFound)
 			return
 		}
@@ -579,7 +583,7 @@ func (h *Handlers) deleteAttachment(w http.ResponseWriter, r *http.Request, atta
 
 	createdBy, isAdmin, authErr := h.svc.AttachmentDeleteAccess(r.Context(), attachmentID, session.UserID)
 	if authErr != nil {
-		if errors.Is(authErr, pgx.ErrNoRows) {
+		if errors.Is(authErr, web.ErrNotFound) {
 			http.Error(w, "Attachment not found", http.StatusNotFound)
 		} else {
 			http.Error(w, "Error checking permissions", http.StatusInternalServerError)

@@ -89,7 +89,7 @@ func (s *DBService) ListArticles(ctx context.Context) ([]Article, error) {
 }
 
 // GetArticle loads a full article (rendered content and attachment list) by
-// title.  Returns the pgx.ErrNoRows sentinel when the title is not found.
+// title.  Returns web.ErrNotFound when the title is not found.
 func (s *DBService) GetArticle(ctx context.Context, title string) (*Article, error) {
 	var article Article
 	var rawContent string
@@ -101,6 +101,9 @@ func (s *DBService) GetArticle(ctx context.Context, title string) (*Article, err
 		&article.ID, &article.Title, &rawContent, &article.CreatedAt, &article.CreatedBy,
 		&article.LastModifiedAt, &article.LastModifiedBy)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, web.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -185,7 +188,7 @@ func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, 
 // ---------------------------------------------------------------------------
 
 // ArticleEditAccess returns the creator's user ID and whether the given user
-// is an admin, for an article identified by title.  Returns pgx.ErrNoRows if
+// is an admin, for an article identified by title.  Returns web.ErrNotFound if
 // the article does not exist.
 func (s *DBService) ArticleEditAccess(ctx context.Context, title string, userID int) (int, bool, error) {
 	var createdBy int
@@ -195,11 +198,15 @@ func (s *DBService) ArticleEditAccess(ctx context.Context, title string, userID 
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
 		  WHERE a.title = $2`, userID, title).Scan(&createdBy, &isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, web.ErrNotFound
+	}
 	return createdBy, isAdmin, err
 }
 
 // ArticleUploadAccess returns the creator's user ID and admin flag for an
-// article identified by its numeric ID (as a string).
+// article identified by its numeric ID (as a string).  Returns web.ErrNotFound
+// if the article does not exist.
 func (s *DBService) ArticleUploadAccess(ctx context.Context, articleID string, userID int) (int, bool, error) {
 	var createdBy int
 	var isAdmin bool
@@ -208,11 +215,15 @@ func (s *DBService) ArticleUploadAccess(ctx context.Context, articleID string, u
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
 		  WHERE a.article_id = $2`, userID, articleID).Scan(&createdBy, &isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, web.ErrNotFound
+	}
 	return createdBy, isAdmin, err
 }
 
 // AttachmentDeleteAccess returns the article creator's user ID and admin flag
-// for permission checks before deleting an attachment.
+// for permission checks before deleting an attachment.  Returns web.ErrNotFound
+// if the attachment does not exist.
 func (s *DBService) AttachmentDeleteAccess(ctx context.Context, attachmentID string, userID int) (int, bool, error) {
 	var createdBy int
 	var isAdmin bool
@@ -222,6 +233,9 @@ func (s *DBService) AttachmentDeleteAccess(ctx context.Context, attachmentID str
 		   JOIN articles a ON aa.article_id = a.article_id
 		   LEFT JOIN users u ON u.user_id = $1
 		  WHERE aa.attachment_id = $2`, userID, attachmentID).Scan(&createdBy, &isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, web.ErrNotFound
+	}
 	return createdBy, isAdmin, err
 }
 
@@ -255,17 +269,21 @@ func (s *DBService) AddAttachment(ctx context.Context, articleID, filePath, orig
 }
 
 // GetAttachmentInfo returns the storage path and original filename for a given
-// attachment ID.  Returns pgx.ErrNoRows if the attachment does not exist.
+// attachment ID.  Returns web.ErrNotFound if the attachment does not exist.
 func (s *DBService) GetAttachmentInfo(ctx context.Context, attachmentID string) (string, string, error) {
 	var filePath, originalName string
 	err := s.db.QueryRow(ctx,
 		"SELECT attachment_address, original_name FROM article_attachments WHERE attachment_id = $1",
 		attachmentID).Scan(&filePath, &originalName)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", web.ErrNotFound
+	}
 	return filePath, originalName, err
 }
 
 // DeleteAttachment removes the DB row and returns (articleTitle, filePath) so
-// the caller can delete the file from disk.
+// the caller can delete the file from disk.  Returns web.ErrNotFound if the
+// attachment does not exist.
 func (s *DBService) DeleteAttachment(ctx context.Context, attachmentID string) (string, string, error) {
 	var filePath, articleTitle string
 	err := s.db.QueryRow(ctx,
@@ -274,6 +292,9 @@ func (s *DBService) DeleteAttachment(ctx context.Context, attachmentID string) (
 		   JOIN articles a ON aa.article_id = a.article_id
 		  WHERE aa.attachment_id = $1`, attachmentID).Scan(&filePath, &articleTitle)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", "", web.ErrNotFound
+		}
 		return "", "", err
 	}
 
@@ -324,6 +345,7 @@ func (s *DBService) APIListArticles(ctx context.Context, limit, offset int) ([]A
 }
 
 // APIGetArticle loads a full article for API consumption (attachments included).
+// Returns web.ErrNotFound if the article does not exist.
 func (s *DBService) APIGetArticle(ctx context.Context, id int) (APIArticleDetail, error) {
 	var detail APIArticleDetail
 	err := s.db.QueryRow(ctx, `
@@ -333,6 +355,9 @@ func (s *DBService) APIGetArticle(ctx context.Context, id int) (APIArticleDetail
 		&detail.ID, &detail.Title, &detail.Content,
 		&detail.CreatedAt, &detail.LastModifiedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return APIArticleDetail{}, web.ErrNotFound
+		}
 		return APIArticleDetail{}, err
 	}
 
@@ -403,7 +428,8 @@ func (s *DBService) APIUpdateArticle(ctx context.Context, id int, title, content
 }
 
 // APIArticleEditAccess returns the creator's user ID and admin flag for an
-// article identified by its numeric ID.
+// article identified by its numeric ID.  Returns web.ErrNotFound if the article
+// does not exist.
 func (s *DBService) APIArticleEditAccess(ctx context.Context, id int, userID int) (int, bool, error) {
 	var createdBy int
 	var isAdmin bool
@@ -412,5 +438,8 @@ func (s *DBService) APIArticleEditAccess(ctx context.Context, id int, userID int
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
 		  WHERE a.article_id = $2`, userID, id).Scan(&createdBy, &isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, web.ErrNotFound
+	}
 	return createdBy, isAdmin, err
 }

@@ -8,9 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
-
 	"sampleDB/internal/auth"
+	"sampleDB/internal/web"
 )
 
 // ---------------------------------------------------------------------------
@@ -115,7 +114,7 @@ func (h *Handlers) apiGetArticle(w http.ResponseWriter, r *http.Request, article
 
 	detail, err := h.svc.APIGetArticle(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "article not found")
 			return
 		}
@@ -162,7 +161,7 @@ func (h *Handlers) apiUpdateArticle(w http.ResponseWriter, r *http.Request, arti
 
 	createdBy, isAdmin, err := h.svc.APIArticleEditAccess(r.Context(), id, session.UserID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "article not found")
 			return
 		}

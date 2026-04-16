@@ -176,17 +176,30 @@ func generateUniqueFilename(originalName string) (string, error) {
 }
 
 func resolveAppPath(path string) string {
-	if path == "" || filepath.IsAbs(path) {
+	if path == "" {
+		return path
+	}
+	baseDir := ""
+	if theApp != nil {
+		baseDir = theApp.Config.BaseDir
+	}
+	base := baseDir + string(os.PathSeparator)
+	if filepath.IsAbs(path) {
+		// Absolute paths must still be contained within BaseDir when set.
+		if baseDir == "" {
+			return path
+		}
+		if path != baseDir && !strings.HasPrefix(path, base) {
+			return ""
+		}
 		return path
 	}
 	clean := filepath.Clean(path)
-	if theApp == nil || theApp.Config.BaseDir == "" {
+	if baseDir == "" {
 		return clean
 	}
-	joined := filepath.Join(theApp.Config.BaseDir, clean)
-	// Reject paths that escape the base directory.
-	base := theApp.Config.BaseDir + string(os.PathSeparator)
-	if joined != theApp.Config.BaseDir && !strings.HasPrefix(joined, base) {
+	joined := filepath.Join(baseDir, clean)
+	if joined != baseDir && !strings.HasPrefix(joined, base) {
 		return ""
 	}
 	return joined

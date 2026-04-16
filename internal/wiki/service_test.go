@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
 
+	"sampleDB/internal/web"
 	"sampleDB/internal/wiki"
 )
 
@@ -120,8 +121,8 @@ func TestGetArticle_NotFound(t *testing.T) {
 		WillReturnError(pgx.ErrNoRows)
 
 	_, err := svc.GetArticle(context.Background(), "Missing")
-	if !errors.Is(err, pgx.ErrNoRows) {
-		t.Errorf("expected pgx.ErrNoRows, got %v", err)
+	if !errors.Is(err, web.ErrNotFound) {
+		t.Errorf("expected web.ErrNotFound, got %v", err)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -330,8 +331,8 @@ func TestGetAttachmentInfo_NotFound(t *testing.T) {
 		WillReturnError(pgx.ErrNoRows)
 
 	_, _, err := svc.GetAttachmentInfo(context.Background(), "99")
-	if !errors.Is(err, pgx.ErrNoRows) {
-		t.Errorf("expected pgx.ErrNoRows, got %v", err)
+	if !errors.Is(err, web.ErrNotFound) {
+		t.Errorf("expected web.ErrNotFound, got %v", err)
 	}
 }
 
@@ -453,8 +454,8 @@ func TestAPIGetArticle_NotFound(t *testing.T) {
 		WillReturnError(pgx.ErrNoRows)
 
 	_, err := svc.APIGetArticle(context.Background(), 999)
-	if !errors.Is(err, pgx.ErrNoRows) {
-		t.Errorf("expected pgx.ErrNoRows, got %v", err)
+	if !errors.Is(err, web.ErrNotFound) {
+		t.Errorf("expected web.ErrNotFound, got %v", err)
 	}
 }
 

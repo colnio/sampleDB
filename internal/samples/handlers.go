@@ -93,7 +93,18 @@ func setDownloadHeaders(w http.ResponseWriter, filename string) {
 }
 
 func (h *Handlers) resolveAppPath(path string) string {
-	if path == "" || filepath.IsAbs(path) {
+	if path == "" {
+		return path
+	}
+	base := h.cfg.BaseDir + string(os.PathSeparator)
+	if filepath.IsAbs(path) {
+		// Absolute paths must still be contained within BaseDir when set.
+		if h.cfg.BaseDir == "" {
+			return path
+		}
+		if path != h.cfg.BaseDir && !strings.HasPrefix(path, base) {
+			return ""
+		}
 		return path
 	}
 	clean := filepath.Clean(path)
@@ -101,7 +112,6 @@ func (h *Handlers) resolveAppPath(path string) string {
 		return clean
 	}
 	joined := filepath.Join(h.cfg.BaseDir, clean)
-	base := h.cfg.BaseDir + string(os.PathSeparator)
 	if joined != h.cfg.BaseDir && !strings.HasPrefix(joined, base) {
 		return ""
 	}
