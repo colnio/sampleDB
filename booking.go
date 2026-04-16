@@ -415,7 +415,7 @@ func getBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, e
                 b.purpose, b.created_at
          FROM bookings b
          JOIN users u ON b.user_id = u.user_id
-         WHERE b.start_time >= $1 AND b.end_time <= $2
+         WHERE b.start_time < $2 AND b.end_time > $1
          ORDER BY b.start_time`,
 		start, end)
 	if err != nil {

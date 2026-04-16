@@ -101,9 +101,9 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 7: Fix booking calendar boundary query
 
-- [ ] write failing test: a booking that spans a week boundary appears in both adjacent week views
-- [ ] update `getBookingsForWeek` in `booking.go` to use an overlap condition (`start_time < week_end AND end_time > week_start`) instead of a containment condition
-- [ ] run tests — must pass before phase 1
+- [x] write failing test: a booking that spans a week boundary appears in both adjacent week views
+- [x] update `getBookingsForWeek` in `booking.go` to use an overlap condition (`start_time < week_end AND end_time > week_start`) instead of a containment condition
+- [x] run tests — must pass before phase 1
 
 ---
 
