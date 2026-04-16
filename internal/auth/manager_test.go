@@ -113,7 +113,7 @@ func TestRegisterHandlerCreatesUser(t *testing.T) {
 
 	manager := NewManager(mock)
 
-	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader("username=carol&password=secret&confirm_password=secret"))
+	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader("username=carol&password=secretpass&confirm_password=secretpass"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 

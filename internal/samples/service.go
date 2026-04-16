@@ -226,7 +226,7 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 	searchConds = append(searchConds, whereClauses...)
 
 	q := fmt.Sprintf(`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
-		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, s.created_at,
+		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at,
 		       first_img.attachment_id
 		  FROM samples s
 		  LEFT JOIN users u ON s.owner_user_id = u.user_id
@@ -257,7 +257,7 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 	for rows.Next() {
 		var smpl Sample
 		if err := rows.Scan(&smpl.ID, &smpl.Name, &smpl.Description, &smpl.Keywords,
-			&smpl.Owner, &smpl.OwnerUserID, &smpl.OwnerUsername,
+			&smpl.Owner, &smpl.OwnerUserID, &smpl.OwnerUsername, &smpl.SamplePrep,
 			&smpl.CreatedAt, &smpl.FirstImageID); err != nil {
 			return nil, err
 		}

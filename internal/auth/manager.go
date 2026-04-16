@@ -219,6 +219,11 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 			return
 		}
 
+		if len(password) < 8 {
+			http.Redirect(w, r, "/register?error=Password+must+be+at+least+8+characters", http.StatusSeeOther)
+			return
+		}
+
 		var exists bool
 		err := m.db.QueryRow(r.Context(),
 			"SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)",
@@ -265,6 +270,7 @@ func (m *Manager) LogoutHandler() http.HandlerFunc {
 			Expires:  time.Now().Add(-time.Hour),
 			HttpOnly: true,
 			Secure:   m.cookieSecure,
+			SameSite: http.SameSiteStrictMode,
 		})
 
 		http.Redirect(w, r, "/login", http.StatusSeeOther)

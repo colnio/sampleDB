@@ -396,21 +396,29 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 	description := r.FormValue("description")
 	keywords := r.FormValue("keywords")
 
+	isAdmin, _ := h.svc.IsAdmin(r.Context(), session.UserID)
+
 	var ownerUserID *int
 	var ownerName string
-	if s := r.FormValue("owner_user_id"); s != "" {
-		id, parseErr := strconv.Atoi(s)
-		if parseErr != nil {
-			http.Error(w, "invalid owner_user_id", http.StatusBadRequest)
-			return
+	if isAdmin {
+		if s := r.FormValue("owner_user_id"); s != "" {
+			id, parseErr := strconv.Atoi(s)
+			if parseErr != nil {
+				http.Error(w, "invalid owner_user_id", http.StatusBadRequest)
+				return
+			}
+			uname, scanErr := h.svc.GetUsernameByIDApproved(r.Context(), id)
+			if scanErr != nil {
+				http.Error(w, "owner user not found or not approved", http.StatusBadRequest)
+				return
+			}
+			ownerUserID = &id
+			ownerName = uname
 		}
-		uname, scanErr := h.svc.GetUsernameByIDApproved(r.Context(), id)
-		if scanErr != nil {
-			http.Error(w, "owner user not found or not approved", http.StatusBadRequest)
-			return
-		}
-		ownerUserID = &id
-		ownerName = uname
+	} else {
+		uid := session.UserID
+		ownerUserID = &uid
+		ownerName, _ = h.svc.GetUsernameByID(r.Context(), session.UserID)
 	}
 
 	if err := h.svc.Update(r.Context(), sampleIDInt, UpdateParams{

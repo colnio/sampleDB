@@ -207,10 +207,12 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 
 	week := r.FormValue("week")
 	if week != "" {
-		http.Redirect(w, r, "/booking?week="+week+"&success=Booking+created+successfully", http.StatusSeeOther)
-	} else {
-		http.Redirect(w, r, "/booking?success=Booking+created+successfully", http.StatusSeeOther)
+		if _, err := strconv.Atoi(week); err == nil {
+			http.Redirect(w, r, "/booking?week="+week+"&success=Booking+created+successfully", http.StatusSeeOther)
+			return
+		}
 	}
+	http.Redirect(w, r, "/booking?success=Booking+created+successfully", http.StatusSeeOther)
 }
 
 // DeleteBooking handles POST /booking/delete.
@@ -271,5 +273,7 @@ func (h *Handlers) GetBookings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(bookings)
+	if err := json.NewEncoder(w).Encode(bookings); err != nil {
+		log.Printf("booking: GetBookings encode error: %v", err)
+	}
 }
