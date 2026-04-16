@@ -736,7 +736,11 @@ func (h *Handlers) SharedSample(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, isAuth := h.authMgr.TryAuth(r)
+	session, isAuth, tryAuthErr := h.authMgr.TryAuth(r)
+	if tryAuthErr != nil {
+		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+		return
+	}
 
 	if sample.ShareVisibility == "authenticated" && !isAuth {
 		authHdr := r.Header.Get("Authorization")
@@ -791,7 +795,12 @@ func (h *Handlers) serveSharedAttachment(w http.ResponseWriter, r *http.Request,
 	}
 
 	if visibility == "authenticated" {
-		if _, ok := h.authMgr.TryAuth(r); !ok {
+		_, ok, tryAuthErr := h.authMgr.TryAuth(r)
+		if tryAuthErr != nil {
+			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if !ok {
 			authHdr := r.Header.Get("Authorization")
 			if len(authHdr) > 7 && strings.EqualFold(authHdr[:7], "bearer ") {
 				w.Header().Set("WWW-Authenticate", "Bearer")

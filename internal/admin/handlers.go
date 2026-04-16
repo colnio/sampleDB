@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
@@ -95,6 +96,10 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		log.Printf("admin: error updating access: %v", err)
 		http.Error(w, "Error updating access", http.StatusInternalServerError)
 		return
+	}
+
+	if !payload.Approved && h.authMgr != nil {
+		h.authMgr.RevokeUserSessions(r.Context(), payload.UserID)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -343,6 +348,16 @@ func (h *Handlers) EquipmentReport(w http.ResponseWriter, r *http.Request) {
 	}
 	if startDate == "" || endDate == "" {
 		http.Error(w, "Missing start or end date", http.StatusBadRequest)
+		return
+	}
+
+	const dateLayout = "2006-01-02"
+	if _, err := time.Parse(dateLayout, startDate); err != nil {
+		http.Error(w, "Invalid start date, use YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+	if _, err := time.Parse(dateLayout, endDate); err != nil {
+		http.Error(w, "Invalid end date, use YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
 

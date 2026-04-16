@@ -149,7 +149,7 @@ func (h *Handlers) saveUploadedFile(file io.Reader, originalName string) (string
 
 // HandleWiki dispatches incoming /wiki[/...] requests.
 func (h *Handlers) HandleWiki(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/wiki" {
+	if r.URL.Path == "/wiki" || r.URL.Path == "/wiki/" {
 		h.listArticles(w, r)
 		return
 	}

@@ -58,9 +58,9 @@ type BookingRecord struct {
 
 // APIUser is the JSON representation of a user in the /api/v1/users response.
 type APIUser struct {
-	ID        int    `json:"user_id"`
+	ID        int    `json:"id"`
 	Username  string `json:"username"`
-	GroupName string `json:"group_name"`
+	GroupName string `json:"group"`
 }
 
 // UpdateAccessParams holds the fields for updating a user's access.

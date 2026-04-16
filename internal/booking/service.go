@@ -209,6 +209,12 @@ func (s *DBService) Delete(ctx context.Context, bookingID, userID int, isAdmin b
 	if ownerID != userID && !isAdmin {
 		return web.ErrForbidden
 	}
-	_, err = s.db.Exec(ctx, "DELETE FROM bookings WHERE booking_id = $1", bookingID)
-	return err
+	cmdTag, err := s.db.Exec(ctx, "DELETE FROM bookings WHERE booking_id = $1", bookingID)
+	if err != nil {
+		return err
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
 }

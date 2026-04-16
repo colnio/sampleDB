@@ -317,9 +317,12 @@ func TestTryAuth_NoCookieNoBearer(t *testing.T) {
 	m := NewManager(mock)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	_, ok := m.TryAuth(req)
+	_, ok, err := m.TryAuth(req)
 	if ok {
 		t.Fatal("expected TryAuth to return false with no credentials")
+	}
+	if err != nil {
+		t.Fatalf("expected no error with no credentials, got: %v", err)
 	}
 }
 
@@ -331,7 +334,7 @@ func TestTryAuth_ValidCookie(t *testing.T) {
 	defer mock.Close()
 
 	expiresAt := time.Now().Add(24 * time.Hour)
-	mock.ExpectQuery(`SELECT user_id, username, expires_at FROM sessions WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
 		WithArgs("valid-token").
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
 			AddRow(5, "alice", expiresAt))
@@ -340,9 +343,12 @@ func TestTryAuth_ValidCookie(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
 
-	session, ok := m.TryAuth(req)
+	session, ok, err := m.TryAuth(req)
 	if !ok {
 		t.Fatal("expected TryAuth to return true with valid cookie")
+	}
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
 	}
 	if session.UserID != 5 || session.Username != "alice" {
 		t.Fatalf("unexpected session: %+v", session)
@@ -375,13 +381,16 @@ func TestSessionSurvivesManagerRestart(t *testing.T) {
 
 	// Manager2 uses the same DB pool — simulates a restart with no in-memory state.
 	expiresAt := time.Now().Add(24 * time.Hour)
-	mock.ExpectQuery(`SELECT user_id, username, expires_at FROM sessions WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
 		WithArgs(session.Token).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
 			AddRow(42, "alice", expiresAt))
 
 	m2 := NewManager(mock)
-	found, ok := m2.getSession(context.Background(), session.Token)
+	found, ok, err := m2.getSession(context.Background(), session.Token)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected session to be found by second Manager instance")
 	}

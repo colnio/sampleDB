@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 
 	"sampleDB/internal/dbiface"
@@ -45,7 +46,18 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		// 1. Try session cookie.
 		cookie, err := r.Cookie("session_token")
 		if err == nil {
-			session, exists := m.getSession(r.Context(), cookie.Value)
+			session, exists, sessionErr := m.getSession(r.Context(), cookie.Value)
+			if sessionErr != nil {
+				log.Printf("auth: session lookup db error: %v", sessionErr)
+				if strings.HasPrefix(r.URL.Path, "/api/") {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					fmt.Fprintln(w, `{"error":"service unavailable"}`)
+				} else {
+					http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+				}
+				return
+			}
 			if exists {
 				ctx := context.WithValue(r.Context(), userContextKey, session)
 				next(w, r.WithContext(ctx))
@@ -285,8 +297,10 @@ func (m *Manager) SetCookieSecure(enable bool) {
 	m.cookieSecure = enable
 }
 
-func (m *Manager) RevokeUserSessions(ctx context.Context, userID int) {
-	_, _ = m.db.Exec(ctx, "DELETE FROM sessions WHERE user_id = $1", userID)
+func (m *Manager) RevokeUserSessions(_ context.Context, userID int) {
+	if _, err := m.db.Exec(context.Background(), "DELETE FROM sessions WHERE user_id = $1", userID); err != nil {
+		log.Printf("auth: RevokeUserSessions failed for user %d: %v", userID, err)
+	}
 }
 
 func (m *Manager) SetTemplateDir(dir string) {
@@ -310,15 +324,20 @@ func (m *Manager) templatePath(name string) string {
 }
 
 // TryAuth attempts to authenticate the request from either a session cookie or
-// Bearer token. It returns the session and true on success. Unlike RequireAuth
-// it never writes to the response writer and never redirects.
-func (m *Manager) TryAuth(r *http.Request) (Session, bool) {
+// Bearer token. It returns the session, true, and nil on success. Unlike RequireAuth
+// it never writes to the response writer and never redirects. A non-nil error
+// means a transient DB failure occurred; callers should return 503 in that case.
+func (m *Manager) TryAuth(r *http.Request) (Session, bool, error) {
 	// 1. Try session cookie.
 	cookie, err := r.Cookie("session_token")
 	if err == nil {
-		session, exists := m.getSession(r.Context(), cookie.Value)
+		session, exists, sessionErr := m.getSession(r.Context(), cookie.Value)
+		if sessionErr != nil {
+			log.Printf("auth: session lookup db error: %v", sessionErr)
+			return Session{}, false, sessionErr
+		}
 		if exists {
-			return session, true
+			return session, true, nil
 		}
 	}
 
@@ -328,23 +347,23 @@ func (m *Manager) TryAuth(r *http.Request) (Session, bool) {
 		plain := authHeader[7:]
 		userID, err := m.ValidateAPIToken(r.Context(), plain)
 		if err != nil {
-			return Session{}, false
+			return Session{}, false, nil
 		}
 		// Fail auth if the user has been deleted or is not yet approved.
 		var username string
 		if err := m.db.QueryRow(r.Context(),
 			"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false",
 			userID).Scan(&username); err != nil {
-			return Session{}, false
+			return Session{}, false, nil
 		}
 		return Session{
 			UserID:    userID,
 			Username:  username,
 			ExpiresAt: time.Now().Add(24 * time.Hour),
-		}, true
+		}, true, nil
 	}
 
-	return Session{}, false
+	return Session{}, false, nil
 }
 
 func SessionFromContext(ctx context.Context) (Session, bool) {
@@ -390,16 +409,23 @@ func (m *Manager) newSession(ctx context.Context, username string, userID int) (
 	}, nil
 }
 
-func (m *Manager) getSession(ctx context.Context, token string) (Session, bool) {
+func (m *Manager) getSession(ctx context.Context, token string) (Session, bool, error) {
 	var s Session
 	s.Token = token
 	err := m.db.QueryRow(ctx,
-		"SELECT user_id, username, expires_at FROM sessions WHERE id = $1 AND expires_at > NOW()",
+		`SELECT s.user_id, s.username, s.expires_at
+		   FROM sessions s
+		   JOIN users u ON u.user_id = s.user_id
+		  WHERE s.id = $1 AND s.expires_at > NOW()
+		    AND u.is_approved = true AND COALESCE(u.deleted, false) = false`,
 		token).Scan(&s.UserID, &s.Username, &s.ExpiresAt)
 	if err != nil {
-		return Session{}, false
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Session{}, false, nil
+		}
+		return Session{}, false, err
 	}
-	return s, true
+	return s, true, nil
 }
 
 func (m *Manager) deleteSession(ctx context.Context, token string) {
