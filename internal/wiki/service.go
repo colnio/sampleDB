@@ -170,6 +170,10 @@ func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, 
 			filePaths = append(filePaths, fp)
 		}
 	}
+	if rowsErr := attRows.Err(); rowsErr != nil {
+		attRows.Close()
+		return nil, fmt.Errorf("wiki: DeleteArticle: error reading attachments for %q: %w", title, rowsErr)
+	}
 	attRows.Close()
 
 	_, err = s.db.Exec(ctx, "DELETE FROM articles WHERE title = $1", title)

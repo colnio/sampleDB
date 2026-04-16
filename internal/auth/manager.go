@@ -91,8 +91,14 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 				"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false",
 				userID).Scan(&username); err != nil {
 				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprintln(w, `{"error":"authentication required"}`)
+				if errors.Is(err, pgx.ErrNoRows) {
+					w.WriteHeader(http.StatusUnauthorized)
+					fmt.Fprintln(w, `{"error":"authentication required"}`)
+				} else {
+					log.Printf("auth: user lookup db error: %v", err)
+					w.WriteHeader(http.StatusServiceUnavailable)
+					fmt.Fprintln(w, `{"error":"service unavailable"}`)
+				}
 				return
 			}
 
