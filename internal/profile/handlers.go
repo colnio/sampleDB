@@ -84,6 +84,13 @@ func (h *Handlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if len(newPassword) > 72 {
+			data.Error = "New password must be 72 characters or fewer"
+			w.WriteHeader(http.StatusBadRequest)
+			h.renderChangePassword(w, data)
+			return
+		}
+
 		if newPassword != confirmPassword {
 			data.Error = "New passwords do not match"
 			w.WriteHeader(http.StatusBadRequest)

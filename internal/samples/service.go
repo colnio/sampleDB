@@ -371,17 +371,12 @@ func (s *DBService) AddAttachment(ctx context.Context, sampleID int, path string
 func (s *DBService) DeleteAttachment(ctx context.Context, attachmentID int) (string, error) {
 	var filePath string
 	err := s.db.QueryRow(ctx,
-		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
+		"DELETE FROM attachments WHERE attachment_id = $1 AND source_type = 'sample' RETURNING attachment_address",
 		attachmentID).Scan(&filePath)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", web.ErrNotFound
 		}
-		return "", err
-	}
-	_, err = s.db.Exec(ctx,
-		"DELETE FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'", attachmentID)
-	if err != nil {
 		return "", err
 	}
 	return filePath, nil

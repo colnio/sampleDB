@@ -211,8 +211,8 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 
 	week := r.FormValue("week")
 	if week != "" {
-		if _, err := strconv.Atoi(week); err == nil {
-			http.Redirect(w, r, "/booking?week="+week+"&success=Booking+created+successfully", http.StatusSeeOther)
+		if n, err := strconv.Atoi(week); err == nil {
+			http.Redirect(w, r, fmt.Sprintf("/booking?week=%d&success=Booking+created+successfully", n), http.StatusSeeOther)
 			return
 		}
 	}

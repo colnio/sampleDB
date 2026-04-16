@@ -74,6 +74,7 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var payload struct {
 		UserID    int     `json:"user_id"`
 		Approved  bool    `json:"approved"`
@@ -155,6 +156,7 @@ func (h *Handlers) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	session := auth.MustSessionFromContext(r.Context())
 
 	var userID int
@@ -219,6 +221,7 @@ func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var payload struct {
 		UserID int `json:"user_id"`
 	}

@@ -173,8 +173,14 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		username := r.FormValue("username")
 		password := r.FormValue("password")
+
+		if len(password) > 72 {
+			http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
+			return
+		}
 
 		var (
 			userID     int
@@ -262,6 +268,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		username := strings.TrimSpace(r.FormValue("username"))
 		password := r.FormValue("password")
 		confirmPassword := r.FormValue("confirm_password")
@@ -283,6 +290,11 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 
 		if len(password) < 8 {
 			http.Redirect(w, r, "/register?error=Password+must+be+at+least+8+characters", http.StatusSeeOther)
+			return
+		}
+
+		if len(password) > 72 {
+			http.Redirect(w, r, "/register?error=Password+must+be+72+characters+or+fewer", http.StatusSeeOther)
 			return
 		}
 
