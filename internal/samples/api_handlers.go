@@ -228,7 +228,19 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
-	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, req.Owner, req.OwnerUserID); err != nil {
+	// Non-admins cannot change or clear owner_user_id; force it to their own user ID.
+	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
+	if err != nil {
+		log.Printf("samples api: updateSample admin check error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	ownerUserID := req.OwnerUserID
+	if !isAdmin {
+		ownerUserID = &session.UserID
+	}
+
+	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, req.Owner, ownerUserID); err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "sample not found")
 			return

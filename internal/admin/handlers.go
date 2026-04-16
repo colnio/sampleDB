@@ -93,6 +93,10 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		GroupName: payload.GroupName,
 		Equipment: payload.Equipment,
 	}); err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
 		log.Printf("admin: error updating access: %v", err)
 		http.Error(w, "Error updating access", http.StatusInternalServerError)
 		return

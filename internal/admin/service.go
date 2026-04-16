@@ -123,8 +123,8 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
         SELECT
             u.user_id,
             u.username,
-            u.is_approved,
-            u.admin,
+            COALESCE(u.is_approved, false) AS is_approved,
+            COALESCE(u.admin, false) AS admin,
             btrim(u."group") AS group_name,
             COALESCE(
                 array_agg(uep.equipment_id) FILTER (WHERE uep.equipment_id IS NOT NULL),
@@ -188,10 +188,14 @@ func (s *DBService) UpdateAccess(ctx context.Context, p UpdateAccessParams) erro
 		}
 	}
 
-	if _, err = tx.Exec(ctx,
+	userTag, err := tx.Exec(ctx,
 		`UPDATE users SET is_approved = $1, "group" = $2 WHERE user_id = $3 AND COALESCE(deleted, false) = false`,
-		p.Approved, groupParam, p.UserID); err != nil {
+		p.Approved, groupParam, p.UserID)
+	if err != nil {
 		return fmt.Errorf("update user approval: %w", err)
+	}
+	if userTag.RowsAffected() == 0 {
+		return web.ErrNotFound
 	}
 
 	if _, err = tx.Exec(ctx,
