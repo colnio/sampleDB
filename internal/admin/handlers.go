@@ -244,7 +244,7 @@ func (h *Handlers) AddEquipment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := r.FormValue("name")
+	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
 		http.Redirect(w, r, "/admin?error=Equipment+name+is+required", http.StatusSeeOther)
 		return

@@ -571,7 +571,7 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 
 	redirect := "/wiki"
 	if ref := r.Header.Get("Referer"); ref != "" {
-		if u, err := url.Parse(ref); err == nil && u.Path != "" {
+		if u, err := url.Parse(ref); err == nil && u.Path != "" && !strings.HasPrefix(u.Path, "//") {
 			redirect = u.Path
 		}
 	}

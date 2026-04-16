@@ -32,14 +32,14 @@ var schemaStatements = []string{
 	addAttachmentSourceIDColumn,
 	addAttachmentSourceTypeColumn,
 	backfillAttachmentSourceID,
-	// Migration 006 – see DDL/migrations/005_share_visibility_check.sql
+	// Migration 005 – see DDL/migrations/005_share_visibility_check.sql
 	addShareVisibilityCheckConstraint,
-	// Migration 007 – see DDL/migrations/006_equipment_text.sql
+	// Migration 006 – see DDL/migrations/006_equipment_text.sql
 	addEquipmentTextColumn,
-	// Migration 008 – see DDL/migrations/007_booking_exclusion_constraint.sql
+	// Migration 007 – see DDL/migrations/007_booking_exclusion_constraint.sql
 	enableBtreeGist,
 	addBookingExclusionConstraint,
-	// Migration 009 – see DDL/migrations/008_sessions_table.sql
+	// Migration 008 – see DDL/migrations/008_sessions_table.sql
 	createSessionsTable,
 	createSessionsExpiresAtIndex,
 }

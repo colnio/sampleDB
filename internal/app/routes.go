@@ -35,7 +35,11 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 			"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 			session.UserID).Scan(&isAdmin)
 
-		if err != nil || !isAdmin {
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !isAdmin {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}

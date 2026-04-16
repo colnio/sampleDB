@@ -37,6 +37,10 @@ type contextKey string
 
 const userContextKey contextKey = "auth-user"
 
+// dummyHash is a pre-computed bcrypt hash used to perform a constant-time
+// comparison when a username is not found, preventing timing-based enumeration.
+const dummyHash = "$2a$10$7EqJtq98hPqEX7fNZaFWoOe1Y5aLFMZFTJzYjTsHm5x6BvYHv1Hle"
+
 func NewManager(db dbiface.Pool) *Manager {
 	return &Manager{db: db}
 }
@@ -158,6 +162,9 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			"SELECT user_id, password_hash, is_approved, COALESCE(deleted, false) FROM users WHERE username = $1",
 			username).Scan(&userID, &passwdHash, &isApproved, &deleted)
 		if err != nil {
+			// Run bcrypt against a dummy hash so response time is indistinguishable
+			// from a wrong-password attempt, preventing username enumeration.
+			_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(password))
 			http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
 			return
 		}
