@@ -160,6 +160,198 @@ func TestRegisterHandlerRejectsMismatchedPasswords(t *testing.T) {
 	}
 }
 
+func TestContextWithSession_And_SessionFromContext(t *testing.T) {
+	s := Session{UserID: 99, Username: "tester"}
+	ctx := ContextWithSession(context.Background(), s)
+
+	got, ok := SessionFromContext(ctx)
+	if !ok {
+		t.Fatal("expected session in context")
+	}
+	if got.UserID != 99 || got.Username != "tester" {
+		t.Fatalf("unexpected session: %+v", got)
+	}
+}
+
+func TestSessionFromContext_Missing(t *testing.T) {
+	_, ok := SessionFromContext(context.Background())
+	if ok {
+		t.Fatal("expected no session in empty context")
+	}
+}
+
+func TestMustSessionFromContext_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for missing session")
+		}
+	}()
+	MustSessionFromContext(context.Background())
+}
+
+func TestSetCookieSecure(t *testing.T) {
+	mock, _ := pgxmock.NewPool()
+	defer mock.Close()
+	m := NewManager(mock)
+	m.SetCookieSecure(true)
+	if !m.cookieSecure {
+		t.Fatal("expected cookieSecure to be true")
+	}
+	m.SetCookieSecure(false)
+	if m.cookieSecure {
+		t.Fatal("expected cookieSecure to be false")
+	}
+}
+
+func TestSetTemplateDir(t *testing.T) {
+	mock, _ := pgxmock.NewPool()
+	defer mock.Close()
+	m := NewManager(mock)
+	m.SetTemplateDir("/tmp/templates")
+	if m.templateDir != "/tmp/templates" {
+		t.Fatalf("unexpected templateDir: %q", m.templateDir)
+	}
+}
+
+func TestTemplatePath(t *testing.T) {
+	mock, _ := pgxmock.NewPool()
+	defer mock.Close()
+	m := NewManager(mock)
+
+	// Without templateDir, should prefix with "templates/".
+	got := m.templatePath("login.html")
+	if got != "templates/login.html" {
+		t.Fatalf("unexpected path: %q", got)
+	}
+
+	// With templateDir set, should use that as base.
+	m.SetTemplateDir("/app/tmpl")
+	got = m.templatePath("login.html")
+	if got != "/app/tmpl/login.html" {
+		t.Fatalf("unexpected path: %q", got)
+	}
+
+	// Absolute path should be returned as-is.
+	got = m.templatePath("/absolute/path/login.html")
+	if got != "/absolute/path/login.html" {
+		t.Fatalf("unexpected path for absolute: %q", got)
+	}
+}
+
+func TestLogoutHandler_ClearsSessionAndRedirects(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	mock.ExpectExec(`DELETE FROM sessions WHERE id = \$1`).
+		WithArgs("test-token-123").
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	m := NewManager(mock)
+	req := httptest.NewRequest(http.MethodGet, "/logout", nil)
+	req.AddCookie(&http.Cookie{Name: "session_token", Value: "test-token-123"})
+	rr := httptest.NewRecorder()
+
+	m.LogoutHandler()(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/login" {
+		t.Fatalf("expected redirect to /login, got %q", loc)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
+func TestLogoutHandler_NoCookie(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	m := NewManager(mock)
+	req := httptest.NewRequest(http.MethodGet, "/logout", nil)
+	rr := httptest.NewRecorder()
+
+	m.LogoutHandler()(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("expected redirect even without cookie, got %d", rr.Code)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
+func TestRevokeUserSessions(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	mock.ExpectExec(`DELETE FROM sessions WHERE user_id = \$1`).
+		WithArgs(7).
+		WillReturnResult(pgxmock.NewResult("DELETE", 2))
+
+	m := NewManager(mock)
+	m.RevokeUserSessions(context.Background(), 7)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
+func TestTryAuth_NoCookieNoBearer(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	m := NewManager(mock)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	_, ok := m.TryAuth(req)
+	if ok {
+		t.Fatal("expected TryAuth to return false with no credentials")
+	}
+}
+
+func TestTryAuth_ValidCookie(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	expiresAt := time.Now().Add(24 * time.Hour)
+	mock.ExpectQuery(`SELECT user_id, username, expires_at FROM sessions WHERE id = \$1`).
+		WithArgs("valid-token").
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
+			AddRow(5, "alice", expiresAt))
+
+	m := NewManager(mock)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+
+	session, ok := m.TryAuth(req)
+	if !ok {
+		t.Fatal("expected TryAuth to return true with valid cookie")
+	}
+	if session.UserID != 5 || session.Username != "alice" {
+		t.Fatalf("unexpected session: %+v", session)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
 // TestSessionSurvivesManagerRestart verifies that a session created by one
 // Manager instance is retrievable by a second Manager backed by the same DB,
 // simulating a process restart.

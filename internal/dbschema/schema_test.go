@@ -2,6 +2,7 @@ package dbschema
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -104,6 +105,48 @@ func TestSchemaBootstrapCoversInitSQLTables(t *testing.T) {
 		if !strings.Contains(combined, table) {
 			t.Fatalf("schemaStatements missing table: %q", table)
 		}
+	}
+}
+
+// TestEnsure_SchemaStatementError verifies that Ensure returns an error when a
+// schema statement fails, and stops executing further statements.
+func TestEnsure_SchemaStatementError(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+
+	// First schema statement succeeds, second fails.
+	mock.ExpectExec(regexp.QuoteMeta(schemaStatements[0])).
+		WillReturnResult(pgxmock.NewResult("EXEC", 1))
+	mock.ExpectExec(regexp.QuoteMeta(schemaStatements[1])).
+		WillReturnError(fmt.Errorf("schema exec error"))
+
+	if err := Ensure(context.Background(), mock); err == nil {
+		t.Fatal("expected error when schema statement fails")
+	}
+}
+
+// TestEnsure_DataStatementError verifies that Ensure returns an error when a
+// data statement fails after all schema statements succeed.
+func TestEnsure_DataStatementError(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+
+	for _, stmt := range schemaStatements {
+		mock.ExpectExec(regexp.QuoteMeta(stmt)).
+			WillReturnResult(pgxmock.NewResult("EXEC", 1))
+	}
+	// First data statement fails.
+	mock.ExpectExec(regexp.QuoteMeta(dataStatements[0])).
+		WillReturnError(fmt.Errorf("data exec error"))
+
+	if err := Ensure(context.Background(), mock); err == nil {
+		t.Fatal("expected error when data statement fails")
 	}
 }
 

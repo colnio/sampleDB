@@ -284,3 +284,25 @@ func TestRenderer_Concurrent_Safe(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// ---------------------------------------------------------------------------
+// markdown.go — RenderMarkdown
+// ---------------------------------------------------------------------------
+
+func TestRenderMarkdown_BasicContent(t *testing.T) {
+	out := web.RenderMarkdown("# Hello\n\nWorld")
+	s := string(out)
+	if !strings.Contains(s, "Hello") {
+		t.Fatalf("expected heading text in output, got %q", s)
+	}
+	if !strings.Contains(s, "World") {
+		t.Fatalf("expected paragraph text in output, got %q", s)
+	}
+}
+
+func TestRenderMarkdown_Empty(t *testing.T) {
+	out := web.RenderMarkdown("   ")
+	if out != "" {
+		t.Fatalf("expected empty output for blank input, got %q", out)
+	}
+}
