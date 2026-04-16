@@ -459,7 +459,6 @@ func TestCreate_ConcurrentConflictViaService(t *testing.T) {
 type mockService struct {
 	equipment     []booking.Equipment
 	bookings      []booking.Booking
-	userBookings  []booking.Booking
 	hasPermission bool
 	isAdmin       bool
 	createErr     error
@@ -479,9 +478,6 @@ func (m *mockService) IsAdmin(_ context.Context, _ int) (bool, error) {
 }
 func (m *mockService) GetBookingsForWeek(_ context.Context, _, _ time.Time) ([]booking.Booking, error) {
 	return m.bookings, nil
-}
-func (m *mockService) GetUserBookings(_ context.Context, _ int) ([]booking.Booking, error) {
-	return m.userBookings, nil
 }
 func (m *mockService) CheckConflict(_ context.Context, _ int, _, _ time.Time) (bool, error) {
 	return m.hasConflict, m.conflictErr

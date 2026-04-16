@@ -36,7 +36,6 @@ type BookingPageData struct {
 	BasePageData
 	Equipment     []Equipment
 	Bookings      []Booking
-	UserBookings  []Booking
 	HasPermission map[int]bool
 	TimeSlots     []time.Time
 	Hours         []time.Time

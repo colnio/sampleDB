@@ -259,7 +259,9 @@ func (h *Handlers) apiDeleteSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
-	attachmentIDs, err := h.svc.APIDeleteSample(r.Context(), id)
+	// APIDeleteSample collects file paths before the DELETE (which CASCADE-removes attachment rows),
+	// so disk cleanup can proceed even though DB rows are gone.
+	filePaths, err := h.svc.APIDeleteSample(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "sample not found")
@@ -270,17 +272,13 @@ func (h *Handlers) apiDeleteSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
-	// Delete attachment DB rows and files on disk.
-	for _, aid := range attachmentIDs {
-		filePath, delErr := h.svc.DeleteAttachment(r.Context(), aid)
-		if delErr != nil {
-			log.Printf("samples api: deleteSample cleanup attachment %d error: %v", aid, delErr)
+	// Remove attachment files from disk.
+	for _, fp := range filePaths {
+		if fp == "" {
 			continue
 		}
-		if filePath != "" {
-			if removeErr := removeFile(h.resolveAppPath(filePath)); removeErr != nil {
-				log.Printf("samples api: deleteSample remove file attachment %d error: %v", aid, removeErr)
-			}
+		if removeErr := removeFile(h.resolveAppPath(fp)); removeErr != nil {
+			log.Printf("samples api: deleteSample remove file %q error: %v", fp, removeErr)
 		}
 	}
 

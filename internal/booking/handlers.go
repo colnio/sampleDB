@@ -105,17 +105,10 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userBookings, err := h.svc.GetUserBookings(r.Context(), session.UserID)
-	if err != nil {
-		http.Error(w, "Error retrieving user bookings", http.StatusInternalServerError)
-		return
-	}
-
 	data := BookingPageData{
 		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
 		Equipment:     equipment,
 		Bookings:      bookings,
-		UserBookings:  userBookings,
 		HasPermission: hasPermission,
 		TimeSlots:     timeSlots,
 		Hours:         hours,

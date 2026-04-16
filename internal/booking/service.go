@@ -22,7 +22,6 @@ type Service interface {
 
 	// Bookings
 	GetBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, error)
-	GetUserBookings(ctx context.Context, userID int) ([]Booking, error)
 	CheckConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error)
 	Create(ctx context.Context, p CreateParams) error
 	Delete(ctx context.Context, bookingID, userID int, isAdmin bool) error
@@ -131,35 +130,6 @@ func (s *DBService) GetBookingsForWeek(ctx context.Context, start, end time.Time
 	return bookings, nil
 }
 
-// GetUserBookings returns all future bookings for a given user.
-func (s *DBService) GetUserBookings(ctx context.Context, userID int) ([]Booking, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT booking_id, equipment_id, user_id, start_time, end_time, purpose, created_at
-         FROM bookings
-         WHERE user_id = $1 AND end_time >= NOW()
-         ORDER BY start_time`,
-		userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var bookings []Booking
-	for rows.Next() {
-		var b Booking
-		if err := rows.Scan(&b.ID, &b.EquipmentID, &b.UserID, &b.StartTime, &b.EndTime, &b.Purpose, &b.CreatedAt); err != nil {
-			return nil, err
-		}
-		bookings = append(bookings, b)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if len(bookings) == 0 {
-		return []Booking{}, nil
-	}
-	return bookings, nil
-}
 
 // CheckConflict returns true if a booking for equipmentID already overlaps [start, end).
 // Uses half-open interval semantics (start inclusive, end exclusive) matching the

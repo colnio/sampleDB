@@ -79,7 +79,7 @@ type Service interface {
 	APIGetSample(ctx context.Context, id int) (APISampleDetail, error)
 	APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID *int) (APISampleItem, error)
 	APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string) error
-	APIDeleteSample(ctx context.Context, id int) ([]int, error)
+	APIDeleteSample(ctx context.Context, id int) ([]string, error)
 	SampleExistsByID(ctx context.Context, id int) (bool, error)
 }
 
@@ -1071,21 +1071,22 @@ func (s *DBService) APIUpdateSample(ctx context.Context, id int, name, descripti
 	return nil
 }
 
-// APIDeleteSample deletes a sample and returns the attachment IDs for file cleanup.
-func (s *DBService) APIDeleteSample(ctx context.Context, id int) ([]int, error) {
+// APIDeleteSample deletes a sample and returns the attachment file paths for disk cleanup.
+// File paths are collected before deletion because the CASCADE delete removes attachment rows.
+func (s *DBService) APIDeleteSample(ctx context.Context, id int) ([]string, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT attachment_id FROM attachments WHERE source_id = $1 AND source_type = 'sample'`, id)
+		`SELECT attachment_address FROM attachments WHERE source_id = $1 AND source_type = 'sample'`, id)
 	if err != nil {
 		return nil, err
 	}
-	var attachmentIDs []int
+	var filePaths []string
 	for rows.Next() {
-		var aid int
-		if scanErr := rows.Scan(&aid); scanErr != nil {
+		var fp string
+		if scanErr := rows.Scan(&fp); scanErr != nil {
 			rows.Close()
 			return nil, scanErr
 		}
-		attachmentIDs = append(attachmentIDs, aid)
+		filePaths = append(filePaths, fp)
 	}
 	rows.Close()
 	if rows.Err() != nil {
@@ -1099,7 +1100,7 @@ func (s *DBService) APIDeleteSample(ctx context.Context, id int) ([]int, error) 
 	if tag.RowsAffected() == 0 {
 		return nil, web.ErrNotFound
 	}
-	return attachmentIDs, nil
+	return filePaths, nil
 }
 
 // SampleExistsByID reports whether a sample exists.

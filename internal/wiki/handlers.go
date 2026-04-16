@@ -630,7 +630,12 @@ func (h *Handlers) downloadAttachment(w http.ResponseWriter, r *http.Request, at
 		setDownloadHeaders(w, original)
 	}
 
-	http.ServeFile(w, r, h.resolveAppPath(filePath))
+	resolved := h.resolveAppPath(filePath)
+	if resolved == "" {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeFile(w, r, resolved)
 }
 
 // Preview renders Markdown to HTML for the live editor preview pane.
