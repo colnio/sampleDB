@@ -145,11 +145,17 @@ func (s *DBService) CreateArticle(ctx context.Context, title, content string, cr
 
 // UpdateArticleContent replaces an article's Markdown content.
 func (s *DBService) UpdateArticleContent(ctx context.Context, title, content string, modifiedBy int) error {
-	_, err := s.db.Exec(ctx,
+	tag, err := s.db.Exec(ctx,
 		`UPDATE articles SET content = $1, last_modified_at = NOW(),
 		 last_modified_by = $2 WHERE title = $3`,
 		content, modifiedBy, title)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
 }
 
 // DeleteArticle removes an article (and, via CASCADE, its attachments from the

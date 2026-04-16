@@ -40,13 +40,6 @@ func TestBookingExclusionConstraint_ConcurrentInserts(t *testing.T) {
 		uname).Scan(&userID); err != nil {
 		t.Fatalf("insert test user: %v", err)
 	}
-	t.Cleanup(func() {
-		pool.Exec(context.Background(),
-			`DELETE FROM bookings WHERE user_id = $1`, userID)
-		pool.Exec(context.Background(),
-			`DELETE FROM users WHERE user_id = $1`, userID)
-	})
-
 	ename := fmt.Sprintf("conflict-test-eq-%d", time.Now().UnixNano())
 	var eqID int
 	if err := pool.QueryRow(context.Background(),
@@ -54,9 +47,15 @@ func TestBookingExclusionConstraint_ConcurrentInserts(t *testing.T) {
 		ename).Scan(&eqID); err != nil {
 		t.Fatalf("insert test equipment: %v", err)
 	}
+	// Single cleanup registered after both userID and eqID are set, so the
+	// order is deterministic: bookings first (FK child), then equipment, then user.
 	t.Cleanup(func() {
 		pool.Exec(context.Background(),
+			`DELETE FROM bookings WHERE equipment_id = $1`, eqID)
+		pool.Exec(context.Background(),
 			`DELETE FROM equipment WHERE equipment_id = $1`, eqID)
+		pool.Exec(context.Background(),
+			`DELETE FROM users WHERE user_id = $1`, userID)
 	})
 
 	// ---- concurrent inserts ----

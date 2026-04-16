@@ -158,8 +158,8 @@ func (s *DBService) ListAll(ctx context.Context, dateFrom, dateTo string) ([]Sam
 		args = append(args, dateFrom)
 	}
 	if dateTo != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("s.created_at <= $%d", len(args)+1))
-		args = append(args, dateTo+" 23:59:59")
+		whereClauses = append(whereClauses, fmt.Sprintf("s.created_at < $%d::date + interval '1 day'", len(args)+1))
+		args = append(args, dateTo)
 	}
 	if len(whereClauses) > 0 {
 		q += " WHERE " + strings.Join(whereClauses, " AND ")
@@ -237,8 +237,8 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 		q += fmt.Sprintf(" AND s.created_at >= $%d", len(args))
 	}
 	if dateTo != "" {
-		args = append(args, dateTo+" 23:59:59")
-		q += fmt.Sprintf(" AND s.created_at <= $%d", len(args))
+		args = append(args, dateTo)
+		q += fmt.Sprintf(" AND s.created_at < $%d::date + interval '1 day'", len(args))
 	}
 
 	rows, err := s.db.Query(ctx, q, args...)
