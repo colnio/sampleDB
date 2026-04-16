@@ -84,9 +84,10 @@ func setDownloadHeaders(w http.ResponseWriter, filename string) {
 		return
 	}
 	safeName := strings.ReplaceAll(filename, "\"", "")
+	safeName = strings.ReplaceAll(safeName, "\\", "")
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s",
-			safeName, url.PathEscape(filename)))
+			safeName, url.PathEscape(safeName)))
 }
 
 // resolveAppPath converts a relative storage path to an absolute filesystem

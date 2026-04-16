@@ -86,7 +86,8 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
 	if err != nil {
-		log.Printf("booking: unable to determine admin status for user %d: %v", session.UserID, err)
+		http.Error(w, "Error checking permissions", http.StatusInternalServerError)
+		return
 	}
 
 	hasPermission := make(map[int]bool)

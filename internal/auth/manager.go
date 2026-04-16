@@ -297,8 +297,8 @@ func (m *Manager) SetCookieSecure(enable bool) {
 	m.cookieSecure = enable
 }
 
-func (m *Manager) RevokeUserSessions(_ context.Context, userID int) {
-	if _, err := m.db.Exec(context.Background(), "DELETE FROM sessions WHERE user_id = $1", userID); err != nil {
+func (m *Manager) RevokeUserSessions(ctx context.Context, userID int) {
+	if _, err := m.db.Exec(ctx, "DELETE FROM sessions WHERE user_id = $1", userID); err != nil {
 		log.Printf("auth: RevokeUserSessions failed for user %d: %v", userID, err)
 	}
 }

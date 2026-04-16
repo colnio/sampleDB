@@ -29,6 +29,9 @@ func TestLoginHandlerSuccess(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "password_hash", "is_approved", "deleted"}).
 			AddRow(7, string(hashed), true, false))
 
+	mock.ExpectExec(`DELETE FROM sessions WHERE expires_at`).
+		WillReturnResult(pgxmock.NewResult("DELETE", 0))
+
 	mock.ExpectExec(`INSERT INTO sessions`).
 		WithArgs(pgxmock.AnyArg(), 7, "alice", pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
@@ -368,7 +371,10 @@ func TestSessionSurvivesManagerRestart(t *testing.T) {
 	}
 	defer mock.Close()
 
-	// Manager1 creates a session — must INSERT into sessions table.
+	// Manager1 creates a session — must DELETE expired sessions then INSERT.
+	mock.ExpectExec(`DELETE FROM sessions WHERE expires_at`).
+		WillReturnResult(pgxmock.NewResult("DELETE", 0))
+
 	mock.ExpectExec(`INSERT INTO sessions`).
 		WithArgs(pgxmock.AnyArg(), 42, "alice", pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
