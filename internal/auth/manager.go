@@ -56,7 +56,15 @@ const userContextKey contextKey = "auth-user"
 // It is used to perform a constant-time comparison when a username is not found,
 // preventing timing-based enumeration. Generating it at init ensures it stays
 // in sync with DefaultCost if it is ever changed.
-var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy"), bcrypt.DefaultCost)
+var dummyHash []byte
+
+func init() {
+	var err error
+	dummyHash, err = bcrypt.GenerateFromPassword([]byte("dummy"), bcrypt.DefaultCost)
+	if err != nil {
+		panic(fmt.Sprintf("auth: failed to generate dummy hash: %v", err))
+	}
+}
 
 func NewManager(db dbiface.Pool) *Manager {
 	return &Manager{db: db}
@@ -260,6 +268,11 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 
 		if username == "" || password == "" {
 			http.Redirect(w, r, "/register?error=Username+and+password+are+required", http.StatusSeeOther)
+			return
+		}
+
+		if len(username) > 50 {
+			http.Redirect(w, r, "/register?error=Username+must+be+50+characters+or+fewer", http.StatusSeeOther)
 			return
 		}
 

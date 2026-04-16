@@ -1,7 +1,6 @@
 package main
 
 import (
-	"mime"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,77 +8,6 @@ import (
 	"strings"
 	"testing"
 )
-
-// ---------------------------------------------------------------------------
-// isImage — unit tests
-// ---------------------------------------------------------------------------
-
-func TestIsImage_ImageTypes(t *testing.T) {
-	imageMIMEs := []string{
-		"image/png",
-		"image/jpeg",
-		"image/gif",
-		"image/webp",
-		"image/svg+xml",
-		"image/bmp",
-		"image/tiff",
-	}
-	for _, ct := range imageMIMEs {
-		if !isImage(ct) {
-			t.Errorf("isImage(%q) = false, want true", ct)
-		}
-	}
-}
-
-func TestIsImage_NonImageTypes(t *testing.T) {
-	nonImageMIMEs := []string{
-		"text/plain",
-		"text/csv",
-		"application/pdf",
-		"application/zip",
-		"application/octet-stream",
-		"video/mp4",
-		"audio/mpeg",
-		"",
-	}
-	for _, ct := range nonImageMIMEs {
-		if isImage(ct) {
-			t.Errorf("isImage(%q) = true, want false", ct)
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Content-Type for attachment extensions — verifies mime detection used by
-// getAttachments() when setting att.IsImage, and by http.ServeFile for the
-// download handler.
-// ---------------------------------------------------------------------------
-
-func TestAttachmentMimeByExtension(t *testing.T) {
-	cases := []struct {
-		ext     string
-		wantImg bool
-	}{
-		{".png", true},
-		{".jpg", true},
-		{".jpeg", true},
-		{".gif", true},
-		{".webp", true},
-		{".svg", true},
-		{".txt", false},
-		{".pdf", false},
-		{".csv", false},
-		{".zip", false},
-	}
-
-	for _, tc := range cases {
-		ct := mime.TypeByExtension(tc.ext)
-		got := isImage(ct)
-		if got != tc.wantImg {
-			t.Errorf("ext %q: mime=%q isImage=%v, want %v", tc.ext, ct, got, tc.wantImg)
-		}
-	}
-}
 
 // TestServeFileContentType verifies that http.ServeFile (used by
 // downloadAttachmentHandler) sets an image/* Content-Type for PNG files,
@@ -111,9 +39,6 @@ func TestServeFileContentType(t *testing.T) {
 	ct := rr.Header().Get("Content-Type")
 	if !strings.HasPrefix(ct, "image/") {
 		t.Errorf("expected image/* Content-Type for .png, got %q", ct)
-	}
-	if !isImage(ct) {
-		t.Errorf("isImage(%q) = false for served PNG, want true", ct)
 	}
 }
 

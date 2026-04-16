@@ -182,6 +182,16 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	hasConflict, err := h.svc.CheckConflict(r.Context(), equipmentID, startTime, endTime)
+	if err != nil {
+		http.Redirect(w, r, "/booking?error=Unable+to+check+availability", http.StatusSeeOther)
+		return
+	}
+	if hasConflict {
+		http.Redirect(w, r, "/booking?error=Time+slot+already+booked", http.StatusSeeOther)
+		return
+	}
+
 	err = h.svc.Create(r.Context(), CreateParams{
 		EquipmentID: equipmentID,
 		UserID:      session.UserID,

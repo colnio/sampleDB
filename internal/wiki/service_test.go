@@ -343,14 +343,10 @@ func TestGetAttachmentInfo_NotFound(t *testing.T) {
 func TestDeleteAttachment_ReturnsPathAndTitle(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT aa.attachment_address, a.title`).
+	mock.ExpectQuery(`WITH deleted AS`).
 		WithArgs("5").
 		WillReturnRows(pgxmock.NewRows([]string{"attachment_address", "title"}).
 			AddRow("uploads/img.jpg", "My Article"))
-
-	mock.ExpectExec(`DELETE FROM article_attachments`).
-		WithArgs("5").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
 	title, fp, err := svc.DeleteAttachment(context.Background(), "5")
 	if err != nil {

@@ -70,7 +70,7 @@ func (h *Handlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		newPassword := r.FormValue("new_password")
 		confirmPassword := r.FormValue("confirm_password")
 
-		if strings.TrimSpace(currentPassword) == "" || strings.TrimSpace(newPassword) == "" || strings.TrimSpace(confirmPassword) == "" {
+		if currentPassword == "" || newPassword == "" || confirmPassword == "" {
 			data.Error = "All fields are required"
 			w.WriteHeader(http.StatusBadRequest)
 			h.renderChangePassword(w, data)

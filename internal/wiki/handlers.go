@@ -326,6 +326,11 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	title := r.FormValue("title")
 	if strings.TrimSpace(title) == "" {
 		http.Error(w, "Article title is required", http.StatusBadRequest)
@@ -641,14 +646,13 @@ func (h *Handlers) downloadAttachment(w http.ResponseWriter, r *http.Request, at
 		return
 	}
 
-	if original != "" && !isImage(mime.TypeByExtension(filepath.Ext(original))) {
-		setDownloadHeaders(w, original)
-	}
-
 	resolved := h.resolveAppPath(filePath)
 	if resolved == "" {
 		http.NotFound(w, r)
 		return
+	}
+	if original != "" && !isImage(mime.TypeByExtension(filepath.Ext(original))) {
+		setDownloadHeaders(w, original)
 	}
 	http.ServeFile(w, r, resolved)
 }

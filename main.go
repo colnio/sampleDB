@@ -398,7 +398,3 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
-// isImage checks if a file is an image based on its content type.
-func isImage(contentType string) bool {
-	return strings.HasPrefix(contentType, "image/")
-}

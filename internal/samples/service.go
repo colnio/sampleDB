@@ -735,7 +735,7 @@ func (s *DBService) GetUsernameByID(ctx context.Context, userID int) (string, er
 func (s *DBService) GetUsernameByIDApproved(ctx context.Context, userID int) (string, error) {
 	var username string
 	err := s.db.QueryRow(ctx,
-		"SELECT username FROM users WHERE user_id = $1 AND is_approved = true", userID).Scan(&username)
+		"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false", userID).Scan(&username)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", fmt.Errorf("user %d not found or not approved", userID)
 	}

@@ -550,14 +550,14 @@ func (h *Handlers) downloadAttachment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	original := originalFilenameFromPath(filePath)
-	if !isImage(mime.TypeByExtension(filepath.Ext(filePath))) {
-		setDownloadHeaders(w, original)
-	}
 	resolved := h.resolveAppPath(filePath)
 	if resolved == "" {
 		http.Error(w, "Attachment not found", http.StatusNotFound)
 		return
+	}
+	original := originalFilenameFromPath(filePath)
+	if !isImage(mime.TypeByExtension(filepath.Ext(filePath))) {
+		setDownloadHeaders(w, original)
 	}
 	http.ServeFile(w, r, resolved)
 }

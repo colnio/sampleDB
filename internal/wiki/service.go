@@ -295,24 +295,27 @@ func (s *DBService) GetAttachmentInfo(ctx context.Context, attachmentID string) 
 
 // DeleteAttachment removes the DB row and returns (articleTitle, filePath) so
 // the caller can delete the file from disk.  Returns web.ErrNotFound if the
-// attachment does not exist.
+// attachment does not exist.  The SELECT and DELETE are performed atomically
+// via a CTE so concurrent deletes do not produce stale data.
 func (s *DBService) DeleteAttachment(ctx context.Context, attachmentID string) (string, string, error) {
 	var filePath, articleTitle string
 	err := s.db.QueryRow(ctx,
-		`SELECT aa.attachment_address, a.title
-		   FROM article_attachments aa
-		   JOIN articles a ON aa.article_id = a.article_id
-		  WHERE aa.attachment_id = $1`, attachmentID).Scan(&filePath, &articleTitle)
+		`WITH deleted AS (
+		     DELETE FROM article_attachments
+		     WHERE attachment_id = $1
+		     RETURNING attachment_address, article_id
+		 )
+		 SELECT d.attachment_address, a.title
+		 FROM deleted d
+		 JOIN articles a ON a.article_id = d.article_id`,
+		attachmentID).Scan(&filePath, &articleTitle)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", web.ErrNotFound
 		}
 		return "", "", err
 	}
-
-	_, err = s.db.Exec(ctx,
-		"DELETE FROM article_attachments WHERE attachment_id = $1", attachmentID)
-	return articleTitle, filePath, err
+	return articleTitle, filePath, nil
 }
 
 // GetArticleTitle returns the title of an article by its numeric ID.
