@@ -194,10 +194,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 18: Persist sessions in PostgreSQL
 
-- [ ] write failing test: sessions survive an `auth.Manager` restart (simulated by constructing a new Manager backed by the same DB)
-- [ ] add a `sessions` table migration to `internal/dbschema`
-- [ ] update `internal/auth/manager.go` to store/load sessions via Postgres instead of the in-memory map
-- [ ] run tests — must pass before task 19
+- [x] write failing test: sessions survive an `auth.Manager` restart (simulated by constructing a new Manager backed by the same DB)
+- [x] add a `sessions` table migration to `internal/dbschema`
+- [x] update `internal/auth/manager.go` to store/load sessions via Postgres instead of the in-memory map
+- [x] run tests — must pass before task 19
 
 ### Task 19: Verify acceptance criteria
 

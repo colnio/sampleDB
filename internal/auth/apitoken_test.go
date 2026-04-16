@@ -253,12 +253,23 @@ func TestRequireAuth_CookiePath(t *testing.T) {
 	mock, _ := pgxmock.NewPool()
 	defer mock.Close()
 
+	// newSession inserts into DB.
+	mock.ExpectExec(`INSERT INTO sessions`).
+		WithArgs(pgxmock.AnyArg(), 1, "alice", pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
 	m := NewManager(mock)
-	// Inject a valid session manually.
-	session, err := m.newSession("alice", 1)
+	// Inject a valid session via DB-backed newSession.
+	session, err := m.newSession(context.Background(), "alice", 1)
 	if err != nil {
 		t.Fatalf("newSession: %v", err)
 	}
+
+	// RequireAuth will SELECT the session from DB.
+	mock.ExpectQuery(`SELECT user_id, username, expires_at FROM sessions WHERE id = \$1`).
+		WithArgs(session.Token).
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
+			AddRow(1, "alice", time.Now().Add(24*time.Hour)))
 
 	reached := false
 	handler := m.RequireAuth(func(w http.ResponseWriter, r *http.Request) {

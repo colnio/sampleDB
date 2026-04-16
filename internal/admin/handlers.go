@@ -175,7 +175,7 @@ func (h *Handlers) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.authMgr != nil {
-		h.authMgr.RevokeUserSessions(userID)
+		h.authMgr.RevokeUserSessions(r.Context(), userID)
 	}
 
 	if strings.Contains(contentType, "application/json") {
@@ -216,7 +216,7 @@ func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.authMgr != nil {
-		h.authMgr.RevokeUserSessions(payload.UserID)
+		h.authMgr.RevokeUserSessions(r.Context(), payload.UserID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

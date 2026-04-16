@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -29,8 +28,6 @@ type Session struct {
 
 type Manager struct {
 	db           dbiface.Pool
-	sessions     map[string]Session
-	mu           sync.RWMutex
 	cookieSecure bool
 	templateDir  string
 }
@@ -40,10 +37,7 @@ type contextKey string
 const userContextKey contextKey = "auth-user"
 
 func NewManager(db dbiface.Pool) *Manager {
-	return &Manager{
-		db:       db,
-		sessions: make(map[string]Session),
-	}
+	return &Manager{db: db}
 }
 
 func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
@@ -51,16 +45,13 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		// 1. Try session cookie.
 		cookie, err := r.Cookie("session_token")
 		if err == nil {
-			session, exists := m.getSession(cookie.Value)
-			if exists && !time.Now().After(session.ExpiresAt) {
+			session, exists := m.getSession(r.Context(), cookie.Value)
+			if exists {
 				ctx := context.WithValue(r.Context(), userContextKey, session)
 				next(w, r.WithContext(ctx))
 				return
 			}
-			if exists {
-				m.deleteSession(cookie.Value)
-			}
-			// Cookie present but invalid — fall through to Bearer check.
+			// Cookie present but session not found/expired — fall through to Bearer check.
 		}
 
 		// 2. Try Authorization: Bearer <token>.
@@ -167,7 +158,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			return
 		}
 
-		session, err := m.newSession(username, userID)
+		session, err := m.newSession(r.Context(), username, userID)
 		if err != nil {
 			http.Error(w, "Server error", http.StatusInternalServerError)
 			return
@@ -264,7 +255,7 @@ func (m *Manager) LogoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_token")
 		if err == nil {
-			m.deleteSession(cookie.Value)
+			m.deleteSession(r.Context(), cookie.Value)
 		}
 
 		http.SetCookie(w, &http.Cookie{
@@ -284,14 +275,8 @@ func (m *Manager) SetCookieSecure(enable bool) {
 	m.cookieSecure = enable
 }
 
-func (m *Manager) RevokeUserSessions(userID int) {
-	m.mu.Lock()
-	for token, session := range m.sessions {
-		if session.UserID == userID {
-			delete(m.sessions, token)
-		}
-	}
-	m.mu.Unlock()
+func (m *Manager) RevokeUserSessions(ctx context.Context, userID int) {
+	_, _ = m.db.Exec(ctx, "DELETE FROM sessions WHERE user_id = $1", userID)
 }
 
 func (m *Manager) SetTemplateDir(dir string) {
@@ -321,12 +306,9 @@ func (m *Manager) TryAuth(r *http.Request) (Session, bool) {
 	// 1. Try session cookie.
 	cookie, err := r.Cookie("session_token")
 	if err == nil {
-		session, exists := m.getSession(cookie.Value)
-		if exists && !time.Now().After(session.ExpiresAt) {
-			return session, true
-		}
+		session, exists := m.getSession(r.Context(), cookie.Value)
 		if exists {
-			m.deleteSession(cookie.Value)
+			return session, true
 		}
 	}
 
@@ -375,37 +357,40 @@ func ContextWithSession(ctx context.Context, s Session) context.Context {
 	return context.WithValue(ctx, userContextKey, s)
 }
 
-func (m *Manager) newSession(username string, userID int) (Session, error) {
+func (m *Manager) newSession(ctx context.Context, username string, userID int) (Session, error) {
 	token, err := generateSessionToken()
 	if err != nil {
 		return Session{}, err
 	}
-
-	session := Session{
+	expiresAt := time.Now().Add(24 * time.Hour)
+	_, err = m.db.Exec(ctx,
+		"INSERT INTO sessions (id, user_id, username, expires_at) VALUES ($1, $2, $3, $4)",
+		token, userID, username, expiresAt)
+	if err != nil {
+		return Session{}, fmt.Errorf("create session: %w", err)
+	}
+	return Session{
 		Token:     token,
 		UserID:    userID,
 		Username:  username,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+		ExpiresAt: expiresAt,
+	}, nil
+}
+
+func (m *Manager) getSession(ctx context.Context, token string) (Session, bool) {
+	var s Session
+	s.Token = token
+	err := m.db.QueryRow(ctx,
+		"SELECT user_id, username, expires_at FROM sessions WHERE id = $1 AND expires_at > NOW()",
+		token).Scan(&s.UserID, &s.Username, &s.ExpiresAt)
+	if err != nil {
+		return Session{}, false
 	}
-
-	m.mu.Lock()
-	m.sessions[token] = session
-	m.mu.Unlock()
-
-	return session, nil
+	return s, true
 }
 
-func (m *Manager) getSession(token string) (Session, bool) {
-	m.mu.RLock()
-	session, ok := m.sessions[token]
-	m.mu.RUnlock()
-	return session, ok
-}
-
-func (m *Manager) deleteSession(token string) {
-	m.mu.Lock()
-	delete(m.sessions, token)
-	m.mu.Unlock()
+func (m *Manager) deleteSession(ctx context.Context, token string) {
+	_, _ = m.db.Exec(ctx, "DELETE FROM sessions WHERE id = $1", token)
 }
 
 func generateSessionToken() (string, error) {

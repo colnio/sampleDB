@@ -98,6 +98,7 @@ func TestSchemaBootstrapCoversInitSQLTables(t *testing.T) {
 		"bookings",
 		"fabrication_steps",
 		"api_tokens",
+		"sessions",
 	}
 	for _, table := range tables {
 		if !strings.Contains(combined, table) {
@@ -114,6 +115,7 @@ func TestSchemaBootstrapCoversLatestMigrations(t *testing.T) {
 		"equipment_text",      // migration 006
 		"btree_gist",          // migration 007
 		"bookings_no_overlap", // migration 007
+		"sessions",            // migration 009
 	}
 	for _, fragment := range required {
 		if !strings.Contains(combined, fragment) {

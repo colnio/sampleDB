@@ -39,6 +39,9 @@ var schemaStatements = []string{
 	// Migration 008
 	enableBtreeGist,
 	addBookingExclusionConstraint,
+	// Migration 009
+	createSessionsTable,
+	createSessionsExpiresAtIndex,
 }
 
 var dataStatements = []string{
@@ -229,6 +232,17 @@ DO $$ BEGIN
         );
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;`
+
+const createSessionsTable = `
+CREATE TABLE IF NOT EXISTS sessions (
+    id         TEXT PRIMARY KEY,
+    user_id    INT NOT NULL,
+    username   TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+);`
+
+const createSessionsExpiresAtIndex = `
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);`
 
 // seedEquipment inserts the default equipment rows when the database is blank
 // (no users, no samples, and no equipment present yet).  Matches the seed block

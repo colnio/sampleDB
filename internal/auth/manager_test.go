@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pashagolub/pgxmock/v3"
 	"golang.org/x/crypto/bcrypt"
@@ -27,6 +29,10 @@ func TestLoginHandlerSuccess(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "password_hash", "is_approved", "deleted"}).
 			AddRow(7, string(hashed), true, false))
 
+	mock.ExpectExec(`INSERT INTO sessions`).
+		WithArgs(pgxmock.AnyArg(), 7, "alice", pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
 	manager := NewManager(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=alice&password=secret"))
@@ -45,10 +51,6 @@ func TestLoginHandlerSuccess(t *testing.T) {
 
 	if len(rr.Result().Cookies()) == 0 {
 		t.Fatalf("expected session cookie to be set")
-	}
-
-	if len(manager.sessions) != 1 {
-		t.Fatalf("expected session to be stored, got %d", len(manager.sessions))
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -155,5 +157,47 @@ func TestRegisterHandlerRejectsMismatchedPasswords(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unexpected DB calls: %v", err)
+	}
+}
+
+// TestSessionSurvivesManagerRestart verifies that a session created by one
+// Manager instance is retrievable by a second Manager backed by the same DB,
+// simulating a process restart.
+func TestSessionSurvivesManagerRestart(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("failed to create mock pool: %v", err)
+	}
+	defer mock.Close()
+
+	// Manager1 creates a session — must INSERT into sessions table.
+	mock.ExpectExec(`INSERT INTO sessions`).
+		WithArgs(pgxmock.AnyArg(), 42, "alice", pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	m1 := NewManager(mock)
+	session, err := m1.newSession(context.Background(), "alice", 42)
+	if err != nil {
+		t.Fatalf("newSession: %v", err)
+	}
+
+	// Manager2 uses the same DB pool — simulates a restart with no in-memory state.
+	expiresAt := time.Now().Add(24 * time.Hour)
+	mock.ExpectQuery(`SELECT user_id, username, expires_at FROM sessions WHERE id = \$1`).
+		WithArgs(session.Token).
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
+			AddRow(42, "alice", expiresAt))
+
+	m2 := NewManager(mock)
+	found, ok := m2.getSession(context.Background(), session.Token)
+	if !ok {
+		t.Fatal("expected session to be found by second Manager instance")
+	}
+	if found.UserID != 42 || found.Username != "alice" {
+		t.Fatalf("unexpected session data: %+v", found)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
 	}
 }
