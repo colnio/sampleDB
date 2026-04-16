@@ -263,7 +263,7 @@ func (h *Handlers) renderFabricationStepsSection(w http.ResponseWriter, r *http.
 // MainPage serves GET / — the main sample list / search page.
 func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
-	query := r.URL.Query().Get("query")
+	query := strings.TrimSpace(r.URL.Query().Get("query"))
 	dateFrom := r.URL.Query().Get("date_from")
 	dateTo := r.URL.Query().Get("date_to")
 

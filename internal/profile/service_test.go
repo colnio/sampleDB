@@ -76,7 +76,7 @@ func newAuthenticatedRequest(method, target string, body url.Values) *http.Reque
 func TestGetAdminStatus_ReturnsTrue(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT admin FROM users`).
+	mock.ExpectQuery(`SELECT COALESCE\(admin, false\) FROM users`).
 		WithArgs(1).
 		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
 
@@ -95,7 +95,7 @@ func TestGetAdminStatus_ReturnsTrue(t *testing.T) {
 func TestGetAdminStatus_ReturnsFalse(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT admin FROM users`).
+	mock.ExpectQuery(`SELECT COALESCE\(admin, false\) FROM users`).
 		WithArgs(2).
 		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(false))
 

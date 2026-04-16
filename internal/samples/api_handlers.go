@@ -228,7 +228,7 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
-	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, req.Owner); err != nil {
+	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, req.Owner, req.OwnerUserID); err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "sample not found")
 			return

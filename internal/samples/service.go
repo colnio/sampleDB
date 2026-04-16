@@ -78,7 +78,7 @@ type Service interface {
 	APIListSamples(ctx context.Context, p APIListParams) (APIListResult, error)
 	APIGetSample(ctx context.Context, id int) (APISampleDetail, error)
 	APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID *int) (APISampleItem, error)
-	APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string) error
+	APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string, ownerUserID *int) error
 	APIDeleteSample(ctx context.Context, id int) ([]string, error)
 	SampleExistsByID(ctx context.Context, id int) (bool, error)
 }
@@ -628,8 +628,14 @@ func (s *DBService) DeleteStep(ctx context.Context, stepID int) error {
 }
 
 func (s *DBService) ReorderSteps(ctx context.Context, sampleID int, orderedIDs []int) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	var count int
-	if err := s.db.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		"SELECT COUNT(*) FROM fabrication_steps WHERE sample_id = $1",
 		sampleID).Scan(&count); err != nil {
 		return err
@@ -638,7 +644,7 @@ func (s *DBService) ReorderSteps(ctx context.Context, sampleID int, orderedIDs [
 		return fmt.Errorf("reorder: got %d step IDs but sample has %d steps", len(orderedIDs), count)
 	}
 	var matchCount int
-	if err := s.db.QueryRow(ctx,
+	if err := tx.QueryRow(ctx,
 		"SELECT COUNT(*) FROM fabrication_steps WHERE step_id = ANY($1) AND sample_id = $2",
 		orderedIDs, sampleID).Scan(&matchCount); err != nil {
 		return err
@@ -646,12 +652,6 @@ func (s *DBService) ReorderSteps(ctx context.Context, sampleID int, orderedIDs [
 	if matchCount != len(orderedIDs) {
 		return fmt.Errorf("reorder: one or more step IDs do not belong to sample %d", sampleID)
 	}
-
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
 
 	for i, stepID := range orderedIDs {
 		if _, err := tx.Exec(ctx,
@@ -1043,15 +1043,16 @@ func (s *DBService) APICreateSample(ctx context.Context, name, description, keyw
 }
 
 // APIUpdateSample updates a sample's editable fields.
-func (s *DBService) APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string) error {
+func (s *DBService) APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string, ownerUserID *int) error {
 	tag, err := s.db.Exec(ctx, `
 		UPDATE samples
 		   SET sample_name        = $1,
 		       sample_description = $2,
 		       sample_keywords    = $3,
-		       sample_owner       = $4
-		 WHERE sample_id = $5`,
-		name, description, keywords, owner, id)
+		       sample_owner       = $4,
+		       owner_user_id      = $5
+		 WHERE sample_id = $6`,
+		name, description, keywords, owner, ownerUserID, id)
 	if err != nil {
 		return err
 	}
