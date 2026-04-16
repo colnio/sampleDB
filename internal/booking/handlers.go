@@ -237,7 +237,12 @@ func (h *Handlers) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.Delete(r.Context(), bookingID, session.UserID); err != nil {
+	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
+	if err != nil {
+		log.Printf("booking: unable to determine admin status for user %d: %v", session.UserID, err)
+	}
+
+	if err := h.svc.Delete(r.Context(), bookingID, session.UserID, isAdmin); err != nil {
 		switch {
 		case errors.Is(err, web.ErrNotFound):
 			http.Error(w, "Booking not found", http.StatusNotFound)

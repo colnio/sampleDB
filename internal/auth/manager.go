@@ -120,7 +120,9 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return
 			}
-			_ = tmpl.ExecuteTemplate(w, "auth_base", data)
+			if err := tmpl.ExecuteTemplate(w, "auth_base", data); err != nil {
+				log.Printf("auth: login template execute error: %v", err)
+			}
 			return
 		}
 
@@ -201,7 +203,9 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 				http.Error(w, "Error loading template", http.StatusInternalServerError)
 				return
 			}
-			_ = tmpl.ExecuteTemplate(w, "auth_base", data)
+			if err := tmpl.ExecuteTemplate(w, "auth_base", data); err != nil {
+				log.Printf("auth: register template execute error: %v", err)
+			}
 			return
 		}
 

@@ -25,7 +25,7 @@ type Service interface {
 	GetUserBookings(ctx context.Context, userID int) ([]Booking, error)
 	CheckConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error)
 	Create(ctx context.Context, p CreateParams) error
-	Delete(ctx context.Context, bookingID, userID int) error
+	Delete(ctx context.Context, bookingID, userID int, isAdmin bool) error
 }
 
 // DBService is the concrete Service implementation backed by PostgreSQL.
@@ -85,6 +85,9 @@ func (s *DBService) IsAdmin(ctx context.Context, userID int) (bool, error) {
 	err := s.db.QueryRow(ctx,
 		`SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
 		userID).Scan(&isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
 	return isAdmin, err
 }
 
@@ -190,10 +193,10 @@ func (s *DBService) Create(ctx context.Context, p CreateParams) error {
 	return nil
 }
 
-// Delete removes a booking after verifying that userID is the owner.
+// Delete removes a booking. Admins may delete any booking; non-admins must own it.
 // Returns web.ErrNotFound if the booking doesn't exist, web.ErrForbidden if
-// the user is not the owner.
-func (s *DBService) Delete(ctx context.Context, bookingID, userID int) error {
+// the user is not the owner and is not an admin.
+func (s *DBService) Delete(ctx context.Context, bookingID, userID int, isAdmin bool) error {
 	var ownerID int
 	err := s.db.QueryRow(ctx,
 		"SELECT user_id FROM bookings WHERE booking_id = $1", bookingID).Scan(&ownerID)
@@ -203,7 +206,7 @@ func (s *DBService) Delete(ctx context.Context, bookingID, userID int) error {
 		}
 		return err
 	}
-	if ownerID != userID {
+	if ownerID != userID && !isAdmin {
 		return web.ErrForbidden
 	}
 	_, err = s.db.Exec(ctx, "DELETE FROM bookings WHERE booking_id = $1", bookingID)

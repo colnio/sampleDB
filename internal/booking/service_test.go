@@ -355,7 +355,7 @@ func TestDelete_OwnerCanDelete(t *testing.T) {
 		WithArgs(42).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	if err := svc.Delete(context.Background(), 42, 7); err != nil {
+	if err := svc.Delete(context.Background(), 42, 7, false); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -370,9 +370,28 @@ func TestDelete_NonOwnerReturnsForbidden(t *testing.T) {
 		WithArgs(42).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id"}).AddRow(99))
 
-	err := svc.Delete(context.Background(), 42, 7)
+	err := svc.Delete(context.Background(), 42, 7, false)
 	if !errors.Is(err, web.ErrForbidden) {
 		t.Errorf("expected web.ErrForbidden, got %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestDelete_AdminCanDeleteAnyBooking(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectQuery(`SELECT user_id FROM bookings WHERE booking_id`).
+		WithArgs(42).
+		WillReturnRows(pgxmock.NewRows([]string{"user_id"}).AddRow(99))
+
+	mock.ExpectExec(`DELETE FROM bookings WHERE booking_id`).
+		WithArgs(42).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	if err := svc.Delete(context.Background(), 42, 7, true); err != nil {
+		t.Fatalf("admin Delete: %v", err)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -386,7 +405,7 @@ func TestDelete_MissingBookingReturnsNotFound(t *testing.T) {
 		WithArgs(99).
 		WillReturnError(pgx.ErrNoRows)
 
-	err := svc.Delete(context.Background(), 99, 7)
+	err := svc.Delete(context.Background(), 99, 7, false)
 	if !errors.Is(err, web.ErrNotFound) {
 		t.Errorf("expected web.ErrNotFound, got %v", err)
 	}
@@ -470,7 +489,7 @@ func (m *mockService) CheckConflict(_ context.Context, _ int, _, _ time.Time) (b
 func (m *mockService) Create(_ context.Context, _ booking.CreateParams) error {
 	return m.createErr
 }
-func (m *mockService) Delete(_ context.Context, _, _ int) error {
+func (m *mockService) Delete(_ context.Context, _, _ int, _ bool) error {
 	return m.deleteErr
 }
 

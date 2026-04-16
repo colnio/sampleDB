@@ -337,6 +337,15 @@ func (h *Handlers) EquipmentReport(w http.ResponseWriter, r *http.Request) {
 	startDate := r.URL.Query().Get("start")
 	endDate := r.URL.Query().Get("end")
 
+	if _, err := strconv.Atoi(equipmentID); equipmentID == "" || err != nil {
+		http.Error(w, "Invalid or missing equipment ID", http.StatusBadRequest)
+		return
+	}
+	if startDate == "" || endDate == "" {
+		http.Error(w, "Missing start or end date", http.StatusBadRequest)
+		return
+	}
+
 	records, err := h.svc.GetEquipmentReport(r.Context(), equipmentID, startDate, endDate)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)

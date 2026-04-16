@@ -113,20 +113,21 @@ func (s *DBService) GetArticle(ctx context.Context, title string) (*Article, err
 	rows, err := s.db.Query(ctx,
 		`SELECT attachment_id, original_name, attachment_address, uploaded_at
 		   FROM article_attachments WHERE article_id = $1`, article.ID)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var att ArticleAttachment
-			if scanErr := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt); scanErr != nil {
-				log.Printf("wiki: GetArticle attachment scan error: %v", scanErr)
-				continue
-			}
-			att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(att.Address)))
-			article.Attachments = append(article.Attachments, att)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var att ArticleAttachment
+		if scanErr := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt); scanErr != nil {
+			log.Printf("wiki: GetArticle attachment scan error: %v", scanErr)
+			continue
 		}
-		if rowsErr := rows.Err(); rowsErr != nil {
-			return nil, rowsErr
-		}
+		att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(att.Address)))
+		article.Attachments = append(article.Attachments, att)
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, rowsErr
 	}
 
 	return &article, nil
