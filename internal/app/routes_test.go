@@ -20,9 +20,6 @@ var stub http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 
 func allStubHandlers() app.Handlers {
 	return app.Handlers{
-		Booking:            stub,
-		GetBookings:        stub,
-		DeleteBooking:      stub,
 		AdminPage:          stub,
 		UpdateAccess:       stub,
 		SetAdmin:           stub,

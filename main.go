@@ -659,9 +659,6 @@ func main() {
 	}
 
 	theApp.Handlers = app.Handlers{
-		Booking:            handleBooking,
-		GetBookings:        handleGetBookings,
-		DeleteBooking:      handleDeleteBooking,
 		AdminPage:          handleAdminPage,
 		UpdateAccess:       handleUpdateAccess,
 		SetAdmin:           handleSetAdmin,

@@ -172,11 +172,11 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 15: Extract `internal/booking` package
 
-- [ ] write failing tests for equipment query, permission check, booking create/delete/list, and calendar/report handlers
-- [ ] create `internal/booking/` with service + handlers migrated from `booking.go` and `api.go`
-- [ ] verify concurrency test from Task 3 still passes against new service layer
-- [ ] update route registration
-- [ ] run tests — must pass before task 16
+- [x] write failing tests for equipment query, permission check, booking create/delete/list, and calendar/report handlers
+- [x] create `internal/booking/` with service + handlers migrated from `booking.go` and `api.go`
+- [x] verify concurrency test from Task 3 still passes against new service layer
+- [x] update route registration
+- [x] run tests — must pass before task 16
 
 ### Task 16: Extract `internal/admin` package
 

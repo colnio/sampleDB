@@ -4,19 +4,15 @@ import (
 	"net/http"
 
 	"sampleDB/internal/auth"
+	"sampleDB/internal/booking"
 	"sampleDB/internal/samples"
 	"sampleDB/internal/wiki"
 )
 
 // Handlers groups all HTTP handler functions the application needs.
-// Sample-domain and wiki-domain handlers are wired directly in RegisterRoutes
-// via the samples.Handlers and wiki.Handlers types; they are no longer kept here.
+// Sample-domain, wiki-domain, and booking-domain handlers are wired directly in
+// RegisterRoutes via their respective Handlers types; they are no longer kept here.
 type Handlers struct {
-	// Booking
-	Booking       http.HandlerFunc
-	GetBookings   http.HandlerFunc
-	DeleteBooking http.HandlerFunc
-
 	// Admin
 	AdminPage       http.HandlerFunc
 	UpdateAccess    http.HandlerFunc
@@ -103,10 +99,12 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/steps/", withAuth(samplesHdlrs.APISteps))
 	mux.HandleFunc("/s/", samplesHdlrs.SharedSample)
 
-	// Booking routes
-	mux.HandleFunc("/booking", withAuth(h.Booking))
-	mux.HandleFunc("/api/bookings", withAuth(h.GetBookings))
-	mux.HandleFunc("/booking/delete", withAuth(h.DeleteBooking))
+	// --- Booking domain routes (wired via booking.Handlers) ---
+	bookingSvc := booking.NewService(a.DB, a.Location)
+	bookingHdlrs := booking.NewHandlers(bookingSvc, a.Renderer, a.Auth, a.Location)
+	mux.HandleFunc("/booking", withAuth(bookingHdlrs.HandleBooking))
+	mux.HandleFunc("/api/bookings", withAuth(bookingHdlrs.GetBookings))
+	mux.HandleFunc("/booking/delete", withAuth(bookingHdlrs.DeleteBooking))
 
 	// --- Wiki domain routes (wired via wiki.Handlers) ---
 	wikiSvc := wiki.NewService(a.DB)
