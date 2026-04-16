@@ -36,6 +36,9 @@ var schemaStatements = []string{
 	addShareVisibilityCheckConstraint,
 	// Migration 007
 	addEquipmentTextColumn,
+	// Migration 008
+	enableBtreeGist,
+	addBookingExclusionConstraint,
 }
 
 var dataStatements = []string{}
@@ -209,6 +212,20 @@ END $$;`
 const addEquipmentTextColumn = `
 ALTER TABLE fabrication_steps
     ADD COLUMN IF NOT EXISTS equipment_text TEXT;`
+
+const enableBtreeGist = `
+CREATE EXTENSION IF NOT EXISTS btree_gist;`
+
+const addBookingExclusionConstraint = `
+DO $$ BEGIN
+    ALTER TABLE bookings
+        ADD CONSTRAINT bookings_no_overlap
+        EXCLUDE USING gist (
+            equipment_id WITH =,
+            tstzrange(start_time, end_time, '[)') WITH &&
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;`
 
 // Ensure ensures that all schema elements required by the application exist.
 func Ensure(ctx context.Context, pool dbiface.Pool) error {

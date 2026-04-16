@@ -74,11 +74,11 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 3: Atomic booking conflict prevention via DB exclusion constraint
 
-- [ ] write failing test: two concurrent booking inserts for overlapping time/equipment produce exactly one success
-- [ ] write a migration in `DDL/migrations/` enabling `btree_gist` and adding an exclusion constraint on `(equipment_id, tsrange(start_time, end_time))`
-- [ ] update `internal/dbschema/schema.go` to include the new migration in `schemaStatements`
-- [ ] update `handleBookingSubmission` in `booking.go` to catch the exclusion constraint violation and return a user-facing conflict error instead of a raw DB error
-- [ ] run tests — must pass before task 4
+- [x] write failing test: two concurrent booking inserts for overlapping time/equipment produce exactly one success
+- [x] write a migration in `DDL/migrations/` enabling `btree_gist` and adding an exclusion constraint on `(equipment_id, tsrange(start_time, end_time))`
+- [x] update `internal/dbschema/schema.go` to include the new migration in `schemaStatements`
+- [x] update `handleBookingSubmission` in `booking.go` to catch the exclusion constraint violation and return a user-facing conflict error instead of a raw DB error
+- [x] run tests — must pass before task 4
 
 ### Task 4: Make admin access updates transactional
 

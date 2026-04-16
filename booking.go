@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"sampleDB/internal/auth"
 )
 
@@ -336,10 +338,16 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 
 	// Create booking
 	_, err = dbPool.Exec(context.Background(),
-		`INSERT INTO bookings (equipment_id, user_id, start_time, end_time, purpose) 
+		`INSERT INTO bookings (equipment_id, user_id, start_time, end_time, purpose)
          VALUES ($1, $2, $3, $4, $5)`,
 		equipmentID, session.UserID, startTime, endTime, purpose)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23P01" {
+			// exclusion_violation — another booking was inserted concurrently
+			http.Redirect(w, r, "/booking?error=Time+slot+already+booked", http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/booking?error=Error+creating+booking:+"+err.Error(), http.StatusSeeOther)
 		return
 	}
