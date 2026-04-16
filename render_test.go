@@ -2,10 +2,41 @@ package main
 
 import (
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"sampleDB/internal/samples"
+	"sampleDB/internal/web"
 )
+
+// setTestTemplatesDir configures theApp.Renderer with the real templates
+// directory for tests that exercise template rendering.
+func setTestTemplatesDir(t *testing.T) {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd: %v", err)
+	}
+	templatesDir := filepath.Join(wd, "templates")
+
+	origCfg := theApp.Config.TemplatesDir
+	origRenderer := theApp.Renderer
+
+	renderer, err := web.NewRenderer(templatesDir, nil, time.UTC)
+	if err != nil {
+		t.Fatalf("web.NewRenderer: %v", err)
+	}
+
+	theApp.Config.TemplatesDir = templatesDir
+	theApp.Renderer = renderer
+	t.Cleanup(func() {
+		theApp.Config.TemplatesDir = origCfg
+		theApp.Renderer = origRenderer
+	})
+}
 
 // ---------------------------------------------------------------------------
 // Template render tests — verify templates execute without error with
@@ -20,8 +51,8 @@ func TestRenderMainTemplate(t *testing.T) {
 	ownerID := 1
 	username := "alice"
 
-	data := MainPageData{
-		BasePageData: BasePageData{
+	data := samples.MainPageData{
+		BasePageData: samples.BasePageData{
 			Username: "testuser",
 			UserID:   1,
 			IsAdmin:  false,
@@ -29,7 +60,7 @@ func TestRenderMainTemplate(t *testing.T) {
 		Query:    "test",
 		DateFrom: "2024-01-01",
 		DateTo:   "2024-12-31",
-		Samples: []Sample{
+		Samples: []samples.Sample{
 			{
 				ID:            1,
 				Name:          "Sample Alpha",
@@ -74,8 +105,8 @@ func TestRenderMainTemplate(t *testing.T) {
 func TestRenderMainTemplate_Empty(t *testing.T) {
 	setTestTemplatesDir(t)
 
-	data := MainPageData{
-		BasePageData: BasePageData{Username: "testuser", UserID: 1},
+	data := samples.MainPageData{
+		BasePageData: samples.BasePageData{Username: "testuser", UserID: 1},
 		Samples:      nil,
 	}
 
@@ -98,13 +129,13 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 	stepDate := time.Date(2024, 3, 10, 0, 0, 0, 0, time.UTC)
 	equipID := 7
 
-	data := SampleDetailPageData{
-		BasePageData: BasePageData{
+	data := samples.SampleDetailPageData{
+		BasePageData: samples.BasePageData{
 			Username: "testuser",
 			UserID:   1,
 			IsAdmin:  false,
 		},
-		Sample: Sample{
+		Sample: samples.Sample{
 			ID:              5,
 			Name:            "Detail Sample",
 			Description:     "Detailed description",
@@ -114,12 +145,12 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 			OwnerUsername:   &username,
 			CreatedAt:       now,
 			ShareVisibility: "private",
-			Attachments: []Attachment{
+			Attachments: []samples.Attachment{
 				{ID: 10, OriginalName: "image.png", ContentType: "image/png", IsImage: true},
 				{ID: 11, OriginalName: "data.csv", ContentType: "text/csv", IsImage: false},
 			},
 		},
-		Steps: []FabricationStep{
+		Steps: []samples.FabricationStep{
 			{
 				ID:          1,
 				SampleID:    5,
@@ -128,10 +159,10 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 				Description: "First step description",
 			},
 		},
-		Users: []User{
+		Users: []samples.User{
 			{ID: 3, Username: "bob"},
 		},
-		Equipment: []Equipment{
+		Equipment: []samples.Equipment{
 			{ID: 7, Name: "Spin Coater"},
 		},
 		EditingStep: 0,

@@ -51,13 +51,6 @@ func TestGenerateUniqueFilename(t *testing.T) {
 	}
 }
 
-func TestOriginalFilenameFromPath(t *testing.T) {
-	got := originalFilenameFromPath("uploads/abcdef0123456789_notes.txt")
-	if got != "notes.txt" {
-		t.Fatalf("originalFilenameFromPath returned %q, want %q", got, "notes.txt")
-	}
-}
-
 func TestSetDownloadHeaders(t *testing.T) {
 	rr := httptest.NewRecorder()
 	setDownloadHeaders(rr, `report "1".txt`)

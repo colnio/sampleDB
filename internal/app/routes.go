@@ -4,19 +4,13 @@ import (
 	"net/http"
 
 	"sampleDB/internal/auth"
+	"sampleDB/internal/samples"
 )
 
 // Handlers groups all HTTP handler functions the application needs.
-// In future phases these will be replaced by domain-package methods; for now
-// they are plain http.HandlerFunc values supplied by package main.
+// Sample-domain handlers are wired directly in RegisterRoutes via the
+// samples.Handlers type; they are no longer kept here.
 type Handlers struct {
-	// Sample / main
-	Main             http.HandlerFunc
-	NewSample        http.HandlerFunc
-	EditSample       http.HandlerFunc
-	HandleSample     http.HandlerFunc
-	HandleAttachment http.HandlerFunc
-
 	// Booking
 	Booking       http.HandlerFunc
 	GetBookings   http.HandlerFunc
@@ -38,24 +32,18 @@ type Handlers struct {
 	EquipmentReport http.HandlerFunc
 	DeleteUser      http.HandlerFunc
 
-	// Fabrication steps
-	StepAction http.HandlerFunc
-
 	// Account / profile
 	ChangePassword     http.HandlerFunc
 	ProfileTokens      http.HandlerFunc
 	ProfileTokenRevoke http.HandlerFunc
 
-	// REST API v1
-	APISamples  http.HandlerFunc
-	APISteps    http.HandlerFunc
-	APIWiki     http.HandlerFunc
-	APIUsers    http.HandlerFunc
+	// REST API v1 — wiki / users / equipment (samples API is in samples.Handlers)
+	APIWiki      http.HandlerFunc
+	APIUsers     http.HandlerFunc
 	APIEquipment http.HandlerFunc
-	APINotFound http.HandlerFunc
+	APINotFound  http.HandlerFunc
 
-	// Public (no auth required)
-	SharedSample    http.HandlerFunc
+	// Public (no auth required) — non-sample pages
 	AIAgents        http.HandlerFunc
 	AIAgentExamples http.HandlerFunc
 }
@@ -81,9 +69,9 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// RegisterRoutes wires all application HTTP routes onto mux using the handlers
-// stored in a.Handlers.  Static assets under /static/ are served from
-// a.Config.StaticDir when that field is non-empty.
+// RegisterRoutes wires all application HTTP routes onto mux.
+// Sample-domain routes are registered using a freshly constructed
+// samples.Handlers backed by the application's DB and Renderer.
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	withAuth := a.Auth.RequireAuth
 	adminH := a.RequireAdmin
@@ -100,12 +88,24 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/register", a.Auth.RegisterHandler())
 	mux.HandleFunc("/logout", withAuth(a.Auth.LogoutHandler()))
 
-	// Sample routes
-	mux.HandleFunc("/", withAuth(h.Main))
-	mux.HandleFunc("/samples/new", withAuth(h.NewSample))
-	mux.HandleFunc("/samples/edit/", withAuth(h.EditSample))
-	mux.HandleFunc("/samples/", withAuth(h.HandleSample))
-	mux.HandleFunc("/attachment/", withAuth(h.HandleAttachment))
+	// --- Sample domain routes (wired via samples.Handlers) ---
+	sampleSvc := samples.NewService(a.DB, nil)
+	samplesHdlrs := samples.NewHandlers(sampleSvc, a.Renderer, a.Auth, samples.HandlerConfig{
+		UploadsDir: a.Config.UploadsDir,
+		BaseDir:    a.Config.BaseDir,
+		PublicHost: a.Config.PublicHost,
+		UseTLS:     a.Config.UseTLS,
+	})
+	mux.HandleFunc("/", withAuth(samplesHdlrs.MainPage))
+	mux.HandleFunc("/samples/new", withAuth(samplesHdlrs.NewSample))
+	mux.HandleFunc("/samples/edit/", withAuth(samplesHdlrs.EditSample))
+	mux.HandleFunc("/samples/", withAuth(samplesHdlrs.HandleSample))
+	mux.HandleFunc("/attachment/", withAuth(samplesHdlrs.HandleAttachment))
+	mux.HandleFunc("/steps/", withAuth(samplesHdlrs.StepAction))
+	mux.HandleFunc("/api/v1/samples", withAuth(samplesHdlrs.APISamples))
+	mux.HandleFunc("/api/v1/samples/", withAuth(samplesHdlrs.APISamples))
+	mux.HandleFunc("/api/v1/steps/", withAuth(samplesHdlrs.APISteps))
+	mux.HandleFunc("/s/", samplesHdlrs.SharedSample)
 
 	// Booking routes
 	mux.HandleFunc("/booking", withAuth(h.Booking))
@@ -129,18 +129,12 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/equipment-report", withAuth(adminH(h.EquipmentReport)))
 	mux.HandleFunc("/admin/delete-user", withAuth(adminH(h.DeleteUser)))
 
-	// Fabrication step routes
-	mux.HandleFunc("/steps/", withAuth(h.StepAction))
-
 	// Account / profile routes
 	mux.HandleFunc("/change-password", withAuth(h.ChangePassword))
 	mux.HandleFunc("/profile/tokens", withAuth(h.ProfileTokens))
 	mux.HandleFunc("/profile/tokens/", withAuth(h.ProfileTokenRevoke))
 
-	// REST API v1 routes
-	mux.HandleFunc("/api/v1/samples", withAuth(h.APISamples))
-	mux.HandleFunc("/api/v1/samples/", withAuth(h.APISamples))
-	mux.HandleFunc("/api/v1/steps/", withAuth(h.APISteps))
+	// REST API v1 routes — wiki / users / equipment
 	mux.HandleFunc("/api/v1/wiki", withAuth(h.APIWiki))
 	mux.HandleFunc("/api/v1/wiki/", withAuth(h.APIWiki))
 	mux.HandleFunc("/api/v1/users", withAuth(h.APIUsers))
@@ -148,7 +142,6 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/", withAuth(h.APINotFound))
 
 	// Public routes (no auth required)
-	mux.HandleFunc("/s/", h.SharedSample)
 	mux.HandleFunc("/agents", h.AIAgents)
 	mux.HandleFunc("/agents/examples", h.AIAgentExamples)
 	mux.HandleFunc("/agents/examples/", h.AIAgentExamples)

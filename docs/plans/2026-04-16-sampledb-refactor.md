@@ -156,12 +156,12 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 13: Extract `internal/samples` package
 
-- [ ] write failing tests for sample CRUD, attachment, sharing, and fabrication-step operations against the new package's service interface
-- [ ] create `internal/samples/` with service interface and implementation covering: sample CRUD, attachments, sharing tokens, fabrication steps
-- [ ] move sample HTML handlers from `main.go` to `internal/samples/handlers.go`
-- [ ] move sample API handlers from `api.go` to `internal/samples/api_handlers.go`
-- [ ] update `internal/app/routes.go` to mount the new handlers
-- [ ] run tests — must pass before task 14
+- [x] write failing tests for sample CRUD, attachment, sharing, and fabrication-step operations against the new package's service interface
+- [x] create `internal/samples/` with service interface and implementation covering: sample CRUD, attachments, sharing tokens, fabrication steps
+- [x] move sample HTML handlers from `main.go` to `internal/samples/handlers.go`
+- [x] move sample API handlers from `api.go` to `internal/samples/api_handlers.go`
+- [x] update `internal/app/routes.go` to mount the new handlers
+- [x] run tests — must pass before task 14
 
 ### Task 14: Extract `internal/wiki` package
 

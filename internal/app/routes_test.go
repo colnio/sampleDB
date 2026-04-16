@@ -20,11 +20,6 @@ var stub http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 
 func allStubHandlers() app.Handlers {
 	return app.Handlers{
-		Main:               stub,
-		NewSample:          stub,
-		EditSample:         stub,
-		HandleSample:       stub,
-		HandleAttachment:   stub,
 		Booking:            stub,
 		GetBookings:        stub,
 		DeleteBooking:      stub,
@@ -40,17 +35,13 @@ func allStubHandlers() app.Handlers {
 		DeleteGroup:        stub,
 		EquipmentReport:    stub,
 		DeleteUser:         stub,
-		StepAction:         stub,
 		ChangePassword:     stub,
 		ProfileTokens:      stub,
 		ProfileTokenRevoke: stub,
-		APISamples:         stub,
-		APISteps:           stub,
 		APIWiki:            stub,
 		APIUsers:           stub,
 		APIEquipment:       stub,
 		APINotFound:        stub,
-		SharedSample:       stub,
 		AIAgents:           stub,
 		AIAgentExamples:    stub,
 	}
