@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html/template"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -175,51 +174,6 @@ func generateUniqueFilename(originalName string) (string, error) {
 	return fmt.Sprintf("%s_%s", hex.EncodeToString(buffer), clean), nil
 }
 
-func resolveAppPath(path string) string {
-	if path == "" {
-		return path
-	}
-	baseDir := ""
-	if theApp != nil {
-		baseDir = theApp.Config.BaseDir
-	}
-	base := baseDir + string(os.PathSeparator)
-	if filepath.IsAbs(path) {
-		// Absolute paths must still be contained within BaseDir when set.
-		if baseDir == "" {
-			return path
-		}
-		if path != baseDir && !strings.HasPrefix(path, base) {
-			return ""
-		}
-		return path
-	}
-	clean := filepath.Clean(path)
-	if baseDir == "" {
-		return clean
-	}
-	joined := filepath.Join(baseDir, clean)
-	if joined != baseDir && !strings.HasPrefix(joined, base) {
-		return ""
-	}
-	return joined
-}
-
-func resolveTemplatePath(path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-
-	clean := strings.TrimPrefix(path, "templates/")
-	clean = strings.TrimPrefix(clean, "templates\\")
-	clean = strings.TrimPrefix(clean, string(os.PathSeparator))
-	clean = filepath.Clean(clean)
-
-	if theApp == nil || theApp.Config.TemplatesDir == "" {
-		return filepath.Join("templates", clean)
-	}
-	return filepath.Join(theApp.Config.TemplatesDir, clean)
-}
 
 func securityHeaders(next http.Handler, enableHSTS bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -290,59 +244,6 @@ func ensureDefaultAdmin(ctx context.Context, pool dbiface.Pool) (bool, error) {
 	return true, nil
 }
 
-func handleAIAgents(w http.ResponseWriter, r *http.Request) {
-	tmplPath := resolveTemplatePath("templates/ai_agents.html")
-	tmpl, err := template.ParseFiles(tmplPath)
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	if err := tmpl.Execute(w, nil); err != nil {
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
-	}
-}
-
-func handleAIAgentExamples(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/agents/examples" && r.URL.Path != "/agents/examples/" {
-		http.Redirect(w, r, "/agents/examples", http.StatusTemporaryRedirect)
-		return
-	}
-
-	dataProcessingPath := resolveAppPath("static/examples/data_processing.md")
-	dataProcessingMD, err := os.ReadFile(dataProcessingPath)
-	if err != nil {
-		http.Error(w, "Error loading example content", http.StatusInternalServerError)
-		return
-	}
-	scriptingAutomationPath := resolveAppPath("static/examples/scrpiting_automation.md")
-	scriptingAutomationMD, err := os.ReadFile(scriptingAutomationPath)
-	if err != nil {
-		http.Error(w, "Error loading example content", http.StatusInternalServerError)
-		return
-	}
-	softwareDevelopmentPath := resolveAppPath("static/examples/software_development.md")
-	softwareDevelopmentMD, err := os.ReadFile(softwareDevelopmentPath)
-	if err != nil {
-		http.Error(w, "Error loading example content", http.StatusInternalServerError)
-		return
-	}
-
-	tmplPath := resolveTemplatePath("templates/ai_agent_examples.html")
-	tmpl, err := template.ParseFiles(tmplPath)
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	pageData := AIAgentExamplesPageData{
-		DataProcessingHTML:      renderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
-		ScriptingAutomationHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(scriptingAutomationMD), "/static/examples")),
-		SoftwareDevelopmentHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(softwareDevelopmentMD), "/static/examples")),
-	}
-
-	if err := tmpl.Execute(w, pageData); err != nil {
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
-	}
-}
 
 var markdownImagePattern = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 
@@ -426,10 +327,57 @@ func main() {
 		log.Fatalf("Unable to initialize application: %v\n", err)
 	}
 
+	// Pre-parse standalone AI agent templates at startup (cached, not per-request).
+	aiAgentsTmpl, err := template.ParseFiles(filepath.Join(cfg.TemplatesDir, "ai_agents.html"))
+	if err != nil {
+		log.Fatalf("Unable to parse ai_agents template: %v", err)
+	}
+	aiExamplesTmpl, err := template.ParseFiles(filepath.Join(cfg.TemplatesDir, "ai_agent_examples.html"))
+	if err != nil {
+		log.Fatalf("Unable to parse ai_agent_examples template: %v", err)
+	}
+	examplesBase := cfg.BaseDir
+	if examplesBase == "" {
+		examplesBase = "."
+	}
+	examplesDir := filepath.Join(examplesBase, "static", "examples")
+
 	theApp.Handlers = app.Handlers{
-		APINotFound:     apiNotFoundHandler,
-		AIAgents:        handleAIAgents,
-		AIAgentExamples: handleAIAgentExamples,
+		APINotFound: apiNotFoundHandler,
+		AIAgents: func(w http.ResponseWriter, r *http.Request) {
+			if err := aiAgentsTmpl.Execute(w, nil); err != nil {
+				http.Error(w, "Error rendering page", http.StatusInternalServerError)
+			}
+		},
+		AIAgentExamples: func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/agents/examples" && r.URL.Path != "/agents/examples/" {
+				http.Redirect(w, r, "/agents/examples", http.StatusTemporaryRedirect)
+				return
+			}
+			dataProcessingMD, err := os.ReadFile(filepath.Join(examplesDir, "data_processing.md"))
+			if err != nil {
+				http.Error(w, "Error loading example content", http.StatusInternalServerError)
+				return
+			}
+			scriptingMD, err := os.ReadFile(filepath.Join(examplesDir, "scrpiting_automation.md"))
+			if err != nil {
+				http.Error(w, "Error loading example content", http.StatusInternalServerError)
+				return
+			}
+			softwareMD, err := os.ReadFile(filepath.Join(examplesDir, "software_development.md"))
+			if err != nil {
+				http.Error(w, "Error loading example content", http.StatusInternalServerError)
+				return
+			}
+			pageData := AIAgentExamplesPageData{
+				DataProcessingHTML:      renderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
+				ScriptingAutomationHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(scriptingMD), "/static/examples")),
+				SoftwareDevelopmentHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(softwareMD), "/static/examples")),
+			}
+			if err := aiExamplesTmpl.Execute(w, pageData); err != nil {
+				http.Error(w, "Error rendering page", http.StatusInternalServerError)
+			}
+		},
 	}
 
 	mux := http.NewServeMux()
@@ -481,47 +429,6 @@ func main() {
 
 	log.Printf("HTTP server listening on %s", cfg.Addr)
 	log.Fatal(server.ListenAndServe())
-}
-
-
-// saveUploadedFile saves the file to disk and returns the file path
-func saveUploadedFile(file io.Reader, originalName string) (string, error) {
-	// Create uploads directory if it doesn't exist
-	uploadDir := theApp.Config.UploadsDir
-	if uploadDir == "" {
-		uploadDir = "uploads"
-	}
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return "", err
-	}
-
-	// Generate unique filename
-	filename, err := generateUniqueFilename(originalName)
-	if err != nil {
-		return "", err
-	}
-
-	fullPath := filepath.Join(uploadDir, filename)
-
-	// Create new file
-	dst, err := os.Create(fullPath)
-	if err != nil {
-		return "", err
-	}
-	defer dst.Close()
-
-	// Copy file content
-	if _, err = io.Copy(dst, file); err != nil {
-		return "", err
-	}
-
-	if theApp.Config.BaseDir != "" {
-		if rel, err := filepath.Rel(theApp.Config.BaseDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
-			return filepath.ToSlash(rel), nil
-		}
-	}
-
-	return fullPath, nil
 }
 
 func setDownloadHeaders(w http.ResponseWriter, filename string) {

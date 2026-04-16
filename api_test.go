@@ -54,40 +54,6 @@ func TestWriteError_ReturnsJSONError(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// parsePagination
-// ---------------------------------------------------------------------------
-
-func TestParsePagination_Defaults(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/wiki", nil)
-	limit, offset := parsePagination(req)
-	if limit != 100 {
-		t.Errorf("limit = %d, want 100", limit)
-	}
-	if offset != 0 {
-		t.Errorf("offset = %d, want 0", offset)
-	}
-}
-
-func TestParsePagination_Custom(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/wiki?limit=25&offset=50", nil)
-	limit, offset := parsePagination(req)
-	if limit != 25 {
-		t.Errorf("limit = %d, want 25", limit)
-	}
-	if offset != 50 {
-		t.Errorf("offset = %d, want 50", offset)
-	}
-}
-
-func TestParsePagination_ClampsExcessLimit(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/wiki?limit=99999", nil)
-	limit, _ := parsePagination(req)
-	if limit != 100 {
-		t.Errorf("limit = %d, want 100 (clamped to default for out-of-range)", limit)
-	}
-}
-
-// ---------------------------------------------------------------------------
 // Auth rejection — no valid credentials → 401
 // ---------------------------------------------------------------------------
 

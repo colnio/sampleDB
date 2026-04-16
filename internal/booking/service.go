@@ -148,15 +148,28 @@ func (s *DBService) CheckConflict(ctx context.Context, equipmentID int, start, e
 
 // Create inserts a new booking.
 // Returns web.ErrConflict if an exclusion constraint violation occurs (concurrent insert).
+// Retries once on deadlock (40P01), which can occur when concurrent inserts race on GiST locks.
 func (s *DBService) Create(ctx context.Context, p CreateParams) error {
-	_, err := s.db.Exec(ctx,
-		`INSERT INTO bookings (equipment_id, user_id, start_time, end_time, purpose)
+	const maxAttempts = 2
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		_, err := s.db.Exec(ctx,
+			`INSERT INTO bookings (equipment_id, user_id, start_time, end_time, purpose)
          VALUES ($1, $2, $3, $4, $5)`,
-		p.EquipmentID, p.UserID, p.StartTime, p.EndTime, p.Purpose)
-	if err != nil {
+			p.EquipmentID, p.UserID, p.StartTime, p.EndTime, p.Purpose)
+		if err == nil {
+			return nil
+		}
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23P01" {
-			return web.ErrConflict
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case "23P01": // exclusion_violation
+				return web.ErrConflict
+			case "40P01": // deadlock_detected — retry once, then check for exclusion on retry
+				if attempt < maxAttempts-1 {
+					continue
+				}
+				return web.ErrConflict
+			}
 		}
 		return err
 	}
