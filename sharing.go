@@ -152,7 +152,10 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sampleIDInt := sample.ID
-	steps, _ := getFabricationSteps(r.Context(), sampleIDInt) // non-fatal
+	steps, stepsErr := getFabricationSteps(r.Context(), sampleIDInt)
+	if stepsErr != nil {
+		log.Printf("handleSharedSample: getFabricationSteps error for sample %d: %v", sampleIDInt, stepsErr)
+	}
 
 	data := SharedSamplePageData{
 		Sample:          sample,

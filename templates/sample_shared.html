@@ -71,11 +71,11 @@
     {{end}}
 
     {{/* Fabrication steps — read-only list */}}
-    {{if .Steps}}
     <section class="card fabrication-steps" aria-labelledby="steps-heading-shared">
         <header class="fabrication-steps__header">
             <h2 id="steps-heading-shared">Fabrication Steps</h2>
         </header>
+        {{if .Steps}}
         <ol class="step-list">
             {{range .Steps}}
             <li class="step-item">
@@ -88,8 +88,12 @@
             </li>
             {{end}}
         </ol>
+        {{else}}
+        <div class="empty-state">
+            <p>No fabrication steps recorded.</p>
+        </div>
+        {{end}}
     </section>
-    {{end}}
 
     {{if not .IsAuthenticated}}
     <div class="card shared-login-prompt">
