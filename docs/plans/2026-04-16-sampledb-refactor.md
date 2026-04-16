@@ -82,9 +82,9 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 4: Make admin access updates transactional
 
-- [ ] write failing test: if any equipment permission insert fails inside `handleUpdateAccess`, the entire update is rolled back and no partial state is committed
-- [ ] wrap the multi-step permission update in `admin.go::handleUpdateAccess` in a single `pgx` transaction; abort and return an error on any failure
-- [ ] run tests — must pass before task 5
+- [x] write failing test: if any equipment permission insert fails inside `handleUpdateAccess`, the entire update is rolled back and no partial state is committed
+- [x] wrap the multi-step permission update in `admin.go::handleUpdateAccess` in a single `pgx` transaction; abort and return an error on any failure
+- [x] run tests — must pass before task 5
 
 ### Task 5: Replace `context.Background()` with `r.Context()` in request handlers
 

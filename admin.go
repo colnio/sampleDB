@@ -219,7 +219,8 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 			data.UserID, equipID)
 		if err != nil {
 			fmt.Printf("error inserting permission: %v\n", err)
-			continue
+			http.Error(w, "Error updating equipment permissions", http.StatusInternalServerError)
+			return
 		}
 	}
 
