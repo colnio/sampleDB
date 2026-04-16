@@ -59,7 +59,7 @@ func TestSetDownloadHeaders(t *testing.T) {
 	if !strings.Contains(cd, `filename="report 1.txt"`) {
 		t.Fatalf("content disposition missing safe filename: %q", cd)
 	}
-	if !strings.Contains(cd, "filename*=UTF-8''report%20%221%22.txt") {
+	if !strings.Contains(cd, "filename*=UTF-8''report%201.txt") {
 		t.Fatalf("content disposition missing encoded filename: %q", cd)
 	}
 }

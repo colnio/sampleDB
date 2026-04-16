@@ -38,12 +38,16 @@ func NewService(db dbiface.Pool) *DBService {
 }
 
 // GetAdminStatus returns true if userID belongs to an active admin account.
+// Returns web.ErrNotFound if the user does not exist or has been deleted.
 func (s *DBService) GetAdminStatus(ctx context.Context, userID int) (bool, error) {
 	var isAdmin bool
 	err := s.db.QueryRow(ctx,
 		`SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
 		userID).Scan(&isAdmin)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, web.ErrNotFound
+		}
 		return false, fmt.Errorf("profile: get admin status: %w", err)
 	}
 	return isAdmin, nil

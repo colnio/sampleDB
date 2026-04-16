@@ -155,25 +155,24 @@ func (s *DBService) UpdateArticleContent(ctx context.Context, title, content str
 // DB).  It returns the file-system paths of the deleted attachments so the
 // caller can remove the files.  The function does NOT touch the filesystem.
 func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, error) {
-	attRows, attErr := s.db.Query(ctx,
+	attRows, err := s.db.Query(ctx,
 		`SELECT aa.attachment_address
 		   FROM article_attachments aa
 		   JOIN articles a ON aa.article_id = a.article_id
 		  WHERE a.title = $1`, title)
-	var filePaths []string
-	if attErr == nil {
-		for attRows.Next() {
-			var fp string
-			if scanErr := attRows.Scan(&fp); scanErr == nil {
-				filePaths = append(filePaths, fp)
-			}
-		}
-		attRows.Close()
-	} else {
-		log.Printf("wiki: DeleteArticle: could not list attachments for %q: %v", title, attErr)
+	if err != nil {
+		return nil, fmt.Errorf("wiki: DeleteArticle: could not list attachments for %q: %w", title, err)
 	}
+	var filePaths []string
+	for attRows.Next() {
+		var fp string
+		if scanErr := attRows.Scan(&fp); scanErr == nil {
+			filePaths = append(filePaths, fp)
+		}
+	}
+	attRows.Close()
 
-	_, err := s.db.Exec(ctx, "DELETE FROM articles WHERE title = $1", title)
+	_, err = s.db.Exec(ctx, "DELETE FROM articles WHERE title = $1", title)
 	return filePaths, err
 }
 

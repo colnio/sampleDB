@@ -77,7 +77,7 @@ type Service interface {
 	// API-specific operations (paginated/aggregate queries for JSON endpoints)
 	APIListSamples(ctx context.Context, p APIListParams) (APIListResult, error)
 	APIGetSample(ctx context.Context, id int) (APISampleDetail, error)
-	APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID int) (APISampleItem, error)
+	APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID *int) (APISampleItem, error)
 	APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string) error
 	APIDeleteSample(ctx context.Context, id int) ([]int, error)
 	SampleExistsByID(ctx context.Context, id int) (bool, error)
@@ -1022,7 +1022,7 @@ func (s *DBService) APIGetSample(ctx context.Context, id int) (APISampleDetail, 
 }
 
 // APICreateSample inserts a new sample and returns the created item.
-func (s *DBService) APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID int) (APISampleItem, error) {
+func (s *DBService) APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID *int) (APISampleItem, error) {
 	var id int
 	var createdAt time.Time
 	var ownerUsername *string
@@ -1046,7 +1046,7 @@ func (s *DBService) APICreateSample(ctx context.Context, name, description, keyw
 		Description:   description,
 		Keywords:      keywords,
 		Owner:         owner,
-		OwnerUserID:   &ownerUserID,
+		OwnerUserID:   ownerUserID,
 		OwnerUsername: ownerUsername,
 		CreatedAt:     createdAt,
 	}, nil
