@@ -210,9 +210,9 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 20: [Final] Update documentation
 
-- [ ] update `README.md` to reflect new package structure and bootstrap instructions
-- [ ] remove or update any references to old globals or monolithic `main.go`
-- [ ] update inline code comments where architecture descriptions are now outdated
+- [x] update `README.md` to reflect new package structure and bootstrap instructions
+- [x] remove or update any references to old globals or monolithic `main.go`
+- [x] update inline code comments where architecture descriptions are now outdated
 
 *Note: ralphex automatically moves completed plans to `docs/plans/completed/`*
 

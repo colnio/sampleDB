@@ -194,12 +194,22 @@ go test ./...
 ## Project structure
 
 ```
-DDL/                    -- Stand-alone SQL for provisioning
-internal/auth/          -- Session management and auth flows
-internal/dbschema/      -- Runtime schema verification helpers
+DDL/                    -- Stand-alone SQL for provisioning / reference schema
+docs/                   -- Architecture notes, API docs, review findings
+internal/
+  app/                  -- App struct, config, and central route registration
+  auth/                 -- Session management, Bearer-token auth, password hashing
+  admin/                -- User, group, and equipment management handlers
+  booking/              -- Equipment booking calendar: service + HTTP handlers
+  dbschema/             -- Runtime schema bootstrap (applied on every startup)
+  dbiface/              -- Minimal pgx pool interface for testability
+  profile/              -- Change-password and API-token management handlers
+  samples/              -- Sample CRUD, attachments, fabrication steps, sharing
+  web/                  -- Shared HTTP helpers: JSON, error rendering, path parsing
+  wiki/                 -- Wiki article CRUD and attachment handlers
 static/                 -- Public assets served at /static/
-templates/              -- HTML templates (base, admin, wiki, etc.)
-uploads/                -- File uploads (created at runtime)
+templates/              -- HTML templates (base layout, admin, wiki, booking, etc.)
+uploads/                -- File uploads (created at runtime if missing)
 ```
 
 ## License

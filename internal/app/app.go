@@ -1,6 +1,6 @@
-// Package app holds the central application struct that replaces package-level
-// globals.  All handler constructors will receive *App (or its fields) instead
-// of reading global variables.
+// Package app defines the central application struct and wires all
+// domain-specific handlers (samples, wiki, booking, admin, profile) together
+// into a single HTTP mux via RegisterRoutes.
 package app
 
 import (
@@ -14,8 +14,7 @@ import (
 )
 
 // Config holds all runtime configuration for the application.
-// It mirrors the AppConfig type in main.go; main.go will be updated to use
-// this type in Task 9.
+// Values are read from environment variables at startup by main.go.
 type Config struct {
 	Addr         string
 	RedirectAddr string

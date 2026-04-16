@@ -29,8 +29,8 @@ import (
 )
 
 // BasePageData holds session-derived fields shared by all page templates.
-// This type is used by legacy top-level handlers (wiki.go, etc.) that have
-// not yet been removed.
+// Handlers in wiki.go, sharing.go, and other root-level files embed this
+// struct when building template data.
 type BasePageData struct {
 	Username string
 	UserID   int
@@ -45,8 +45,9 @@ type AIAgentExamplesPageData struct {
 
 var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
 
-// theApp holds all application-wide dependencies, replacing the former
-// package-level variables dbPool, appConfig, authManagerInstance and loc.
+// theApp holds all application-wide dependencies (DB pool, auth manager,
+// template renderer, logger, timezone, and config). Initialized once in main
+// and passed to all domain handler packages via their constructors.
 var theApp *app.App
 
 func loadConfig() app.Config {
