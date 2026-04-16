@@ -173,7 +173,8 @@ func (s *DBService) Create(ctx context.Context, p CreateParams) error {
 		}
 		return err
 	}
-	return nil
+	// maxAttempts exhausted (only reachable if maxAttempts == 0)
+	return errors.New("booking: no insert attempts made")
 }
 
 // Delete removes a booking. Admins may delete any booking; non-admins must own it.

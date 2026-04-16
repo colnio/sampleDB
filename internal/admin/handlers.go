@@ -63,7 +63,7 @@ func (h *Handlers) AdminPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.renderer.Render(w, "admin", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
 }
 
@@ -393,7 +393,10 @@ func (h *Handlers) EquipmentReport(w http.ResponseWriter, r *http.Request) {
 			rec.EquipmentName,
 			rec.Purpose,
 		}
-		_ = csvWriter.Write(row)
+		if err := csvWriter.Write(row); err != nil {
+			log.Printf("csv write error: %v", err)
+			return
+		}
 	}
 }
 

@@ -60,8 +60,8 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 				n = 52
 			}
 			weekOffset = n
+			selectedDate = selectedDate.AddDate(0, 0, weekOffset*7)
 		}
-		selectedDate = selectedDate.AddDate(0, 0, weekOffset*7)
 	}
 
 	weekStart := selectedDate.AddDate(0, 0, -int(selectedDate.Weekday()))

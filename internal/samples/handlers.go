@@ -789,7 +789,7 @@ func (h *Handlers) SharedSample(w http.ResponseWriter, r *http.Request) {
 
 // serveSharedAttachment serves GET /s/{token}/attachment/{id}.
 func (h *Handlers) serveSharedAttachment(w http.ResponseWriter, r *http.Request, token, attachmentID string) {
-	sampleID, visibility, filePath, err := h.svc.SharedAttachmentInfo(r.Context(), token, attachmentID)
+	_, visibility, filePath, err := h.svc.SharedAttachmentInfo(r.Context(), token, attachmentID)
 	if err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			http.NotFound(w, r)
@@ -798,7 +798,6 @@ func (h *Handlers) serveSharedAttachment(w http.ResponseWriter, r *http.Request,
 		}
 		return
 	}
-	_ = sampleID
 
 	if visibility == "private" || visibility == "" {
 		http.NotFound(w, r)

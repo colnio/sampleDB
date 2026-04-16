@@ -237,7 +237,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 			return
 		}
 
-		username := r.FormValue("username")
+		username := strings.TrimSpace(r.FormValue("username"))
 		password := r.FormValue("password")
 		confirmPassword := r.FormValue("confirm_password")
 
