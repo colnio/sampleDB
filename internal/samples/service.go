@@ -189,7 +189,7 @@ func (s *DBService) ListAll(ctx context.Context, dateFrom, dateTo string) ([]Sam
 
 func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) ([]Sample, error) {
 	trimmed := strings.TrimSpace(query)
-	rawKeywords := strings.FieldsFunc(query, func(r rune) bool {
+	rawKeywords := strings.FieldsFunc(trimmed, func(r rune) bool {
 		return r == ' ' || r == ',' || r == ';'
 	})
 
@@ -888,7 +888,7 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 	}
 	if p.From != "" {
 		if _, err := time.Parse("2006-01-02", p.From); err != nil {
-			return APIListResult{}, fmt.Errorf("invalid from date: use YYYY-MM-DD")
+			return APIListResult{}, fmt.Errorf("%w: invalid from date: use YYYY-MM-DD", web.ErrValidation)
 		}
 		idx := len(args) + 1
 		conditions = append(conditions, fmt.Sprintf("s.created_at >= $%d", idx))
@@ -896,7 +896,7 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 	}
 	if p.To != "" {
 		if _, err := time.Parse("2006-01-02", p.To); err != nil {
-			return APIListResult{}, fmt.Errorf("invalid to date: use YYYY-MM-DD")
+			return APIListResult{}, fmt.Errorf("%w: invalid to date: use YYYY-MM-DD", web.ErrValidation)
 		}
 		idx := len(args) + 1
 		conditions = append(conditions, fmt.Sprintf("s.created_at < $%d::date + interval '1 day'", idx))

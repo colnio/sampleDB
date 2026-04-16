@@ -127,7 +127,7 @@ func (h *Handlers) apiListSamples(w http.ResponseWriter, r *http.Request) {
 	result, err := h.svc.APIListSamples(r.Context(), p)
 	if err != nil {
 		log.Printf("samples api: listSamples error: %v", err)
-		if strings.Contains(err.Error(), "invalid") {
+		if errors.Is(err, web.ErrValidation) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

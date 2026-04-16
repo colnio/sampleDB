@@ -16,7 +16,5 @@ func JSON(w http.ResponseWriter, status int, v any) {
 // DecodeJSON reads and decodes a JSON body from r into dst.
 // It returns an error if the body is empty or malformed.
 func DecodeJSON(r *http.Request, dst any) error {
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	return dec.Decode(dst)
+	return json.NewDecoder(r.Body).Decode(dst)
 }

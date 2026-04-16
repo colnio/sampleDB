@@ -275,6 +275,15 @@ func (h *Handlers) GetBookings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !end.After(start) {
+		http.Error(w, "end must be after start", http.StatusBadRequest)
+		return
+	}
+	if end.Sub(start) > 90*24*time.Hour {
+		http.Error(w, "date range too large (max 90 days)", http.StatusBadRequest)
+		return
+	}
+
 	bookings, err := h.svc.GetBookingsForWeek(r.Context(), start, end)
 	if err != nil {
 		http.Error(w, "Error retrieving bookings", http.StatusInternalServerError)

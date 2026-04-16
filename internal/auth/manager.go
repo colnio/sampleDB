@@ -347,14 +347,20 @@ func (m *Manager) TryAuth(r *http.Request) (Session, bool, error) {
 		plain := authHeader[7:]
 		userID, err := m.ValidateAPIToken(r.Context(), plain)
 		if err != nil {
-			return Session{}, false, nil
+			if errors.Is(err, ErrTokenInvalid) {
+				return Session{}, false, nil
+			}
+			return Session{}, false, err
 		}
 		// Fail auth if the user has been deleted or is not yet approved.
 		var username string
 		if err := m.db.QueryRow(r.Context(),
 			"SELECT username FROM users WHERE user_id = $1 AND is_approved = true AND COALESCE(deleted, false) = false",
 			userID).Scan(&username); err != nil {
-			return Session{}, false, nil
+			if errors.Is(err, pgx.ErrNoRows) {
+				return Session{}, false, nil
+			}
+			return Session{}, false, err
 		}
 		return Session{
 			UserID:    userID,
