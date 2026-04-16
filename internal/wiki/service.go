@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"mime"
 	"path/filepath"
 	"strings"
@@ -120,8 +119,7 @@ func (s *DBService) GetArticle(ctx context.Context, title string) (*Article, err
 	for rows.Next() {
 		var att ArticleAttachment
 		if scanErr := rows.Scan(&att.ID, &att.OriginalName, &att.Address, &att.UploadedAt); scanErr != nil {
-			log.Printf("wiki: GetArticle attachment scan error: %v", scanErr)
-			continue
+			return nil, fmt.Errorf("wiki: GetArticle attachment scan: %w", scanErr)
 		}
 		att.IsImage = isImage(mime.TypeByExtension(filepath.Ext(att.Address)))
 		article.Attachments = append(article.Attachments, att)
@@ -166,9 +164,11 @@ func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, 
 	var filePaths []string
 	for attRows.Next() {
 		var fp string
-		if scanErr := attRows.Scan(&fp); scanErr == nil {
-			filePaths = append(filePaths, fp)
+		if scanErr := attRows.Scan(&fp); scanErr != nil {
+			attRows.Close()
+			return nil, fmt.Errorf("wiki: DeleteArticle: attachment scan for %q: %w", title, scanErr)
 		}
+		filePaths = append(filePaths, fp)
 	}
 	if rowsErr := attRows.Err(); rowsErr != nil {
 		attRows.Close()

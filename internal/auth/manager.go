@@ -162,6 +162,15 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			return
 		}
 
+		// Always run bcrypt before checking account state to prevent timing
+		// side-channels that would reveal whether a username exists and is
+		// disabled/unapproved.
+		err = bcrypt.CompareHashAndPassword([]byte(passwdHash), []byte(password))
+		if err != nil {
+			http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
+			return
+		}
+
 		if deleted {
 			http.Redirect(w, r, "/login?error=Account+is+disabled", http.StatusSeeOther)
 			return
@@ -169,12 +178,6 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 
 		if !isApproved {
 			http.Redirect(w, r, "/login?error=Your+account+is+pending+approval", http.StatusSeeOther)
-			return
-		}
-
-		err = bcrypt.CompareHashAndPassword([]byte(passwdHash), []byte(password))
-		if err != nil {
-			http.Redirect(w, r, "/login?error=Invalid+username+or+password", http.StatusSeeOther)
 			return
 		}
 

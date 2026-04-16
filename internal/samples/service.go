@@ -504,7 +504,10 @@ func (s *DBService) SharedAttachmentInfo(ctx context.Context, token, attachmentI
 		  WHERE attachment_id = $1 AND source_id = $2 AND source_type = 'sample'`,
 		attachmentID, sampleID).Scan(&filePath)
 	if err != nil {
-		return 0, "", "", web.ErrNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, "", "", web.ErrNotFound
+		}
+		return 0, "", "", err
 	}
 	return sampleID, visibility, filePath, nil
 }
