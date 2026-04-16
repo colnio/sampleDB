@@ -254,24 +254,6 @@ func getAllGroups(ctx context.Context) ([]Group, error) {
 	}
 	return groups, nil
 }
-func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session := auth.MustSessionFromContext(r.Context())
-
-		var isAdmin bool
-		err := theApp.DB.QueryRow(r.Context(),
-			"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
-			session.UserID).Scan(&isAdmin)
-
-		if err != nil || !isAdmin {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-			return
-		}
-
-		next(w, r)
-	}
-}
-
 // Handler for setting admin status
 func handleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

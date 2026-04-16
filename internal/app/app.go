@@ -41,6 +41,9 @@ type App struct {
 	Logger   *slog.Logger
 	Clock    func() time.Time
 	Location *time.Location
+	// Handlers holds the HTTP handler functions registered by RegisterRoutes.
+	// Populate this field before calling RegisterRoutes.
+	Handlers Handlers
 }
 
 // New constructs an App, validating that the required fields are provided.

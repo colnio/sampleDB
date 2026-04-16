@@ -135,10 +135,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 11: Centralize route registration
 
-- [ ] write failing test: calling `app.RegisterRoutes(mux)` registers all expected route patterns (sample, wiki, booking, admin, api, auth)
-- [ ] create `internal/app/routes.go` with `RegisterRoutes(*http.ServeMux)` that wires all handlers
-- [ ] remove inline route wiring from `main.go` and replace with `app.RegisterRoutes(mux)`
-- [ ] run tests — must pass before task 12
+- [x] write failing test: calling `app.RegisterRoutes(mux)` registers all expected route patterns (sample, wiki, booking, admin, api, auth)
+- [x] create `internal/app/routes.go` with `RegisterRoutes(*http.ServeMux)` that wires all handlers
+- [x] remove inline route wiring from `main.go` and replace with `app.RegisterRoutes(mux)`
+- [x] run tests — must pass before task 12
 
 ### Task 12: Unify template rendering
 

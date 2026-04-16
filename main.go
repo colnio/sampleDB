@@ -731,72 +731,44 @@ func main() {
 		log.Fatalf("Unable to initialize application: %v\n", err)
 	}
 
+	theApp.Handlers = app.Handlers{
+		Main:               mainPageHandler,
+		NewSample:          newSampleHandler,
+		EditSample:         editSampleHandler,
+		HandleSample:       handleSample,
+		HandleAttachment:   handleAttachment,
+		Booking:            handleBooking,
+		GetBookings:        handleGetBookings,
+		DeleteBooking:      handleDeleteBooking,
+		Wiki:               handleWiki,
+		WikiAttachment:     handleAttachmentWiki,
+		AdminPage:          handleAdminPage,
+		UpdateAccess:       handleUpdateAccess,
+		SetAdmin:           handleSetAdmin,
+		ResetPassword:      handleResetPassword,
+		AddEquipment:       handleAddEquipment,
+		DeleteEquipment:    handleDeleteEquipment,
+		AddGroup:           handleAddGroup,
+		DeleteGroup:        handleDeleteGroup,
+		EquipmentReport:    handleEquipmentReport,
+		DeleteUser:         handleDeleteUser,
+		StepAction:         handleStepAction,
+		ChangePassword:     handleChangePassword,
+		ProfileTokens:      handleProfileTokens,
+		ProfileTokenRevoke: handleProfileTokenRevoke,
+		APISamples:         apiSamplesHandler,
+		APISteps:           apiStepsHandler,
+		APIWiki:            apiWikiHandler,
+		APIUsers:           apiUsersHandler,
+		APIEquipment:       apiEquipmentHandler,
+		APINotFound:        apiNotFoundHandler,
+		SharedSample:       handleSharedSample,
+		AIAgents:           handleAIAgents,
+		AIAgentExamples:    handleAIAgentExamples,
+	}
+
 	mux := http.NewServeMux()
-
-	// Set up static file serving
-	fs := http.FileServer(http.Dir(cfg.StaticDir))
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
-
-	// Auth routes
-	mux.HandleFunc("/login", theApp.Auth.LoginHandler())
-	mux.HandleFunc("/register", theApp.Auth.RegisterHandler())
-	mux.HandleFunc("/logout", theApp.Auth.RequireAuth(theApp.Auth.LogoutHandler()))
-
-	// Sample management routes
-	withAuth := theApp.Auth.RequireAuth
-	mux.HandleFunc("/", withAuth(mainPageHandler))
-	mux.HandleFunc("/samples/new", withAuth(newSampleHandler))
-	mux.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
-	// sample prep route removed — fabrication steps replace it
-	mux.HandleFunc("/samples/", withAuth(handleSample))
-	mux.HandleFunc("/attachment/", withAuth(handleAttachment))
-	mux.HandleFunc("/booking", withAuth(handleBooking))
-	mux.HandleFunc("/api/bookings", withAuth(handleGetBookings))
-	mux.HandleFunc("/booking/delete", withAuth(handleDeleteBooking))
-
-	// Wiki routes
-	mux.HandleFunc("/wiki", withAuth(handleWiki))
-	mux.HandleFunc("/wiki/", withAuth(handleWiki))                      // Handles all wiki subpaths
-	mux.HandleFunc("/wiki/attachment/", withAuth(handleAttachmentWiki)) // Handles wiki attachments
-
-	// Admin routes
-	mux.HandleFunc("/admin", withAuth(requireAdmin(handleAdminPage)))
-	mux.HandleFunc("/admin/update-access", withAuth(requireAdmin(handleUpdateAccess)))
-	mux.HandleFunc("/admin/set-admin", withAuth(requireAdmin(handleSetAdmin)))
-	mux.HandleFunc("/admin/reset-password", withAuth(requireAdmin(handleResetPassword)))
-	mux.HandleFunc("/admin/add-equipment", withAuth(requireAdmin(handleAddEquipment)))
-	mux.HandleFunc("/admin/delete-equipment/", withAuth(requireAdmin(handleDeleteEquipment))) // Note trailing slash
-	mux.HandleFunc("/admin/add-group", withAuth(requireAdmin(handleAddGroup)))
-	mux.HandleFunc("/admin/delete-group/", withAuth(requireAdmin(handleDeleteGroup)))
-	mux.HandleFunc("/admin/equipment-report", withAuth(requireAdmin(handleEquipmentReport)))
-	mux.HandleFunc("/admin/delete-user", withAuth(requireAdmin(handleDeleteUser)))
-
-	// Fabrication step actions: /steps/{id}/edit and /steps/{id}/delete
-	mux.HandleFunc("/steps/", withAuth(handleStepAction))
-
-	// Account management
-	mux.HandleFunc("/change-password", withAuth(handleChangePassword))
-	mux.HandleFunc("/profile/tokens", withAuth(handleProfileTokens))
-	mux.HandleFunc("/profile/tokens/", withAuth(handleProfileTokenRevoke))
-
-	// REST API v1 routes (Bearer token or session cookie auth)
-	mux.HandleFunc("/api/v1/samples", withAuth(apiSamplesHandler))
-	mux.HandleFunc("/api/v1/samples/", withAuth(apiSamplesHandler))
-	mux.HandleFunc("/api/v1/steps/", withAuth(apiStepsHandler))
-	mux.HandleFunc("/api/v1/wiki", withAuth(apiWikiHandler))
-	mux.HandleFunc("/api/v1/wiki/", withAuth(apiWikiHandler))
-	mux.HandleFunc("/api/v1/users", withAuth(apiUsersHandler))
-	mux.HandleFunc("/api/v1/equipment", withAuth(apiEquipmentHandler))
-	// Catch-all for unknown /api/ paths — return JSON 404 instead of falling through to the HTML root handler.
-	mux.HandleFunc("/api/", withAuth(apiNotFoundHandler))
-
-	// Public shared sample view — no auth middleware; visibility checked in handler
-	mux.HandleFunc("/s/", handleSharedSample)
-
-	// Public pages (no auth required)
-	mux.HandleFunc("/agents", handleAIAgents)
-	mux.HandleFunc("/agents/examples", handleAIAgentExamples)
-	mux.HandleFunc("/agents/examples/", handleAIAgentExamples)
+	theApp.RegisterRoutes(mux)
 
 	// Ensure required directories exist
 	if err = os.MkdirAll(cfg.UploadsDir, 0755); err != nil {
