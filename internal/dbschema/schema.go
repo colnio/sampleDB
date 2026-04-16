@@ -41,7 +41,10 @@ var schemaStatements = []string{
 	addBookingExclusionConstraint,
 }
 
-var dataStatements = []string{}
+var dataStatements = []string{
+	seedEquipment,
+	backfillGroups,
+}
 
 const createUsersTable = `
 CREATE TABLE IF NOT EXISTS users (
@@ -226,6 +229,34 @@ DO $$ BEGIN
         );
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;`
+
+// seedEquipment inserts the default equipment rows when the database is blank
+// (no users, no samples, and no equipment present yet).  Matches the seed block
+// in DDL/init.sql so that both bootstrap paths produce the same initial state.
+const seedEquipment = `
+DO $$ BEGIN
+    IF (SELECT COUNT(*) FROM users) = 0
+       AND (SELECT COUNT(*) FROM samples) = 0
+       AND (SELECT COUNT(*) FROM equipment) = 0
+    THEN
+        INSERT INTO equipment (name, description, location) VALUES
+            ('SEM', 'Scanning Electron Microscope', 'Room 101'),
+            ('TEM', 'Transmission Electron Microscope', 'Room 102'),
+            ('XRD', 'X-Ray Diffractometer', 'Room 103'),
+            ('AFM', 'Atomic Force Microscope', 'Room 104')
+        ON CONFLICT (name) DO NOTHING;
+    END IF;
+END $$;`
+
+// backfillGroups populates the groups table from distinct non-empty "group"
+// values already stored on users rows.  Idempotent via ON CONFLICT.
+const backfillGroups = `
+INSERT INTO groups (name)
+SELECT DISTINCT btrim("group")
+FROM users
+WHERE "group" IS NOT NULL
+  AND btrim("group") <> ''
+ON CONFLICT (name) DO NOTHING;`
 
 // Ensure ensures that all schema elements required by the application exist.
 func Ensure(ctx context.Context, pool dbiface.Pool) error {

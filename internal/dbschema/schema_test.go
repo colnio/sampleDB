@@ -46,3 +46,78 @@ func TestBackfillAttachmentSourceIDIsGuardedForLegacySchemas(t *testing.T) {
 		}
 	}
 }
+
+// TestDataStatementsIncludeEquipmentSeed verifies that the Go bootstrap path
+// seeds the default equipment rows just as DDL/init.sql does.
+func TestDataStatementsIncludeEquipmentSeed(t *testing.T) {
+	combined := strings.Join(dataStatements, "\n")
+	required := []string{
+		"INSERT INTO equipment",
+		"'SEM'",
+		"'TEM'",
+		"'XRD'",
+		"'AFM'",
+	}
+	for _, fragment := range required {
+		if !strings.Contains(combined, fragment) {
+			t.Fatalf("dataStatements missing equipment seed fragment: %q", fragment)
+		}
+	}
+}
+
+// TestDataStatementsIncludeGroupBackfill verifies that the Go bootstrap path
+// populates the groups table from existing users, just as DDL/init.sql does.
+func TestDataStatementsIncludeGroupBackfill(t *testing.T) {
+	combined := strings.Join(dataStatements, "\n")
+	required := []string{
+		"INSERT INTO groups",
+		"FROM users",
+		`"group"`,
+		"ON CONFLICT",
+	}
+	for _, fragment := range required {
+		if !strings.Contains(combined, fragment) {
+			t.Fatalf("dataStatements missing group backfill fragment: %q", fragment)
+		}
+	}
+}
+
+// TestSchemaBootstrapCoversInitSQLTables spot-checks that every table declared
+// in DDL/init.sql is also created by schemaStatements.
+func TestSchemaBootstrapCoversInitSQLTables(t *testing.T) {
+	combined := strings.Join(schemaStatements, "\n")
+	tables := []string{
+		"users",
+		"groups",
+		"samples",
+		"attachments",
+		"articles",
+		"article_attachments",
+		"equipment",
+		"user_equipment_permissions",
+		"bookings",
+		"fabrication_steps",
+		"api_tokens",
+	}
+	for _, table := range tables {
+		if !strings.Contains(combined, table) {
+			t.Fatalf("schemaStatements missing table: %q", table)
+		}
+	}
+}
+
+// TestSchemaBootstrapCoversLatestMigrations verifies that migrations 006 and 007
+// (added after init.sql was last updated) are present in schemaStatements.
+func TestSchemaBootstrapCoversLatestMigrations(t *testing.T) {
+	combined := strings.Join(schemaStatements, "\n")
+	required := []string{
+		"equipment_text",      // migration 006
+		"btree_gist",          // migration 007
+		"bookings_no_overlap", // migration 007
+	}
+	for _, fragment := range required {
+		if !strings.Contains(combined, fragment) {
+			t.Fatalf("schemaStatements missing migration fragment: %q", fragment)
+		}
+	}
+}

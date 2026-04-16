@@ -147,6 +147,23 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- Migration 006: add free-text equipment field to fabrication steps
+ALTER TABLE fabrication_steps
+    ADD COLUMN IF NOT EXISTS equipment_text TEXT;
+
+-- Migration 007: prevent overlapping bookings via exclusion constraint
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+DO $$ BEGIN
+    ALTER TABLE bookings
+        ADD CONSTRAINT bookings_no_overlap
+        EXCLUDE USING gist (
+            equipment_id WITH =,
+            tstzrange(start_time, end_time, '[)') WITH &&
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Seed default equipment ONLY when the database is completely empty
 -- (no users, no samples, and no equipment already present).
 DO $$ BEGIN

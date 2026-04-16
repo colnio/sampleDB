@@ -94,10 +94,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 6: Align runtime schema bootstrap with `DDL/init.sql`
 
-- [ ] write failing test: after running `dbschema.Ensure` on a blank DB, the schema state is equivalent to applying `DDL/init.sql` (spot-check key tables, seed rows, indexes)
-- [ ] audit `DDL/init.sql` for seed/backfill SQL that `dataStatements` in `internal/dbschema/schema.go` is missing
-- [ ] add missing statements to `dataStatements` (or `schemaStatements` if structural) so both bootstrap paths are equivalent
-- [ ] run tests — must pass before phase 1
+- [x] write failing test: after running `dbschema.Ensure` on a blank DB, the schema state is equivalent to applying `DDL/init.sql` (spot-check key tables, seed rows, indexes)
+- [x] audit `DDL/init.sql` for seed/backfill SQL that `dataStatements` in `internal/dbschema/schema.go` is missing
+- [x] add missing statements to `dataStatements` (or `schemaStatements` if structural) so both bootstrap paths are equivalent
+- [x] run tests — must pass before phase 1
 
 ### Task 7: Fix booking calendar boundary query
 
