@@ -34,6 +34,8 @@ var schemaStatements = []string{
 	backfillAttachmentSourceID,
 	// Migration 006
 	addShareVisibilityCheckConstraint,
+	// Migration 007
+	addEquipmentTextColumn,
 }
 
 var dataStatements = []string{}
@@ -72,8 +74,9 @@ CREATE TABLE IF NOT EXISTS samples (
 const createAttachmentsTable = `
 CREATE TABLE IF NOT EXISTS attachments (
     attachment_id SERIAL PRIMARY KEY,
-    sample_id INT REFERENCES samples(sample_id) ON DELETE CASCADE,
+    source_id INT,
     attachment_address VARCHAR(255) NOT NULL,
+    source_type VARCHAR(20) NOT NULL DEFAULT 'sample',
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );`
 
@@ -183,7 +186,17 @@ ALTER TABLE attachments
     ADD COLUMN IF NOT EXISTS source_type VARCHAR(20) NOT NULL DEFAULT 'sample';`
 
 const backfillAttachmentSourceID = `
-UPDATE attachments SET source_id = sample_id WHERE source_id IS NULL;`
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'attachments'
+           AND column_name = 'sample_id'
+    ) THEN
+        UPDATE attachments SET source_id = sample_id WHERE source_id IS NULL;
+    END IF;
+END $$;`
 
 const addShareVisibilityCheckConstraint = `
 DO $$ BEGIN
@@ -192,6 +205,10 @@ DO $$ BEGIN
         CHECK (share_visibility IN ('private', 'public', 'authenticated'));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;`
+
+const addEquipmentTextColumn = `
+ALTER TABLE fabrication_steps
+    ADD COLUMN IF NOT EXISTS equipment_text TEXT;`
 
 // Ensure ensures that all schema elements required by the application exist.
 func Ensure(ctx context.Context, pool dbiface.Pool) error {

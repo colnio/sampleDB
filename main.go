@@ -1586,19 +1586,21 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Insert the new sample into the database
-		_, err := dbPool.Exec(context.Background(),
+		// Insert the new sample into the database and get its ID
+		var newSampleID int
+		err := dbPool.QueryRow(context.Background(),
 			`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_prep, sample_owner, owner_user_id)
-			 VALUES ($1, $2, $3, $4, $5, $6)`,
-			name, description, keywords, prep, ownerName, ownerUserID)
+			 VALUES ($1, $2, $3, $4, $5, $6)
+			 RETURNING sample_id`,
+			name, description, keywords, prep, ownerName, ownerUserID).Scan(&newSampleID)
 		if err != nil {
 			log.Printf("newSampleHandler: insert error: %v", err)
 			http.Error(w, "Error adding sample", http.StatusInternalServerError)
 			return
 		}
 
-		// Redirect to the main page to show the new sample
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		// Redirect to the new sample's detail page so the user can add fabrication steps
+		http.Redirect(w, r, fmt.Sprintf("/samples/%d", newSampleID), http.StatusSeeOther)
 	} else {
 		// Return 405 Method Not Allowed for other methods
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

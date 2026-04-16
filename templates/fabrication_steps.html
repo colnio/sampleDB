@@ -47,12 +47,9 @@
                     </div>
                     <div class="form-group">
                         <label for="edit-step-equip-{{.ID}}">Equipment</label>
-                        <select id="edit-step-equip-{{.ID}}" name="equipment_id">
-                            <option value="">-- None --</option>
-                            {{range $.Equipment}}
-                            <option value="{{.ID}}" {{if ownerSelected $step.EquipmentID .ID}}selected{{end}}>{{.Name}}</option>
-                            {{end}}
-                        </select>
+                        <input id="edit-step-equip-{{.ID}}" type="text" name="equipment_text"
+                               value="{{if $step.EquipmentText}}{{$step.EquipmentText}}{{else if $step.EquipmentName}}{{$step.EquipmentName}}{{end}}"
+                               placeholder="e.g. SEM, TEM, custom rig…">
                     </div>
                 </div>
                 <div class="form-group">
@@ -73,7 +70,7 @@
             <div class="step-meta">
                 {{if .StepDate}}<span class="step-date">{{formatDate .StepDate}}</span>{{end}}
                 {{if .PersonUsername}}<span class="step-person">{{.PersonUsername}}</span>{{end}}
-                {{if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
+                {{if .EquipmentText}}<span class="step-equipment">{{.EquipmentText}}</span>{{else if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
             </div>
             {{if .Description}}<p class="step-description">{{.Description}}</p>{{end}}
             <div class="step-actions">

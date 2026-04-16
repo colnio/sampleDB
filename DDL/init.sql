@@ -29,8 +29,9 @@ CREATE TABLE IF NOT EXISTS samples (
 
 CREATE TABLE IF NOT EXISTS attachments (
     attachment_id SERIAL PRIMARY KEY,
-    sample_id INT REFERENCES samples(sample_id) ON DELETE CASCADE,
+    source_id INT,
     attachment_address VARCHAR(255) NOT NULL,
+    source_type VARCHAR(20) NOT NULL DEFAULT 'sample',
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -85,13 +86,82 @@ CREATE TABLE IF NOT EXISTS bookings (
 CREATE INDEX IF NOT EXISTS idx_bookings_time_range
 ON bookings (equipment_id, start_time, end_time);
 
--- Idempotent seed data
-INSERT INTO equipment (name, description, location) VALUES
-    ('SEM', 'Scanning Electron Microscope', 'Room 101'),
-    ('TEM', 'Transmission Electron Microscope', 'Room 102'),
-    ('XRD', 'X-Ray Diffractometer', 'Room 103'),
-    ('AFM', 'Atomic Force Microscope', 'Room 104')
-ON CONFLICT (name) DO NOTHING;
+CREATE TABLE IF NOT EXISTS fabrication_steps (
+    step_id        SERIAL PRIMARY KEY,
+    sample_id      INT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
+    step_order     INT NOT NULL DEFAULT 0,
+    step_date      DATE,
+    person_user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
+    description    TEXT,
+    equipment_id   INT REFERENCES equipment(equipment_id) ON DELETE SET NULL,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS api_tokens (
+    token_id     SERIAL PRIMARY KEY,
+    user_id      INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    token_hash   VARCHAR(64) NOT NULL UNIQUE,
+    name         VARCHAR(100),
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP,
+    revoked      BOOLEAN NOT NULL DEFAULT false
+);
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS "group" TEXT;
+
+ALTER TABLE samples
+    ADD COLUMN IF NOT EXISTS owner_user_id INT REFERENCES users(user_id) ON DELETE SET NULL;
+
+ALTER TABLE samples
+    ADD COLUMN IF NOT EXISTS share_token VARCHAR(64) UNIQUE;
+
+ALTER TABLE samples
+    ADD COLUMN IF NOT EXISTS share_visibility VARCHAR(20) NOT NULL DEFAULT 'private';
+
+ALTER TABLE attachments
+    ADD COLUMN IF NOT EXISTS source_id INT;
+
+ALTER TABLE attachments
+    ADD COLUMN IF NOT EXISTS source_type VARCHAR(20) NOT NULL DEFAULT 'sample';
+
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'attachments'
+           AND column_name = 'sample_id'
+    ) THEN
+        UPDATE attachments SET source_id = sample_id WHERE source_id IS NULL;
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    ALTER TABLE samples
+        ADD CONSTRAINT chk_share_visibility
+        CHECK (share_visibility IN ('private', 'public', 'authenticated'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Seed default equipment ONLY when the database is completely empty
+-- (no users, no samples, and no equipment already present).
+DO $$ BEGIN
+    IF (SELECT COUNT(*) FROM users) = 0
+       AND (SELECT COUNT(*) FROM samples) = 0
+       AND (SELECT COUNT(*) FROM equipment) = 0
+    THEN
+        INSERT INTO equipment (name, description, location) VALUES
+            ('SEM', 'Scanning Electron Microscope', 'Room 101'),
+            ('TEM', 'Transmission Electron Microscope', 'Room 102'),
+            ('XRD', 'X-Ray Diffractometer', 'Room 103'),
+            ('AFM', 'Atomic Force Microscope', 'Room 104')
+        ON CONFLICT (name) DO NOTHING;
+    END IF;
+END $$;
 
 INSERT INTO groups (name)
 SELECT DISTINCT btrim("group")

@@ -32,12 +32,7 @@
             </div>
             <div class="form-group">
                 <label for="step-equipment">Equipment</label>
-                <select id="step-equipment" name="equipment_id">
-                    <option value="">-- None --</option>
-                    {{range .Equipment}}
-                    <option value="{{.ID}}">{{.Name}}</option>
-                    {{end}}
-                </select>
+                <input id="step-equipment" type="text" name="equipment_text" placeholder="e.g. SEM, TEM, custom rig…">
             </div>
         </div>
         <div class="form-group">

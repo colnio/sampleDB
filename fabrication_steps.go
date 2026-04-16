@@ -19,6 +19,7 @@ type FabricationStep struct {
 	Description    string
 	EquipmentID    *int
 	EquipmentName  *string
+	EquipmentText  *string
 	CreatedAt      time.Time
 }
 
@@ -29,6 +30,7 @@ func getFabricationSteps(ctx context.Context, sampleID int) ([]FabricationStep, 
 		       fs.person_user_id, u.username,
 		       COALESCE(fs.description, ''),
 		       fs.equipment_id, e.name,
+		       fs.equipment_text,
 		       fs.created_at
 		  FROM fabrication_steps fs
 		  LEFT JOIN users u ON fs.person_user_id = u.user_id
@@ -48,6 +50,7 @@ func getFabricationSteps(ctx context.Context, sampleID int) ([]FabricationStep, 
 			&s.PersonUserID, &s.PersonUsername,
 			&s.Description,
 			&s.EquipmentID, &s.EquipmentName,
+			&s.EquipmentText,
 			&s.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -63,11 +66,11 @@ func addFabricationStep(ctx context.Context, sampleID int, step FabricationStep)
 	var id int
 	err := dbPool.QueryRow(ctx, `
 		INSERT INTO fabrication_steps
-		            (sample_id, step_order, step_date, person_user_id, description, equipment_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		            (sample_id, step_order, step_date, person_user_id, description, equipment_id, equipment_text)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING step_id`,
 		sampleID, step.StepOrder, step.StepDate, step.PersonUserID,
-		step.Description, step.EquipmentID,
+		step.Description, step.EquipmentID, step.EquipmentText,
 	).Scan(&id)
 	if err != nil {
 		return FabricationStep{}, err
@@ -83,10 +86,11 @@ func updateFabricationStep(ctx context.Context, stepID int, step FabricationStep
 		       step_date      = $2,
 		       person_user_id = $3,
 		       description    = $4,
-		       equipment_id   = $5
-		 WHERE step_id = $6`,
+		       equipment_id   = $5,
+		       equipment_text = $6
+		 WHERE step_id = $7`,
 		step.StepOrder, step.StepDate, step.PersonUserID,
-		step.Description, step.EquipmentID, stepID)
+		step.Description, step.EquipmentID, step.EquipmentText, stepID)
 	if err != nil {
 		return err
 	}
@@ -117,6 +121,7 @@ func getStepByID(ctx context.Context, stepID int) (FabricationStep, error) {
 		       fs.person_user_id, u.username,
 		       COALESCE(fs.description, ''),
 		       fs.equipment_id, e.name,
+		       fs.equipment_text,
 		       fs.created_at
 		  FROM fabrication_steps fs
 		  LEFT JOIN users u ON fs.person_user_id = u.user_id
@@ -126,6 +131,7 @@ func getStepByID(ctx context.Context, stepID int) (FabricationStep, error) {
 		&s.PersonUserID, &s.PersonUsername,
 		&s.Description,
 		&s.EquipmentID, &s.EquipmentName,
+		&s.EquipmentText,
 		&s.CreatedAt,
 	)
 	if err != nil {

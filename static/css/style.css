@@ -775,6 +775,8 @@ select {
     border-radius: var(--radius-sm);
     font-size: var(--font-size-base);
     line-height: 1.4;
+    background-color: var(--surface-default);
+    color: var(--text-strong);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1987,7 +1989,134 @@ html[data-theme="dark"] body .markdown-body table th {
     }
 }
 
-/* Hide section h2 headings inside collapsible panel-details
+/* ============================================================
+   Form row — two-column grid for paired form fields
+   ============================================================ */
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   Nested card — used for sub-forms rendered inside a .card
+   ============================================================ */
+
+.card--nested {
+    border-top-color: var(--border-subtle);
+    background: var(--surface-subtle);
+    box-shadow: none;
+}
+
+[data-theme="dark"] .card--nested {
+    background: var(--surface-muted);
+}
+
+/* ============================================================
+   Fabrication Steps
+   ============================================================ */
+
+.fabrication-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.fabrication-steps__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.step-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    counter-reset: step-counter;
+}
+
+.step-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--surface-subtle);
+    counter-increment: step-counter;
+    position: relative;
+    padding-left: calc(var(--space-md) + 2rem);
+}
+
+.step-item::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: var(--space-md);
+    top: var(--space-md);
+    width: 1.5rem;
+    height: 1.5rem;
+    background: var(--color-primary);
+    color: var(--color-button-on-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.step-meta {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.step-date,
+.step-person,
+.step-equipment {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-muted);
+    padding: 2px var(--space-sm);
+    border-radius: 9999px;
+    border: 1px solid var(--border-subtle);
+}
+
+.step-description {
+    color: var(--text-strong);
+    font-size: var(--font-size-sm);
+    margin-bottom: 0;
+}
+
+.step-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+}
+
+.step-item--editing {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 4%, var(--surface-subtle));
+}
+
+/* ============================================================
+   Hide section h2 headings inside collapsible panel-details
    (the <summary> above already provides the visible title) */
 .panel-details > section > header > div > h2,
 .panel-details > section > header > h2,
@@ -2000,4 +2129,85 @@ html[data-theme="dark"] body .markdown-body table th {
 .panel-details > section.sample-share > header,
 .panel-details > section.form-container > header {
     display: none;
+}
+
+/* ============================================================
+   Wiki article tile — prevent long titles from overflowing
+   ============================================================ */
+
+.article-tile h2 {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+.article-tile {
+    overflow: hidden;
+}
+
+/* ============================================================
+   Share panel styles
+   ============================================================ */
+
+.share-status {
+    margin-bottom: var(--space-md);
+}
+
+.share-visibility-label {
+    margin-bottom: var(--space-sm);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.share-url-row {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+.share-url-input {
+    flex: 1;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    background: var(--surface-muted);
+}
+
+.share-actions {
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: var(--space-md);
+}
+
+.share-visibility-select {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 0;
+}
+
+.share-visibility-select select {
+    width: auto;
+    min-width: 180px;
+}
+
+.share-generate-form {
+    margin-top: var(--space-md);
+}
+
+/* ============================================================
+   Sample card — uniform height when some cards lack thumbnails
+   ============================================================ */
+
+.sample-card__description {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.sample-card__keywords {
+    margin-top: auto;
 }

@@ -64,11 +64,8 @@ func parseStepForm(r *http.Request) (FabricationStep, error) {
 		}
 	}
 
-	if s := r.FormValue("equipment_id"); s != "" {
-		id, err := strconv.Atoi(s)
-		if err == nil {
-			step.EquipmentID = &id
-		}
+	if s := strings.TrimSpace(r.FormValue("equipment_text")); s != "" {
+		step.EquipmentText = &s
 	}
 
 	step.Description = r.FormValue("description")

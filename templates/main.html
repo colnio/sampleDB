@@ -1,11 +1,6 @@
 {{define "title"}}Sample Tracker{{end}}
 
 {{define "content"}}
-<section class="page-heading">
-    <!-- <h1>Samples</h1> -->
-     <p>    </p>
-    <!-- <p class="page-subtitle">Search, preview, and jump into any record without leaving the page.</p> -->
-</section>
 <div class="controls">
     <div class="search-container">
         <form id="samples-search"
@@ -22,7 +17,7 @@
                    type="search"
                    name="query"
                    value="{{.Query}}"
-                   placeholder="Search samples by name, keywords, or owner"
+                   placeholder="Search samples…"
                    autocomplete="off">
             <label for="date-from" class="date-filter-label">From:</label>
             <input id="date-from"
@@ -40,7 +35,7 @@
             </div>
         </form>
     </div>
-    <!-- <a href="/samples/new" class="button button--primary">Add New Sample</a> -->
+    <a href="/samples/new" class="button button--primary">New Sample</a>
 </div>
 
 {{template "samples_panel" .}}

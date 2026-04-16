@@ -1,49 +1,60 @@
-{{define "title"}}Sample Tracker{{end}}
+{{define "title"}}New Sample · Sample Tracker{{end}}
 
 {{define "content"}}
-<!-- <div class="content"> -->
-<h1>Add New Sample</h1>
+<a href="/" class="back-link back-link--quiet">← Back to samples</a>
 
-<div class="form-container">
-    <form action="/samples/new" method="POST" class="stacked-form">
-        <div class="form-group">
-            <label>Sample Name</label>
-            <input type="text" name="name" required>
+<section class="sample-detail">
+    <header class="sample-detail__header">
+        <div>
+            <h1>Add New Sample</h1>
+            <p class="sample-detail__created">Fill in the details below, then add fabrication steps on the next page.</p>
         </div>
-        
-        <div class="form-group">
-            <label>Description</label>
-            <textarea name="description"></textarea>
-        </div>
-        
-        <div class="form-group">
-            <label>Preparation Technology</label>
-            <textarea name="sample_prep"></textarea>
-        </div>
-        
-        <div class="form-group">
-            <label>Keywords (comma-separated)</label>
-            <input type="text" name="keywords">
-        </div>
-        
-        <div class="form-group">
-            <label for="owner-select">Owner</label>
-            <select id="owner-select" name="owner_user_id">
-                <option value="">-- Unassigned --</option>
-                {{range .Users}}
-                <option value="{{.ID}}">{{.Username}}</option>
-                {{end}}
-            </select>
-        </div>
-        
-        <div class="form-actions">
-            <button type="submit" class="button button--primary button--block">Add Sample</button>
-        </div>
-    </form>
-</div>
+    </header>
 
-<a href="/" class="back-link">← Back to main page</a>
-<!-- </div> -->
+    <section class="form-container card">
+        <header>
+            <h2>Sample Details</h2>
+        </header>
+        <form action="/samples/new" method="POST" class="stacked-form">
+            <div class="form-group">
+                <label for="sample-name">Sample Name</label>
+                <input id="sample-name" type="text" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="sample-description">Description</label>
+                <textarea id="sample-description" name="description"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="sample-prep">Sample Preparation</label>
+                <p class="form-hint">Supports Markdown. You can add more detailed notes after creation.</p>
+                <textarea id="sample-prep" name="sample_prep" rows="4"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="sample-keywords">Keywords (comma-separated)</label>
+                <input id="sample-keywords" type="text" name="keywords">
+            </div>
+
+            <div class="form-group">
+                <label for="owner-select">Owner</label>
+                <select id="owner-select" name="owner_user_id">
+                    <option value="">-- Unassigned --</option>
+                    {{range .Users}}
+                    <option value="{{.ID}}">{{.Username}}</option>
+                    {{end}}
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="button button--primary button--block">Create Sample</button>
+            </div>
+        </form>
+    </section>
+
+    <a href="/" class="back-link">← Back to samples</a>
+</section>
 {{end}}
 
 {{template "base" .}}

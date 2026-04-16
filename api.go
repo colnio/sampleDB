@@ -86,6 +86,7 @@ type apiFabricationStep struct {
 	Description    string    `json:"description"`
 	EquipmentID    *int      `json:"equipment_id,omitempty"`
 	EquipmentName  *string   `json:"equipment_name,omitempty"`
+	EquipmentText  *string   `json:"equipment_text,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
@@ -162,6 +163,7 @@ func fabricationStepToAPI(s FabricationStep) apiFabricationStep {
 		Description:    s.Description,
 		EquipmentID:    s.EquipmentID,
 		EquipmentName:  s.EquipmentName,
+		EquipmentText:  s.EquipmentText,
 		CreatedAt:      s.CreatedAt,
 	}
 	if s.StepDate != nil {
@@ -639,19 +641,21 @@ func apiListSteps(w http.ResponseWriter, r *http.Request, sampleID string) {
 }
 
 type stepRequest struct {
-	StepOrder    int    `json:"step_order"`
-	StepDate     string `json:"step_date"`
-	PersonUserID *int   `json:"person_user_id"`
-	Description  string `json:"description"`
-	EquipmentID  *int   `json:"equipment_id"`
+	StepOrder     int     `json:"step_order"`
+	StepDate      string  `json:"step_date"`
+	PersonUserID  *int    `json:"person_user_id"`
+	Description   string  `json:"description"`
+	EquipmentID   *int    `json:"equipment_id"`
+	EquipmentText *string `json:"equipment_text"`
 }
 
 func stepRequestToStep(req stepRequest) (FabricationStep, error) {
 	step := FabricationStep{
-		StepOrder:    req.StepOrder,
-		PersonUserID: req.PersonUserID,
-		Description:  req.Description,
-		EquipmentID:  req.EquipmentID,
+		StepOrder:     req.StepOrder,
+		PersonUserID:  req.PersonUserID,
+		Description:   req.Description,
+		EquipmentID:   req.EquipmentID,
+		EquipmentText: req.EquipmentText,
 	}
 	if req.StepDate != "" {
 		t, err := time.Parse("2006-01-02", req.StepDate)

@@ -72,7 +72,7 @@ func TestMigration001_FabricationSteps(t *testing.T) {
 	requiredColumns := []string{
 		"step_id", "sample_id", "step_order",
 		"step_date", "person_user_id", "description",
-		"equipment_id", "created_at",
+		"equipment_id", "equipment_text", "created_at",
 	}
 	for _, col := range requiredColumns {
 		if !columnExists(t, pool, "fabrication_steps", col) {
