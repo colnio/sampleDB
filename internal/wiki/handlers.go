@@ -467,7 +467,11 @@ func (h *Handlers) deleteArticle(w http.ResponseWriter, r *http.Request) {
 
 	filePaths, err := h.svc.DeleteArticle(r.Context(), title)
 	if err != nil {
-		http.Error(w, "Error deleting article", http.StatusInternalServerError)
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "Article not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error deleting article", http.StatusInternalServerError)
+		}
 		return
 	}
 

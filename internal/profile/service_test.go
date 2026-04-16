@@ -219,8 +219,8 @@ func TestChangePassword_POST_MissingFields_Returns400(t *testing.T) {
 
 	h.ChangePassword(w, req)
 
-	if w.Code != http.StatusBadRequest && w.Code != http.StatusInternalServerError {
-		t.Errorf("expected 400 or 500, got %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
 
@@ -238,8 +238,8 @@ func TestChangePassword_POST_ShortNewPassword_Returns400(t *testing.T) {
 
 	h.ChangePassword(w, req)
 
-	if w.Code != http.StatusBadRequest && w.Code != http.StatusInternalServerError {
-		t.Errorf("expected 400 or 500, got %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
 
@@ -257,8 +257,8 @@ func TestChangePassword_POST_PasswordMismatch_Returns400(t *testing.T) {
 
 	h.ChangePassword(w, req)
 
-	if w.Code != http.StatusBadRequest && w.Code != http.StatusInternalServerError {
-		t.Errorf("expected 400 or 500, got %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
 
@@ -348,8 +348,8 @@ func TestProfileTokens_POST_EmptyName_Returns400(t *testing.T) {
 
 	h.ProfileTokens(w, req)
 
-	if w.Code != http.StatusBadRequest && w.Code != http.StatusInternalServerError {
-		t.Errorf("expected 400 or 500, got %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
 

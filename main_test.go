@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -23,45 +21,6 @@ func TestMain(m *testing.M) {
 		Auth: auth.NewManager(nil),
 	}
 	os.Exit(m.Run())
-}
-
-func TestSanitizeFilename(t *testing.T) {
-	tests := map[string]string{
-		"../../foo bar?.txt": "foo-bar.txt",
-		"   .hidden  ":       "file.hidden",
-		"":                   "file",
-	}
-
-	for input, want := range tests {
-		if got := sanitizeFilename(input); got != want {
-			t.Fatalf("sanitizeFilename(%q) = %q, want %q", input, got, want)
-		}
-	}
-}
-
-func TestGenerateUniqueFilename(t *testing.T) {
-	name, err := generateUniqueFilename(" My Image.PNG ")
-	if err != nil {
-		t.Fatalf("generateUniqueFilename returned error: %v", err)
-	}
-
-	re := regexp.MustCompile(`^[0-9a-f]{16}_My-Image\.png$`)
-	if !re.MatchString(name) {
-		t.Fatalf("generated filename %q does not match %q", name, re.String())
-	}
-}
-
-func TestSetDownloadHeaders(t *testing.T) {
-	rr := httptest.NewRecorder()
-	setDownloadHeaders(rr, `report "1".txt`)
-
-	cd := rr.Header().Get("Content-Disposition")
-	if !strings.Contains(cd, `filename="report 1.txt"`) {
-		t.Fatalf("content disposition missing safe filename: %q", cd)
-	}
-	if !strings.Contains(cd, "filename*=UTF-8''report%201.txt") {
-		t.Fatalf("content disposition missing encoded filename: %q", cd)
-	}
 }
 
 func TestRedirectToHTTPS(t *testing.T) {

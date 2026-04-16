@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/tls"
-	"encoding/hex"
 	"fmt"
 	"html/template"
 	"log"
@@ -41,8 +39,6 @@ type AIAgentExamplesPageData struct {
 	ScriptingAutomationHTML template.HTML
 	SoftwareDevelopmentHTML template.HTML
 }
-
-var nonFileChars = regexp.MustCompile(`[^a-zA-Z0-9._\-]+`)
 
 // theApp holds all application-wide dependencies (DB pool, auth manager,
 // template renderer, logger, timezone, and config). Initialized once in main
@@ -144,35 +140,6 @@ func initLocation() *time.Location {
 	return loc
 }
 
-func sanitizeFilename(name string) string {
-	base := strings.TrimSpace(filepath.Base(name))
-	ext := filepath.Ext(base)
-	stem := strings.TrimSuffix(base, ext)
-
-	cleanStem := nonFileChars.ReplaceAllString(stem, "-")
-	cleanStem = strings.Trim(cleanStem, "-_. ")
-	if cleanStem == "" {
-		cleanStem = "file"
-	}
-
-	cleanExt := strings.TrimLeft(ext, ".")
-	cleanExt = nonFileChars.ReplaceAllString(cleanExt, "")
-	if cleanExt != "" {
-		cleanExt = "." + strings.ToLower(cleanExt)
-	}
-
-	return cleanStem + cleanExt
-}
-
-func generateUniqueFilename(originalName string) (string, error) {
-	buffer := make([]byte, 8)
-	if _, err := rand.Read(buffer); err != nil {
-		return "", err
-	}
-
-	clean := sanitizeFilename(originalName)
-	return fmt.Sprintf("%s_%s", hex.EncodeToString(buffer), clean), nil
-}
 
 
 func securityHeaders(next http.Handler, enableHSTS bool) http.Handler {
@@ -429,17 +396,6 @@ func main() {
 
 	log.Printf("HTTP server listening on %s", cfg.Addr)
 	log.Fatal(server.ListenAndServe())
-}
-
-func setDownloadHeaders(w http.ResponseWriter, filename string) {
-	if filename == "" {
-		return
-	}
-	safeName := strings.ReplaceAll(filename, "\"", "")
-	safeName = strings.ReplaceAll(safeName, "\\", "")
-	w.Header().Set("Content-Disposition",
-		fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s",
-			safeName, url.PathEscape(safeName)))
 }
 
 // isImage checks if a file is an image based on its content type.

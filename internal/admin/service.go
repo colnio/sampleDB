@@ -212,11 +212,18 @@ func (s *DBService) UpdateAccess(ctx context.Context, p UpdateAccessParams) erro
 }
 
 // SetAdmin sets or clears admin status for the given user.
+// Returns web.ErrNotFound if no such active user exists.
 func (s *DBService) SetAdmin(ctx context.Context, userID int, isAdmin bool) error {
-	_, err := s.db.Exec(ctx,
+	cmdTag, err := s.db.Exec(ctx,
 		"UPDATE users SET admin = $1 WHERE user_id = $2 AND COALESCE(deleted, false) = false",
 		isAdmin, userID)
-	return err
+	if err != nil {
+		return err
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
 }
 
 // DeleteUser soft-deletes a user by setting deleted=true and revoking approval.

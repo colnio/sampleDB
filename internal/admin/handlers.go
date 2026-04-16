@@ -128,7 +128,11 @@ func (h *Handlers) SetAdmin(w http.ResponseWriter, r *http.Request) {
 	isAdmin := r.FormValue("is_admin") == "true"
 
 	if err := h.svc.SetAdmin(r.Context(), userID, isAdmin); err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+		}
 		return
 	}
 

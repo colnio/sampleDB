@@ -39,13 +39,6 @@ func testDB(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// newSvc creates a DBService backed by pool.
-func newSvc(db interface {
-	samples.Service
-}) samples.Service {
-	return db
-}
-
 // ---------------------------------------------------------------------------
 // CheckOwner — mock DB tests
 // ---------------------------------------------------------------------------

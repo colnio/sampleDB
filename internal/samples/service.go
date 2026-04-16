@@ -755,19 +755,6 @@ func (s *DBService) AttachmentFilePath(ctx context.Context, attachmentID int) (s
 	return filePath, err
 }
 
-// AttachmentSampleID returns the sample_id for a given attachment_id,
-// used before deletion to know which sample page to re-render.
-func (s *DBService) AttachmentSampleID(ctx context.Context, attachmentID int) (int, error) {
-	var sampleID int
-	err := s.db.QueryRow(ctx,
-		"SELECT source_id FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
-		attachmentID).Scan(&sampleID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, web.ErrNotFound
-	}
-	return sampleID, err
-}
-
 // APIListParams holds query parameters for the list API.
 type APIListParams struct {
 	Q      string

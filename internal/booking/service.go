@@ -164,11 +164,11 @@ func (s *DBService) Create(ctx context.Context, p CreateParams) error {
 			switch pgErr.Code {
 			case "23P01": // exclusion_violation
 				return web.ErrConflict
-			case "40P01": // deadlock_detected — retry once, then check for exclusion on retry
+			case "40P01": // deadlock_detected — retry once
 				if attempt < maxAttempts-1 {
 					continue
 				}
-				return web.ErrConflict
+				return err
 			}
 		}
 		return err

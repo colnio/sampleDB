@@ -185,8 +185,14 @@ func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, 
 	}
 	attRows.Close()
 
-	_, err = s.db.Exec(ctx, "DELETE FROM articles WHERE title = $1", title)
-	return filePaths, err
+	cmdTag, err := s.db.Exec(ctx, "DELETE FROM articles WHERE title = $1", title)
+	if err != nil {
+		return nil, fmt.Errorf("wiki: DeleteArticle: delete %q: %w", title, err)
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return nil, web.ErrNotFound
+	}
+	return filePaths, nil
 }
 
 // ---------------------------------------------------------------------------

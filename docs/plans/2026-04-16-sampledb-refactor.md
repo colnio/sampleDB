@@ -221,7 +221,7 @@ The result is a testable, deployable app with strong ownership invariants and no
 ## Technical Details
 
 - **Exclusion constraint:** requires `btree_gist` extension; migration must call `CREATE EXTENSION IF NOT EXISTS btree_gist` before adding the constraint
-- **Session storage:** new `sessions` table with columns `(id TEXT PRIMARY KEY, user_id INT, data JSONB, expires_at TIMESTAMPTZ)`
+- **Session storage:** new `sessions` table with columns `(id TEXT PRIMARY KEY, user_id INT NOT NULL, username TEXT NOT NULL, expires_at TIMESTAMPTZ)`
 - **Sentinel errors:** `ErrNotFound`, `ErrForbidden`, `ErrConflict`, `ErrValidation` defined in `internal/web/errors.go`; handlers map these to 404/403/409/400
 - **App struct fields:** `Config`, `DB *pgxpool.Pool`, `Auth *auth.Manager`, `Renderer *web.Renderer`, `Logger *slog.Logger`, `Clock func() time.Time`, `Location *time.Location`
 - **Template caching:** parse all templates once at `app.New()` time; store in `Renderer`; avoid per-request parsing

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -705,7 +706,10 @@ func TestSubmitBooking_SuccessRedirects(t *testing.T) {
 // creation through the service layer against a real database.
 // It is skipped when DATABASE_URL is not set.
 func TestBookingExclusionConstraint_RealDB_ServiceLayer(t *testing.T) {
-	dsn := "postgres://app:app@localhost:5432/sampledb"
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "postgres://app:app@localhost:5432/sampledb"
+	}
 	pool, err := testDBPool(t, dsn)
 	if err != nil {
 		t.Skipf("database not available (%v) — skipping integration test", err)
