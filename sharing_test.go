@@ -394,7 +394,7 @@ func TestHandleSampleShare_GeneratesAndRedirects(t *testing.T) {
 	}
 
 	// Verify token was actually written to DB.
-	sample, err := getSampleByID(fmt.Sprintf("%d", sampleID))
+	sample, err := getSampleByID(context.Background(), fmt.Sprintf("%d", sampleID))
 	if err != nil {
 		t.Fatalf("getSampleByID: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestHandleSampleShareRevoke_RevokesToken(t *testing.T) {
 	}
 
 	// Verify token was cleared.
-	sample, err := getSampleByID(fmt.Sprintf("%d", sampleID))
+	sample, err := getSampleByID(context.Background(), fmt.Sprintf("%d", sampleID))
 	if err != nil {
 		t.Fatalf("getSampleByID: %v", err)
 	}

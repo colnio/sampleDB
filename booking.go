@@ -190,13 +190,13 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get equipment and other data...
-	equipment, err := getAllEquipment()
+	equipment, err := getAllEquipment(r.Context())
 	if err != nil {
 		http.Error(w, "Error retrieving equipment", http.StatusInternalServerError)
 		return
 	}
 
-	isAdmin, err := isUserAdmin(session.UserID)
+	isAdmin, err := isUserAdmin(r.Context(), session.UserID)
 	if err != nil {
 		log.Printf("booking: unable to determine admin status for user %d: %v", session.UserID, err)
 	}
@@ -207,14 +207,14 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		// 	hasPermission[eq.ID] = true
 		// 	continue
 		// }
-		permitted, err := checkUserPermission(session.UserID, eq.ID)
+		permitted, err := checkUserPermission(r.Context(), session.UserID, eq.ID)
 		if err != nil {
 			continue
 		}
 		hasPermission[eq.ID] = permitted
 	}
 
-	bookings, err := getBookingsForWeek(weekStart, weekEnd)
+	bookings, err := getBookingsForWeek(r.Context(), weekStart, weekEnd)
 	if err != nil {
 		http.Error(w, "Error retrieving bookings", http.StatusInternalServerError)
 		return
@@ -223,7 +223,7 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		bookings = make([]Booking, 0)
 	}
 
-	userBookings, err := getUserBookings(session.UserID)
+	userBookings, err := getUserBookings(r.Context(), session.UserID)
 	if err != nil {
 		http.Error(w, "Error retrieving user bookings", http.StatusInternalServerError)
 		return
@@ -290,7 +290,7 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isAdmin, err := isUserAdmin(session.UserID)
+	isAdmin, err := isUserAdmin(r.Context(), session.UserID)
 	if err != nil {
 		http.Redirect(w, r, "/booking?error=Unable+to+verify+permissions", http.StatusSeeOther)
 		return
@@ -308,7 +308,7 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// Check for conflicts
-	hasConflict, err := checkBookingConflict(equipmentID, startTime, endTime)
+	hasConflict, err := checkBookingConflict(r.Context(), equipmentID, startTime, endTime)
 	if err != nil {
 		http.Redirect(w, r, "/booking?error=Error+checking+conflicts", http.StatusSeeOther)
 		return
@@ -325,7 +325,7 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !isAdmin {
-		permitted, err := checkUserPermission(session.UserID, equipmentID)
+		permitted, err := checkUserPermission(r.Context(), session.UserID, equipmentID)
 		if err != nil {
 			http.Redirect(w, r, "/booking?error=Unable+to+verify+permissions", http.StatusSeeOther)
 			return
@@ -337,7 +337,7 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create booking
-	_, err = dbPool.Exec(context.Background(),
+	_, err = dbPool.Exec(r.Context(),
 		`INSERT INTO bookings (equipment_id, user_id, start_time, end_time, purpose)
          VALUES ($1, $2, $3, $4, $5)`,
 		equipmentID, session.UserID, startTime, endTime, purpose)
@@ -363,10 +363,10 @@ func handleBookingSubmission(w http.ResponseWriter, r *http.Request) {
 
 // Helper functions
 
-func getAllEquipment() ([]Equipment, error) {
-	rows, err := dbPool.Query(context.Background(),
-		`SELECT equipment_id, name, coalesce(description, 'N/A'), coalesce(location, 'N/A') 
-         FROM equipment 
+func getAllEquipment(ctx context.Context) ([]Equipment, error) {
+	rows, err := dbPool.Query(ctx,
+		`SELECT equipment_id, name, coalesce(description, 'N/A'), coalesce(location, 'N/A')
+         FROM equipment
          ORDER BY name`)
 	if err != nil {
 		return nil, err
@@ -385,37 +385,37 @@ func getAllEquipment() ([]Equipment, error) {
 	return equipment, nil
 }
 
-func checkUserPermission(userID, equipmentID int) (bool, error) {
+func checkUserPermission(ctx context.Context, userID, equipmentID int) (bool, error) {
 	var exists bool
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		`SELECT EXISTS(
-            SELECT 1 FROM user_equipment_permissions 
+            SELECT 1 FROM user_equipment_permissions
             WHERE user_id = $1 AND equipment_id = $2
         )`, userID, equipmentID).Scan(&exists)
 	return exists, err
 }
 
-func isUserAdmin(userID int) (bool, error) {
+func isUserAdmin(ctx context.Context, userID int) (bool, error) {
 	var isAdmin bool
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		`SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
 		userID).Scan(&isAdmin)
 	return isAdmin, err
 }
 
-func getBookingsForWeek(start, end time.Time) ([]Booking, error) {
+func getBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, error) {
 	// Force timezone to local for query
 	start = start.In(loc)
 	end = end.In(loc)
 
-	rows, err := dbPool.Query(context.Background(),
-		`SELECT b.booking_id, b.equipment_id, b.user_id, u.username, 
-                b.start_time AT TIME ZONE 'UTC', 
-                b.end_time AT TIME ZONE 'UTC', 
-                b.purpose, b.created_at 
-         FROM bookings b 
-         JOIN users u ON b.user_id = u.user_id 
-         WHERE b.start_time >= $1 AND b.end_time <= $2 
+	rows, err := dbPool.Query(ctx,
+		`SELECT b.booking_id, b.equipment_id, b.user_id, u.username,
+                b.start_time AT TIME ZONE 'UTC',
+                b.end_time AT TIME ZONE 'UTC',
+                b.purpose, b.created_at
+         FROM bookings b
+         JOIN users u ON b.user_id = u.user_id
+         WHERE b.start_time >= $1 AND b.end_time <= $2
          ORDER BY b.start_time`,
 		start, end)
 	if err != nil {
@@ -454,7 +454,7 @@ func handleDeleteBooking(w http.ResponseWriter, r *http.Request) {
 
 	// Verify the booking belongs to the user
 	var userID int
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(r.Context(),
 		"SELECT user_id FROM bookings WHERE booking_id = $1", bookingID).Scan(&userID)
 	if err != nil {
 		http.Error(w, "Booking not found", http.StatusNotFound)
@@ -467,7 +467,7 @@ func handleDeleteBooking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete the booking
-	_, err = dbPool.Exec(context.Background(),
+	_, err = dbPool.Exec(r.Context(),
 		"DELETE FROM bookings WHERE booking_id = $1", bookingID)
 	if err != nil {
 		http.Error(w, "Error deleting booking", http.StatusInternalServerError)
@@ -478,11 +478,11 @@ func handleDeleteBooking(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/booking?success=Booking+deleted", http.StatusSeeOther)
 }
 
-func getUserBookings(userID int) ([]Booking, error) {
-	rows, err := dbPool.Query(context.Background(),
-		`SELECT booking_id, equipment_id, user_id, start_time, end_time, purpose, created_at 
-         FROM bookings 
-         WHERE user_id = $1 AND end_time >= NOW() 
+func getUserBookings(ctx context.Context, userID int) ([]Booking, error) {
+	rows, err := dbPool.Query(ctx,
+		`SELECT booking_id, equipment_id, user_id, start_time, end_time, purpose, created_at
+         FROM bookings
+         WHERE user_id = $1 AND end_time >= NOW()
          ORDER BY start_time`,
 		userID)
 	if err != nil {
@@ -505,12 +505,12 @@ func getUserBookings(userID int) ([]Booking, error) {
 	return bookings, nil
 }
 
-func checkBookingConflict(equipmentID int, start, end time.Time) (bool, error) {
+func checkBookingConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error) {
 	var exists bool
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		`SELECT EXISTS(
-            SELECT 1 FROM bookings 
-            WHERE equipment_id = $1 
+            SELECT 1 FROM bookings
+            WHERE equipment_id = $1
             AND (
                 (start_time, end_time) OVERLAPS ($2, $3)
             )
@@ -541,7 +541,7 @@ func handleGetBookings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bookings, err := getBookingsForWeek(start, end)
+	bookings, err := getBookingsForWeek(r.Context(), start, end)
 	if err != nil {
 		http.Error(w, "Error retrieving bookings", http.StatusInternalServerError)
 		return

@@ -42,9 +42,9 @@ type AdminPageData struct {
 	Success   string
 }
 
-func getBasePageData(session auth.Session) (BasePageData, error) {
+func getBasePageData(ctx context.Context, session auth.Session) (BasePageData, error) {
 	var isAdmin bool
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		session.UserID).Scan(&isAdmin)
 	if err != nil {
@@ -60,25 +60,25 @@ func getBasePageData(session auth.Session) (BasePageData, error) {
 func handleAdminPage(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
-	baseData, err := getBasePageData(session)
+	baseData, err := getBasePageData(r.Context(), session)
 	if err != nil {
 		http.Error(w, "Error getting user data", http.StatusInternalServerError)
 		return
 	}
 
-	equipment, err := getAllEquipment()
+	equipment, err := getAllEquipment(r.Context())
 	if err != nil {
 		http.Error(w, "Error getting equipment", http.StatusInternalServerError)
 		return
 	}
 
-	groups, err := getAllGroups()
+	groups, err := getAllGroups(r.Context())
 	if err != nil {
 		http.Error(w, "Error getting groups", http.StatusInternalServerError)
 		return
 	}
 
-	rows, err := dbPool.Query(context.Background(), `
+	rows, err := dbPool.Query(r.Context(), `
         SELECT 
             u.user_id, 
             u.username, 
@@ -177,13 +177,13 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 	// fmt.Println(data)
 	// Start a transaction
-	tx, err := dbPool.Begin(context.Background())
+	tx, err := dbPool.Begin(r.Context())
 	if err != nil {
 		fmt.Printf("error starting access update transaction: %v\n", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	defer tx.Rollback(context.Background())
+	defer tx.Rollback(r.Context())
 
 	var groupParam interface{}
 	if data.GroupName != nil {
@@ -193,7 +193,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.Exec(r.Context(),
 		`UPDATE users SET is_approved = $1, "group" = $2 WHERE user_id = $3 AND COALESCE(deleted, false) = false`,
 		data.Approved, groupParam, data.UserID)
 	if err != nil {
@@ -203,7 +203,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove all existing equipment permissions
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.Exec(r.Context(),
 		"DELETE FROM user_equipment_permissions WHERE user_id = $1",
 		data.UserID)
 	if err != nil {
@@ -214,7 +214,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 
 	// Add new equipment permissions
 	for _, equipID := range data.Equipment {
-		_, err = tx.Exec(context.Background(),
+		_, err = tx.Exec(r.Context(),
 			"INSERT INTO user_equipment_permissions (user_id, equipment_id) VALUES ($1, $2)",
 			data.UserID, equipID)
 		if err != nil {
@@ -225,7 +225,7 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Commit transaction
-	if err = tx.Commit(context.Background()); err != nil {
+	if err = tx.Commit(r.Context()); err != nil {
 		fmt.Printf("error committing access update: %v\n", err)
 		http.Error(w, "Error committing changes", http.StatusInternalServerError)
 		return
@@ -234,8 +234,8 @@ func handleUpdateAccess(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func getAllGroups() ([]Group, error) {
-	rows, err := dbPool.Query(context.Background(),
+func getAllGroups(ctx context.Context) ([]Group, error) {
+	rows, err := dbPool.Query(ctx,
 		`SELECT group_id, name
          FROM groups
          ORDER BY name`)
@@ -259,7 +259,7 @@ func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		session := auth.MustSessionFromContext(r.Context())
 
 		var isAdmin bool
-		err := dbPool.QueryRow(context.Background(),
+		err := dbPool.QueryRow(r.Context(),
 			"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 			session.UserID).Scan(&isAdmin)
 
@@ -282,7 +282,7 @@ func handleSetAdmin(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("user_id")
 	isAdmin := r.FormValue("is_admin") == "true"
 
-	_, err := dbPool.Exec(context.Background(),
+	_, err := dbPool.Exec(r.Context(),
 		"UPDATE users SET admin = $1 WHERE user_id = $2 AND COALESCE(deleted, false) = false",
 		isAdmin, userID)
 
@@ -337,7 +337,7 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmdTag, err := dbPool.Exec(context.Background(),
+	cmdTag, err := dbPool.Exec(r.Context(),
 		`UPDATE users
          SET deleted = true,
              is_approved = false
@@ -399,7 +399,7 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmdTag, err := dbPool.Exec(context.Background(),
+	cmdTag, err := dbPool.Exec(r.Context(),
 		`UPDATE users
          SET password_hash = $1
          WHERE user_id = $2
@@ -456,7 +456,7 @@ func handleAddEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert new equipment
-	_, err := dbPool.Exec(context.Background(),
+	_, err := dbPool.Exec(r.Context(),
 		"INSERT INTO equipment (name) VALUES ($1)",
 		equipmentName)
 
@@ -488,15 +488,15 @@ func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Start a transaction
-	tx, err := dbPool.Begin(context.Background())
+	tx, err := dbPool.Begin(r.Context())
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	defer tx.Rollback(context.Background())
+	defer tx.Rollback(r.Context())
 
 	// Delete related bookings first
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.Exec(r.Context(),
 		"DELETE FROM bookings WHERE equipment_id = $1",
 		equipmentID)
 	if err != nil {
@@ -505,7 +505,7 @@ func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete equipment permissions
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.Exec(r.Context(),
 		"DELETE FROM user_equipment_permissions WHERE equipment_id = $1",
 		equipmentID)
 	if err != nil {
@@ -514,7 +514,7 @@ func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete the equipment
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.Exec(r.Context(),
 		"DELETE FROM equipment WHERE equipment_id = $1",
 		equipmentID)
 	if err != nil {
@@ -523,7 +523,7 @@ func handleDeleteEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Commit transaction
-	if err = tx.Commit(context.Background()); err != nil {
+	if err = tx.Commit(r.Context()); err != nil {
 		http.Error(w, "Error committing transaction", http.StatusInternalServerError)
 		return
 	}
@@ -544,7 +544,7 @@ func handleAddGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := dbPool.Exec(context.Background(),
+	_, err := dbPool.Exec(r.Context(),
 		"INSERT INTO groups (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
 		name)
 	if err != nil {
@@ -570,14 +570,14 @@ func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 	groupID := parts[len(parts)-1]
 
 	var groupName string
-	if err := dbPool.QueryRow(context.Background(),
+	if err := dbPool.QueryRow(r.Context(),
 		"SELECT name FROM groups WHERE group_id = $1",
 		groupID).Scan(&groupName); err != nil {
 		http.Redirect(w, r, "/admin?error=Unknown+group", http.StatusSeeOther)
 		return
 	}
 
-	_, err := dbPool.Exec(context.Background(),
+	_, err := dbPool.Exec(r.Context(),
 		`UPDATE users SET "group" = NULL WHERE btrim("group") = $1`,
 		groupName)
 	if err != nil {
@@ -585,7 +585,7 @@ func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = dbPool.Exec(context.Background(),
+	_, err = dbPool.Exec(r.Context(),
 		"DELETE FROM groups WHERE group_id = $1",
 		groupID)
 	if err != nil {
@@ -608,7 +608,7 @@ func handleEquipmentReport(w http.ResponseWriter, r *http.Request) {
 	endDate := r.URL.Query().Get("end")
 
 	// Query bookings
-	rows, err := dbPool.Query(context.Background(), `
+	rows, err := dbPool.Query(r.Context(), `
         SELECT 
             b.start_time,
             b.end_time,

@@ -49,7 +49,7 @@ func TestGetSampleByID_WithOwnerUserID(t *testing.T) {
 		WithArgs("42").
 		WillReturnRows(pgxmock.NewRows([]string{"attachment_id", "source_id", "attachment_address", "uploaded_at"}))
 
-	sample, err := getSampleByID("42")
+	sample, err := getSampleByID(context.Background(), "42")
 	if err != nil {
 		t.Fatalf("getSampleByID: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestGetSampleByID_WithoutOwnerUserID(t *testing.T) {
 		WithArgs("10").
 		WillReturnRows(pgxmock.NewRows([]string{"attachment_id", "source_id", "attachment_address", "uploaded_at"}))
 
-	sample, err := getSampleByID("10")
+	sample, err := getSampleByID(context.Background(), "10")
 	if err != nil {
 		t.Fatalf("getSampleByID: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestGetSampleByID_NotFound(t *testing.T) {
 		WithArgs("999").
 		WillReturnError(pgx.ErrNoRows)
 
-	_, err := getSampleByID("999")
+	_, err := getSampleByID(context.Background(), "999")
 	if err == nil {
 		t.Fatal("expected error for missing sample, got nil")
 	}
@@ -281,7 +281,7 @@ func TestGetSampleByID_RealDB_OwnerUserID(t *testing.T) {
 	})
 
 	sampleIDStr := fmt.Sprintf("%d", sampleID)
-	sample, err := getSampleByID(sampleIDStr)
+	sample, err := getSampleByID(context.Background(), sampleIDStr)
 	if err != nil {
 		t.Fatalf("getSampleByID: %v", err)
 	}
@@ -476,7 +476,7 @@ func TestGetSampleByID_RealDB_NoOwnerUserID(t *testing.T) {
 	})
 
 	sampleIDStr := fmt.Sprintf("%d", sampleID)
-	sample, err := getSampleByID(sampleIDStr)
+	sample, err := getSampleByID(context.Background(), sampleIDStr)
 	if err != nil {
 		t.Fatalf("getSampleByID: %v", err)
 	}

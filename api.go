@@ -1106,7 +1106,7 @@ func apiEquipmentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	equip, err := getAllEquipment()
+	equip, err := getAllEquipment(r.Context())
 	if err != nil {
 		log.Printf("api: listEquipment error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")

@@ -88,9 +88,9 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 5: Replace `context.Background()` with `r.Context()` in request handlers
 
-- [ ] write a test that cancels a request context and verifies the in-flight DB query is also canceled (pick one representative handler, e.g. the sample list query)
-- [ ] grep `context.Background()` in `main.go`, `admin.go`, `booking.go`, `wiki.go`, `api.go` and replace each occurrence inside an HTTP handler with `r.Context()`
-- [ ] run tests — must pass before task 6
+- [x] write a test that cancels a request context and verifies the in-flight DB query is also canceled (pick one representative handler, e.g. the sample list query)
+- [x] grep `context.Background()` in `main.go`, `admin.go`, `booking.go`, `wiki.go`, `api.go` and replace each occurrence inside an HTTP handler with `r.Context()`
+- [x] run tests — must pass before task 6
 
 ### Task 6: Align runtime schema bootstrap with `DDL/init.sql`
 

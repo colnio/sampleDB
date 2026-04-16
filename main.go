@@ -360,7 +360,7 @@ func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
 func handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
-	baseData, err := getBasePageData(session)
+	baseData, err := getBasePageData(r.Context(), session)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Redirect(w, r, "/logout", http.StatusSeeOther)
@@ -411,7 +411,7 @@ func handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var storedHash string
-		err := dbPool.QueryRow(context.Background(),
+		err := dbPool.QueryRow(r.Context(),
 			`SELECT password_hash
 	             FROM users
 	             WHERE user_id = $1
@@ -450,7 +450,7 @@ func handleChangePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cmdTag, err := dbPool.Exec(context.Background(),
+		cmdTag, err := dbPool.Exec(r.Context(),
 			`UPDATE users
              SET password_hash = $1
              WHERE user_id = $2
@@ -493,7 +493,7 @@ type ProfileTokensPageData struct {
 
 func handleProfileTokens(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
-	baseData, err := getBasePageData(session)
+	baseData, err := getBasePageData(r.Context(), session)
 	if err != nil {
 		http.Error(w, "Error loading profile", http.StatusInternalServerError)
 		return
@@ -909,13 +909,13 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
 	if query != "" {
-		samples, err = searchSamples(query, dateFrom, dateTo)
+		samples, err = searchSamples(r.Context(), query, dateFrom, dateTo)
 		if err != nil {
 			http.Error(w, "Error retrieving search results", http.StatusInternalServerError)
 			return
 		}
 	} else {
-		samples, err = getAllSamples(dateFrom, dateTo)
+		samples, err = getAllSamples(r.Context(), dateFrom, dateTo)
 		if err != nil {
 			http.Error(w, "Error retrieving samples", http.StatusInternalServerError)
 			return
@@ -923,7 +923,7 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the query
-	row := dbPool.QueryRow(context.Background(), `SELECT admin
+	row := dbPool.QueryRow(r.Context(), `SELECT admin
 	FROM users
 	WHERE username = $1
 	  AND COALESCE(deleted, false) = false`, session.Username)
@@ -1083,7 +1083,7 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 			errMsgs = append(errMsgs, fmt.Sprintf("could not save %s", fh.Filename))
 			continue
 		}
-		if dbErr := addAttachment(sampleID, fp); dbErr != nil {
+		if dbErr := addAttachment(r.Context(), sampleID, fp); dbErr != nil {
 			_ = os.Remove(resolveAppPath(fp))
 			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
@@ -1109,7 +1109,7 @@ func uploadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // searchSamples queries the database for samples by name, owner, or keywords
-func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
+func searchSamples(ctx context.Context, query string, dateFrom, dateTo string) ([]Sample, error) {
 	trimmedQuery := strings.TrimSpace(query)
 
 	rawKeywords := strings.FieldsFunc(query, func(r rune) bool {
@@ -1176,7 +1176,7 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 	}
 
 	// Execute the query
-	rows, err := dbPool.Query(context.Background(), queryText, args...)
+	rows, err := dbPool.Query(ctx, queryText, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1200,7 +1200,7 @@ func searchSamples(query string, dateFrom, dateTo string) ([]Sample, error) {
 }
 
 // getAllSamples retrieves all samples when there's no search query
-func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
+func getAllSamples(ctx context.Context, dateFrom, dateTo string) ([]Sample, error) {
 	queryText := `SELECT s.sample_id, s.sample_name, s.sample_description, s.sample_keywords,
 		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at,
 		       first_img.attachment_id
@@ -1231,7 +1231,7 @@ func getAllSamples(dateFrom, dateTo string) ([]Sample, error) {
 
 	queryText = queryText + " ORDER BY s.sample_name ASC"
 
-	rows, err := dbPool.Query(context.Background(), queryText, args...)
+	rows, err := dbPool.Query(ctx, queryText, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1286,9 +1286,9 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getSampleByID(sampleID string) (Sample, error) {
+func getSampleByID(ctx context.Context, sampleID string) (Sample, error) {
 	var sample Sample
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(ctx,
 		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		        COALESCE(s.sample_owner, ''), s.owner_user_id, u.username,
 		        COALESCE(s.sample_prep, ''), s.created_at,
@@ -1305,7 +1305,7 @@ func getSampleByID(sampleID string) (Sample, error) {
 	}
 
 	// Fetch attachments
-	sample.Attachments, err = getAttachments(context.Background(), sampleID)
+	sample.Attachments, err = getAttachments(ctx, sampleID)
 	if err != nil {
 		return sample, err
 	}
@@ -1315,8 +1315,8 @@ func getSampleByID(sampleID string) (Sample, error) {
 }
 
 // getApprovedUsers returns all approved, non-deleted users ordered by username.
-func getApprovedUsers() ([]User, error) {
-	rows, err := dbPool.Query(context.Background(),
+func getApprovedUsers(ctx context.Context) ([]User, error) {
+	rows, err := dbPool.Query(ctx,
 		`SELECT user_id, username FROM users
 		  WHERE is_approved = true AND COALESCE(deleted, false) = false
 		  ORDER BY username`)
@@ -1340,17 +1340,17 @@ func getApprovedUsers() ([]User, error) {
 }
 
 func loadSampleDetailData(ctx context.Context, session auth.Session, sampleID string) (SampleDetailPageData, error) {
-	sample, err := getSampleByID(sampleID)
+	sample, err := getSampleByID(ctx, sampleID)
 	if err != nil {
 		return SampleDetailPageData{}, err
 	}
 
-	users, err := getApprovedUsers()
+	users, err := getApprovedUsers(ctx)
 	if err != nil {
 		return SampleDetailPageData{}, err
 	}
 
-	equipment, err := getAllEquipment()
+	equipment, err := getAllEquipment(ctx)
 	if err != nil {
 		return SampleDetailPageData{}, err
 	}
@@ -1466,7 +1466,7 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid owner_user_id", http.StatusBadRequest)
 			return
 		}
-		scanErr := dbPool.QueryRow(context.Background(),
+		scanErr := dbPool.QueryRow(r.Context(),
 			"SELECT username FROM users WHERE user_id = $1 AND is_approved = true", id).Scan(&ownerName)
 		if scanErr != nil {
 			http.Error(w, "owner user not found or not approved", http.StatusBadRequest)
@@ -1475,7 +1475,7 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 		ownerUserID = &id
 	}
 
-	_, err = dbPool.Exec(context.Background(),
+	_, err = dbPool.Exec(r.Context(),
 		"UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5 WHERE sample_id=$6",
 		name, description, keywords, ownerName, ownerUserID, sampleID)
 	if err != nil {
@@ -1502,13 +1502,13 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		session := auth.MustSessionFromContext(r.Context())
 
-		baseData, err := getBasePageData(session)
+		baseData, err := getBasePageData(r.Context(), session)
 		if err != nil {
 			http.Error(w, "Error loading user information", http.StatusInternalServerError)
 			return
 		}
 
-		users, err := getApprovedUsers()
+		users, err := getApprovedUsers(r.Context())
 		if err != nil {
 			http.Error(w, "Error loading user list", http.StatusInternalServerError)
 			return
@@ -1663,9 +1663,9 @@ func getAttachments(ctx context.Context, sampleID string) ([]Attachment, error) 
 }
 
 // addAttachment stores a new attachment in the database
-func addAttachment(sampleID string, filepath string) error {
-	_, err := dbPool.Exec(context.Background(),
-		`INSERT INTO attachments (source_id, attachment_address, source_type) 
+func addAttachment(ctx context.Context, sampleID string, filepath string) error {
+	_, err := dbPool.Exec(ctx,
+		`INSERT INTO attachments (source_id, attachment_address, source_type)
          VALUES ($1, $2, 'sample')`,
 		sampleID, filepath)
 	return err
@@ -1720,7 +1720,7 @@ func downloadAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get file path from database
 	var filePath string
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(r.Context(),
 		"SELECT attachment_address FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID,
 	).Scan(&filePath)
@@ -1762,7 +1762,7 @@ func deleteAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get sample ID before deleting the attachment
 	var sampleID string
-	err := dbPool.QueryRow(context.Background(),
+	err := dbPool.QueryRow(r.Context(),
 		"SELECT source_id FROM attachments WHERE attachment_id = $1 AND source_type = 'sample'",
 		attachmentID,
 	).Scan(&sampleID)
