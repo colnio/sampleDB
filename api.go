@@ -431,7 +431,6 @@ type sampleRequest struct {
 	Keywords    string `json:"keywords"`
 	Owner       string `json:"owner"`
 	OwnerUserID *int   `json:"owner_user_id,omitempty"`
-	SamplePrep  string `json:"sample_prep"`
 }
 
 func apiCreateSample(w http.ResponseWriter, r *http.Request) {
@@ -456,14 +455,14 @@ func apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	var ownerUsername *string
 	err := dbPool.QueryRow(r.Context(), `
 		WITH ins AS (
-			INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id, sample_prep)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING sample_id, owner_user_id, created_at
 		)
 		SELECT ins.sample_id, ins.created_at, u.username
 		  FROM ins
 		  LEFT JOIN users u ON u.user_id = ins.owner_user_id`,
-		req.Name, req.Description, req.Keywords, req.Owner, ownerUserID, req.SamplePrep,
+		req.Name, req.Description, req.Keywords, req.Owner, ownerUserID,
 	).Scan(&id, &createdAt, &ownerUsername)
 	if err != nil {
 		log.Printf("api: createSample error: %v", err)
@@ -514,10 +513,9 @@ func apiUpdateSample(w http.ResponseWriter, r *http.Request, sampleID string) {
 		   SET sample_name        = $1,
 		       sample_description = $2,
 		       sample_keywords    = $3,
-		       sample_owner       = $4,
-		       sample_prep        = $5
-		 WHERE sample_id = $6`,
-		req.Name, req.Description, req.Keywords, req.Owner, req.SamplePrep, id)
+		       sample_owner       = $4
+		 WHERE sample_id = $5`,
+		req.Name, req.Description, req.Keywords, req.Owner, id)
 	if err != nil {
 		log.Printf("api: updateSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")

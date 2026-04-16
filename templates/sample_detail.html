@@ -29,11 +29,6 @@
         {{template "fabrication_steps_panel" .}}
     </details>
 
-    <details class="panel-details" open>
-        <summary>Sample Preparation</summary>
-        {{template "sample_prep_panel" .}}
-    </details>
-
     <details class="panel-details">
         <summary>Share Link</summary>
         {{template "sample_share_panel" .}}
@@ -149,75 +144,6 @@
         <p class="empty-state__hint">Upload your first file to keep everything in one place.</p>
     </div>
     {{end}}
-</section>
-{{end}}
-
-{{define "sample_prep_panel"}}
-<section id="sample-prep-panel" class="card sample-prep">
-    <header class="sample-prep__header">
-        <div>
-            <h2>Sample Preparation</h2>
-            <p class="section-hint">Supports GitHub-flavored Markdown for headings, code, and tables.</p>
-        </div>
-        {{if .EditingPrep}}
-        <button class="button button--ghost button--small"
-                type="button"
-                hx-get="/samples/prep/{{.Sample.ID}}"
-                hx-target="#sample-prep-panel"
-                hx-select="#sample-prep-panel"
-                hx-swap="outerHTML">Cancel</button>
-        {{else}}
-        <button class="button button--ghost button--small"
-                type="button"
-                hx-get="/samples/prep/{{.Sample.ID}}/edit"
-                hx-target="#sample-prep-panel"
-                hx-select="#sample-prep-panel"
-                hx-swap="outerHTML">Edit</button>
-        {{end}}
-    </header>
-    <div class="sample-prep__body">
-        {{with .Flash}}
-        <div class="alert alert-success">{{.}}</div>
-        {{end}}
-        {{with .Error}}
-        <div class="alert alert-error">{{.}}</div>
-        {{end}}
-        {{if .EditingPrep}}
-        <form action="/samples/prep/{{.Sample.ID}}"
-              method="POST"
-              class="stacked-form"
-              hx-post="/samples/prep/{{.Sample.ID}}"
-              hx-target="#sample-prep-panel"
-              hx-select="#sample-prep-panel"
-              hx-swap="outerHTML"
-              hx-indicator="#sample-prep-indicator">
-            <textarea id="sample-prep-editor" name="sample_prep">{{.Sample.Sample_prep}}</textarea>
-            <div class="form-actions">
-                <button type="submit" class="button button--primary button--small">Save</button>
-                <button type="button"
-                        class="button button--secondary button--small"
-                        hx-get="/samples/prep/{{.Sample.ID}}"
-                        hx-target="#sample-prep-panel"
-                        hx-select="#sample-prep-panel"
-                        hx-swap="outerHTML">Cancel</button>
-                <div id="sample-prep-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
-                    <span class="spinner"></span>
-                </div>
-            </div>
-        </form>
-        {{else}}
-            {{if .Sample.SamplePrepHTML}}
-            <article class="markdown-body markdown-body--card">
-                {{.Sample.SamplePrepHTML}}
-            </article>
-            {{else}}
-            <div class="empty-state markdown-body--card">
-                <p>No preparation notes yet.</p>
-                <p class="empty-state__hint">Use the editor to add Markdown-formatted instructions.</p>
-            </div>
-            {{end}}
-        {{end}}
-    </div>
 </section>
 {{end}}
 

@@ -85,9 +85,8 @@ type SampleDetailPageData struct {
 	Sample      Sample
 	Flash       string
 	Error       string
-	IsPartial   bool
-	EditingPrep bool
-	Users       []User
+	IsPartial bool
+	Users     []User
 	Steps       []FabricationStep
 	Equipment   []Equipment
 	EditingStep int    // step_id currently in inline-edit mode (0 = none)
@@ -761,7 +760,7 @@ func main() {
 	mux.HandleFunc("/", withAuth(mainPageHandler))
 	mux.HandleFunc("/samples/new", withAuth(newSampleHandler))
 	mux.HandleFunc("/samples/edit/", withAuth(editSampleHandler))
-	mux.HandleFunc("/samples/prep/", withAuth(samplePrepHandler))
+	// sample prep route removed — fabrication steps replace it
 	mux.HandleFunc("/samples/", withAuth(handleSample))
 	mux.HandleFunc("/attachment/", withAuth(handleAttachment))
 	mux.HandleFunc("/booking", withAuth(handleBooking))
@@ -1415,22 +1414,6 @@ func renderSampleEditSection(w http.ResponseWriter, r *http.Request, session aut
 	}
 }
 
-func renderSamplePrepSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string, editing bool) {
-	data, err := loadSampleDetailData(r.Context(), session, sampleID)
-	if err != nil {
-		http.Error(w, "Sample not found", http.StatusNotFound)
-		return
-	}
-	data.Flash = flash
-	data.Error = errMsg
-	data.IsPartial = true
-	data.EditingPrep = editing
-
-	if err := renderTemplateSection(w, "templates/sample_detail.html", "sample_prep_panel", data); err != nil {
-		http.Error(w, "Error rendering sample prep", http.StatusInternalServerError)
-	}
-}
-
 // editSampleHandler updates a sample's details in the database
 func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -1473,8 +1456,6 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	description := r.FormValue("description")
 	keywords := r.FormValue("keywords")
-	hasSamplePrep := r.Form.Has("sample_prep")
-	sample_prep := r.FormValue("sample_prep")
 
 	ownerUserIDStr := r.FormValue("owner_user_id")
 	var ownerUserID *int
@@ -1494,20 +1475,9 @@ func editSampleHandler(w http.ResponseWriter, r *http.Request) {
 		ownerUserID = &id
 	}
 
-	var (
-		query string
-		args  []interface{}
-	)
-
-	if hasSamplePrep {
-		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5, sample_prep=$6 WHERE sample_id=$7"
-		args = []interface{}{name, description, keywords, ownerName, ownerUserID, sample_prep, sampleID}
-	} else {
-		query = "UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5 WHERE sample_id=$6"
-		args = []interface{}{name, description, keywords, ownerName, ownerUserID, sampleID}
-	}
-
-	_, err = dbPool.Exec(context.Background(), query, args...)
+	_, err = dbPool.Exec(context.Background(),
+		"UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3, sample_owner=$4, owner_user_id=$5 WHERE sample_id=$6",
+		name, description, keywords, ownerName, ownerUserID, sampleID)
 	if err != nil {
 		if isHTMXRequest(r) {
 			renderSampleEditSection(w, r, session, sampleID, "", "Failed to update the sample.")
@@ -1566,7 +1536,6 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 		name := r.FormValue("name")
 		description := r.FormValue("description")
 		keywords := r.FormValue("keywords")
-		prep := r.FormValue("sample_prep")
 
 		ownerUserIDStr := r.FormValue("owner_user_id")
 		var ownerUserID *int
@@ -1589,10 +1558,10 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 		// Insert the new sample into the database and get its ID
 		var newSampleID int
 		err := dbPool.QueryRow(context.Background(),
-			`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_prep, sample_owner, owner_user_id)
-			 VALUES ($1, $2, $3, $4, $5, $6)
+			`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id)
+			 VALUES ($1, $2, $3, $4, $5)
 			 RETURNING sample_id`,
-			name, description, keywords, prep, ownerName, ownerUserID).Scan(&newSampleID)
+			name, description, keywords, ownerName, ownerUserID).Scan(&newSampleID)
 		if err != nil {
 			log.Printf("newSampleHandler: insert error: %v", err)
 			http.Error(w, "Error adding sample", http.StatusInternalServerError)

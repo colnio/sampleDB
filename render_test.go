@@ -131,8 +131,6 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 			Owner:           "bob",
 			OwnerUserID:     &ownerID,
 			OwnerUsername:   &username,
-			Sample_prep:     "## Prep\n\nSome markdown prep notes.",
-			SamplePrepHTML:  renderMarkdown("## Prep\n\nSome markdown prep notes."),
 			CreatedAt:       now,
 			ShareVisibility: "private",
 			Attachments: []Attachment{
@@ -186,35 +184,3 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 	}
 }
 
-func TestRenderSampleDetailTemplate_EditingPrep(t *testing.T) {
-	setTestTemplatesDir(t)
-
-	tmpl, err := parseTemplates(
-		"templates/sample_detail.html",
-		"templates/fabrication_steps.html",
-		"templates/step_form.html",
-	)
-	if err != nil {
-		t.Fatalf("parseTemplates(sample_detail): %v", err)
-	}
-
-	data := SampleDetailPageData{
-		BasePageData: BasePageData{Username: "testuser", UserID: 1},
-		Sample: Sample{
-			ID:              5,
-			Name:            "Prep Edit Sample",
-			ShareVisibility: "private",
-		},
-		EditingPrep: true,
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "base", data); err != nil {
-		t.Fatalf("ExecuteTemplate with EditingPrep=true: %v", err)
-	}
-
-	// Editing mode should show the textarea
-	if !strings.Contains(buf.String(), "sample-prep-editor") {
-		t.Error("editing mode: missing sample-prep-editor textarea id")
-	}
-}

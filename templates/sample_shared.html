@@ -81,20 +81,6 @@
     </section>
     {{end}}
 
-    {{/* Sample prep — read-only */}}
-    {{if .Sample.SamplePrepHTML}}
-    <section class="card sample-prep" aria-labelledby="prep-heading-shared">
-        <header class="sample-prep__header">
-            <h2 id="prep-heading-shared">Sample Preparation</h2>
-        </header>
-        <div class="sample-prep__body">
-            <article class="markdown-body markdown-body--card">
-                {{.Sample.SamplePrepHTML}}
-            </article>
-        </div>
-    </section>
-    {{end}}
-
     {{if not .IsAuthenticated}}
     <div class="card shared-login-prompt">
         <p>Want to see more or contribute? <a href="/login">Log in</a> to access the full sample database.</p>
