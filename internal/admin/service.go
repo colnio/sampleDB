@@ -334,8 +334,8 @@ func (s *DBService) GetEquipmentReport(ctx context.Context, equipmentID, startDa
         JOIN users u ON b.user_id = u.user_id
         JOIN equipment e ON b.equipment_id = e.equipment_id
         WHERE b.equipment_id = $1
-          AND b.start_time >= $2
-          AND b.end_time <= $3
+          AND b.start_time >= $2::date
+          AND b.start_time < ($3::date + interval '1 day')
         ORDER BY b.start_time ASC`,
 		equipmentID, startDate, endDate)
 	if err != nil {

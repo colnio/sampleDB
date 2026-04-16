@@ -2,12 +2,15 @@ package wiki
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"mime"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"sampleDB/internal/dbiface"
 	"sampleDB/internal/web"
@@ -224,6 +227,9 @@ func (s *DBService) IsAdmin(ctx context.Context, userID int) (bool, error) {
 	err := s.db.QueryRow(ctx,
 		"SELECT admin FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
 		userID).Scan(&isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"sampleDB/internal/auth"
@@ -52,7 +53,14 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 
 	weekOffset := 0
 	if offsetStr := r.URL.Query().Get("week"); offsetStr != "" {
-		weekOffset, _ = strconv.Atoi(offsetStr)
+		if n, err := strconv.Atoi(offsetStr); err == nil {
+			if n < -52 {
+				n = -52
+			} else if n > 52 {
+				n = 52
+			}
+			weekOffset = n
+		}
 		selectedDate = selectedDate.AddDate(0, 0, weekOffset*7)
 	}
 
@@ -154,17 +162,7 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hasConflict, err := h.svc.CheckConflict(r.Context(), equipmentID, startTime, endTime)
-	if err != nil {
-		http.Redirect(w, r, "/booking?error=Error+checking+conflicts", http.StatusSeeOther)
-		return
-	}
-	if hasConflict {
-		http.Redirect(w, r, "/booking?error=Time+slot+already+booked", http.StatusSeeOther)
-		return
-	}
-
-	purpose := r.FormValue("purpose")
+	purpose := strings.TrimSpace(r.FormValue("purpose"))
 	if purpose == "" {
 		http.Redirect(w, r, "/booking?error=Purpose+is+required", http.StatusSeeOther)
 		return
@@ -186,6 +184,16 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/booking?error=You+do+not+have+access+to+this+equipment", http.StatusSeeOther)
 			return
 		}
+	}
+
+	hasConflict, err := h.svc.CheckConflict(r.Context(), equipmentID, startTime, endTime)
+	if err != nil {
+		http.Redirect(w, r, "/booking?error=Error+checking+conflicts", http.StatusSeeOther)
+		return
+	}
+	if hasConflict {
+		http.Redirect(w, r, "/booking?error=Time+slot+already+booked", http.StatusSeeOther)
+		return
 	}
 
 	err = h.svc.Create(r.Context(), CreateParams{

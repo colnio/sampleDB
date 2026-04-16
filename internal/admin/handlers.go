@@ -107,11 +107,19 @@ func (h *Handlers) SetAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session := auth.MustSessionFromContext(r.Context())
+
 	userID, err := strconv.Atoi(r.FormValue("user_id"))
 	if err != nil {
 		http.Error(w, "Invalid user id", http.StatusBadRequest)
 		return
 	}
+
+	if userID == session.UserID {
+		http.Error(w, "Cannot change your own admin status", http.StatusBadRequest)
+		return
+	}
+
 	isAdmin := r.FormValue("is_admin") == "true"
 
 	if err := h.svc.SetAdmin(r.Context(), userID, isAdmin); err != nil {

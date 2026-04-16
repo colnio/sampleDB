@@ -639,7 +639,7 @@ func TestSubmitBooking_EndBeforeStart(t *testing.T) {
 }
 
 func TestSubmitBooking_ConflictRedirects(t *testing.T) {
-	svc := &mockService{hasConflict: true}
+	svc := &mockService{hasConflict: true, isAdmin: true}
 	h := booking.NewHandlers(svc, newRenderer(), nil, time.UTC)
 
 	form := url.Values{

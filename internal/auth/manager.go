@@ -405,7 +405,7 @@ func generateSessionToken() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("generate session token: %w", err)
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 type authPageData struct {
