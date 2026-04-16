@@ -413,7 +413,7 @@ func (s *DBService) CheckOwner(ctx context.Context, sampleID, userID int) error 
 			return web.ErrNotFound
 		}
 		log.Printf("samples.CheckOwner: db error: %v", err)
-		return fmt.Errorf("database error")
+		return fmt.Errorf("database error: %w", err)
 	}
 	if ownerUserID != nil && *ownerUserID == userID {
 		return nil
@@ -422,7 +422,7 @@ func (s *DBService) CheckOwner(ctx context.Context, sampleID, userID int) error 
 	if err := s.db.QueryRow(ctx,
 		"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1", userID).Scan(&isAdmin); err != nil {
 		log.Printf("samples.CheckOwner: admin check error: %v", err)
-		return fmt.Errorf("database error")
+		return fmt.Errorf("database error: %w", err)
 	}
 	if !isAdmin {
 		return web.ErrForbidden

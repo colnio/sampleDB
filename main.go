@@ -136,16 +136,6 @@ func extractPort(addr string) string {
 	return ""
 }
 
-func isHTMXRequest(r *http.Request) bool {
-	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
-}
-
-// renderTemplateSection renders a named partial section of a cached template group.
-// group is the registered group name (e.g. "sample_detail", "wiki_view").
-func renderTemplateSection(w http.ResponseWriter, group, section string, data interface{}) error {
-	return theApp.Renderer.RenderSection(w, group, section, data)
-}
-
 // initLocation loads the local timezone and returns it.
 func initLocation() *time.Location {
 	loc, err := time.LoadLocation("Local")
@@ -183,17 +173,6 @@ func generateUniqueFilename(originalName string) (string, error) {
 
 	clean := sanitizeFilename(originalName)
 	return fmt.Sprintf("%s_%s", hex.EncodeToString(buffer), clean), nil
-}
-
-func setDownloadHeaders(w http.ResponseWriter, filename string) {
-	if filename == "" {
-		return
-	}
-	safeName := strings.ReplaceAll(filename, "\"", "")
-	safeName = strings.ReplaceAll(safeName, "\\", "")
-	w.Header().Set("Content-Disposition",
-		fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s",
-			safeName, url.PathEscape(safeName)))
 }
 
 func resolveAppPath(path string) string {
@@ -532,9 +511,18 @@ func saveUploadedFile(file io.Reader, originalName string) (string, error) {
 	return fullPath, nil
 }
 
+func setDownloadHeaders(w http.ResponseWriter, filename string) {
+	if filename == "" {
+		return
+	}
+	safeName := strings.ReplaceAll(filename, "\"", "")
+	safeName = strings.ReplaceAll(safeName, "\\", "")
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s",
+			safeName, url.PathEscape(safeName)))
+}
 
-// isImage checks if a file is an image based on its content type
+// isImage checks if a file is an image based on its content type.
 func isImage(contentType string) bool {
 	return strings.HasPrefix(contentType, "image/")
 }
-
