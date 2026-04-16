@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"sampleDB/internal/auth"
 )
 
 // buildMultipartRequest builds a POST request with multiple files in the "files" field.
@@ -68,12 +69,25 @@ func TestUploadAttachment_MultiFile(t *testing.T) {
 
 	setTestTemplatesDir(t)
 
-	// Create a sample to attach to.
+	// Create a test user to own the sample.
+	ownerName := fmt.Sprintf("upload-owner-%d", time.Now().UnixNano())
+	var ownerUserID int
+	err := pool.QueryRow(context.Background(),
+		`INSERT INTO users (username, password_hash, is_approved) VALUES ($1, 'x', true) RETURNING user_id`,
+		ownerName).Scan(&ownerUserID)
+	if err != nil {
+		t.Fatalf("create test owner: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(context.Background(), "DELETE FROM users WHERE user_id = $1", ownerUserID)
+	})
+
+	// Create a sample owned by the test user.
 	sampleName := fmt.Sprintf("upload-test-%d", time.Now().UnixNano())
 	var sampleID int
-	err := pool.QueryRow(context.Background(),
-		`INSERT INTO samples (sample_name, sample_owner) VALUES ($1, 'tester') RETURNING sample_id`, sampleName).Scan(&sampleID)
-	if err != nil {
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO samples (sample_name, sample_owner, owner_user_id) VALUES ($1, $2, $3) RETURNING sample_id`,
+		sampleName, ownerName, ownerUserID).Scan(&sampleID); err != nil {
 		t.Fatalf("create test sample: %v", err)
 	}
 	t.Cleanup(func() {
@@ -85,7 +99,9 @@ func TestUploadAttachment_MultiFile(t *testing.T) {
 		{"report.txt", "file one contents", "text/plain"},
 		{"data.csv", "a,b,c", "text/csv"},
 	})
-	req = withUploadSession(req)
+	req.Header.Set("HX-Request", "true")
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: ownerUserID, Username: ownerName, ExpiresAt: time.Now().Add(time.Hour)}))
 
 	rr := httptest.NewRecorder()
 	uploadAttachmentHandler(rr, req)
@@ -134,11 +150,23 @@ func TestUploadAttachment_PasteImage(t *testing.T) {
 
 	setTestTemplatesDir(t)
 
+	// Create a test user to own the sample.
+	ownerName := fmt.Sprintf("paste-owner-%d", time.Now().UnixNano())
+	var ownerUserID int
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO users (username, password_hash, is_approved) VALUES ($1, 'x', true) RETURNING user_id`,
+		ownerName).Scan(&ownerUserID); err != nil {
+		t.Fatalf("create test owner: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(context.Background(), "DELETE FROM users WHERE user_id = $1", ownerUserID)
+	})
+
 	sampleName := fmt.Sprintf("paste-test-%d", time.Now().UnixNano())
 	var sampleID int
-	err := pool.QueryRow(context.Background(),
-		`INSERT INTO samples (sample_name, sample_owner) VALUES ($1, 'tester') RETURNING sample_id`, sampleName).Scan(&sampleID)
-	if err != nil {
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO samples (sample_name, sample_owner, owner_user_id) VALUES ($1, $2, $3) RETURNING sample_id`,
+		sampleName, ownerName, ownerUserID).Scan(&sampleID); err != nil {
 		t.Fatalf("create test sample: %v", err)
 	}
 	t.Cleanup(func() {
@@ -150,7 +178,9 @@ func TestUploadAttachment_PasteImage(t *testing.T) {
 	req := buildMultipartRequest(t, url, []struct{ name, content, mime string }{
 		{"image.png", "\x89PNG\r\n\x1a\n", "image/png"}, // minimal PNG header bytes
 	})
-	req = withUploadSession(req)
+	req.Header.Set("HX-Request", "true")
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: ownerUserID, Username: ownerName, ExpiresAt: time.Now().Add(time.Hour)}))
 
 	rr := httptest.NewRecorder()
 	uploadAttachmentHandler(rr, req)
@@ -160,10 +190,9 @@ func TestUploadAttachment_PasteImage(t *testing.T) {
 	}
 
 	var count int
-	err = pool.QueryRow(context.Background(),
+	if err := pool.QueryRow(context.Background(),
 		`SELECT COUNT(*) FROM attachments WHERE source_id = $1 AND source_type = 'sample'`,
-		fmt.Sprintf("%d", sampleID)).Scan(&count)
-	if err != nil {
+		fmt.Sprintf("%d", sampleID)).Scan(&count); err != nil {
 		t.Fatalf("count: %v", err)
 	}
 	if count != 1 {
@@ -203,12 +232,23 @@ func TestUploadAttachment_NoFiles(t *testing.T) {
 
 	setTestTemplatesDir(t)
 
-	// Create a sample with no owner_user_id so the ownership check passes for any authenticated user.
+	// Create a test user to own the sample.
+	ownerName := fmt.Sprintf("nofiles-owner-%d", time.Now().UnixNano())
+	var ownerUserID int
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO users (username, password_hash, is_approved) VALUES ($1, 'x', true) RETURNING user_id`,
+		ownerName).Scan(&ownerUserID); err != nil {
+		t.Fatalf("create test owner: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(context.Background(), "DELETE FROM users WHERE user_id = $1", ownerUserID)
+	})
+
 	sampleName := fmt.Sprintf("nofiles-test-%d", time.Now().UnixNano())
 	var sampleID int
 	if err := pool.QueryRow(context.Background(),
-		`INSERT INTO samples (sample_name, sample_owner) VALUES ($1, 'tester') RETURNING sample_id`,
-		sampleName).Scan(&sampleID); err != nil {
+		`INSERT INTO samples (sample_name, sample_owner, owner_user_id) VALUES ($1, $2, $3) RETURNING sample_id`,
+		sampleName, ownerName, ownerUserID).Scan(&sampleID); err != nil {
 		t.Fatalf("create test sample: %v", err)
 	}
 	t.Cleanup(func() {
@@ -222,7 +262,8 @@ func TestUploadAttachment_NoFiles(t *testing.T) {
 	url := fmt.Sprintf("/samples/%d/upload", sampleID)
 	req := httptest.NewRequest(http.MethodPost, url, &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
-	req = withTestSession(req)
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: ownerUserID, Username: ownerName, ExpiresAt: time.Now().Add(time.Hour)}))
 
 	rr := httptest.NewRecorder()
 	uploadAttachmentHandler(rr, req)

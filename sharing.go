@@ -297,7 +297,7 @@ func handleSampleShare(w http.ResponseWriter, r *http.Request) {
 }
 
 // requireSampleOwner returns an error if the given userID does not own the sample.
-// Samples with no owner_user_id set (legacy) are accessible to any authenticated user.
+// Samples with no owner_user_id (legacy/ownerless) are restricted to admins only.
 func requireSampleOwner(r *http.Request, sampleID, userID int) error {
 	var ownerUserID *int
 	err := dbPool.QueryRow(r.Context(),
@@ -310,17 +310,19 @@ func requireSampleOwner(r *http.Request, sampleID, userID int) error {
 		log.Printf("requireSampleOwner: db error: %v", err)
 		return fmt.Errorf("database error")
 	}
-	if ownerUserID != nil && *ownerUserID != userID {
-		// Allow admins to bypass ownership check.
-		var isAdmin bool
-		if err := dbPool.QueryRow(r.Context(),
-			"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1", userID).Scan(&isAdmin); err != nil {
-			log.Printf("requireSampleOwner: admin check db error: %v", err)
-			return fmt.Errorf("database error")
-		}
-		if !isAdmin {
-			return errForbidden
-		}
+	// The caller owns the sample — allow immediately.
+	if ownerUserID != nil && *ownerUserID == userID {
+		return nil
+	}
+	// NULL owner or owner mismatch — only admins may proceed.
+	var isAdmin bool
+	if err := dbPool.QueryRow(r.Context(),
+		"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1", userID).Scan(&isAdmin); err != nil {
+		log.Printf("requireSampleOwner: admin check db error: %v", err)
+		return fmt.Errorf("database error")
+	}
+	if !isAdmin {
+		return errForbidden
 	}
 	return nil
 }

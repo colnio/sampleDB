@@ -150,10 +150,15 @@ func TestEditSampleHandler_WithValidOwnerUserID(t *testing.T) {
 
 	ownerID := 3
 
-	// 0. requireSampleOwner check — sample has no owner (NULL), so any user can edit
+	// 0. requireSampleOwner check — sample has no owner (NULL), admin-only
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
 		WithArgs(42).
 		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+
+	// 0a. Admin check for session user 1 → admin
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(1).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
 
 	// 1. Resolve username for owner_user_id=3
 	mock.ExpectQuery(`SELECT username FROM users WHERE user_id`).
@@ -208,10 +213,15 @@ func TestEditSampleHandler_InvalidOwnerUserID_Rejected(t *testing.T) {
 	restore := setMockDB(mock)
 	defer restore()
 
-	// requireSampleOwner check runs before owner_user_id parsing
+	// requireSampleOwner check runs before owner_user_id parsing; NULL owner = admin-only
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
 		WithArgs(42).
 		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+
+	// Admin check for session user 1 → admin (lets request past ownership check)
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(1).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
 
 	form := url.Values{
 		"name":          {"MySample"},

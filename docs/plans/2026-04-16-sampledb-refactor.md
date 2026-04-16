@@ -67,10 +67,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 2: Lock down ownerless samples to admins only
 
-- [ ] write failing test: `requireSampleOwner` denies edit/share/attachment operations for non-admin when `owner_user_id IS NULL`
-- [ ] write failing test: admin can still edit ownerless sample
-- [ ] update `requireSampleOwner` in `sharing.go` to treat NULL ownership as admin-only, not world-editable
-- [ ] run tests — must pass before task 3
+- [x] write failing test: `requireSampleOwner` denies edit/share/attachment operations for non-admin when `owner_user_id IS NULL`
+- [x] write failing test: admin can still edit ownerless sample
+- [x] update `requireSampleOwner` in `sharing.go` to treat NULL ownership as admin-only, not world-editable
+- [x] run tests — must pass before task 3
 
 ### Task 3: Atomic booking conflict prevention via DB exclusion constraint
 

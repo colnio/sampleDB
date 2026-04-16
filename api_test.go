@@ -484,10 +484,15 @@ func TestAPISamplesHandler_RouteToDelete404(t *testing.T) {
 	restore := setMockDB(mock)
 	defer restore()
 
-	// Ownership check runs before DELETE; sample has no owner_user_id (legacy).
+	// Ownership check runs before DELETE; sample has no owner_user_id (ownerless = admin-only).
 	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
 		WithArgs(99).
 		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+
+	// Admin check for session user 1 → admin
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(1).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
 
 	// Attachment cleanup query — returns no attachments.
 	mock.ExpectQuery(`SELECT attachment_id FROM attachments WHERE source_id`).

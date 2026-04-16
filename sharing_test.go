@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pashagolub/pgxmock/v3"
 	"sampleDB/internal/auth"
 )
 
@@ -34,6 +36,107 @@ func createTestSampleForSharing(t *testing.T) (sampleID int, cleanup func()) {
 		pool.Exec(context.Background(), "DELETE FROM samples WHERE sample_id = $1", sampleID)
 	}
 	return sampleID, cleanup
+}
+
+// ---------------------------------------------------------------------------
+// requireSampleOwner — unit tests (mock DB)
+// ---------------------------------------------------------------------------
+
+// TestRequireSampleOwner_NonAdmin_OwnerlessIsForbidden verifies that a non-admin
+// user is denied access to a sample whose owner_user_id is NULL.
+func TestRequireSampleOwner_NonAdmin_OwnerlessIsForbidden(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+	restore := setMockDB(mock)
+	defer restore()
+
+	userID := 5
+
+	// owner_user_id is NULL
+	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
+		WithArgs(10).
+		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+
+	// Admin check for user 5 → not admin
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(userID).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(false))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	gotErr := requireSampleOwner(req, 10, userID)
+	if !errors.Is(gotErr, errForbidden) {
+		t.Errorf("expected errForbidden for non-admin + ownerless sample, got %v", gotErr)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+// TestRequireSampleOwner_Admin_OwnerlessAllowed verifies that an admin user is
+// allowed to access a sample whose owner_user_id is NULL.
+func TestRequireSampleOwner_Admin_OwnerlessAllowed(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+	restore := setMockDB(mock)
+	defer restore()
+
+	userID := 1
+
+	// owner_user_id is NULL
+	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
+		WithArgs(10).
+		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+
+	// Admin check for user 1 → admin
+	mock.ExpectQuery(`SELECT COALESCE\(admin`).
+		WithArgs(userID).
+		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	gotErr := requireSampleOwner(req, 10, userID)
+	if gotErr != nil {
+		t.Errorf("expected nil for admin + ownerless sample, got %v", gotErr)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+// createTestOwnerAndSample creates a test user and a sample owned by that user.
+// Returns sampleID, ownerUserID and a combined cleanup func.
+func createTestOwnerAndSample(t *testing.T) (sampleID, ownerUserID int, cleanup func()) {
+	t.Helper()
+	pool := testDB(t)
+	orig := dbPool
+	dbPool = pool
+	t.Cleanup(func() { dbPool = orig })
+
+	username := fmt.Sprintf("sample-owner-%d", time.Now().UnixNano())
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO users (username, password_hash, is_approved) VALUES ($1, 'x', true) RETURNING user_id`,
+		username).Scan(&ownerUserID); err != nil {
+		t.Fatalf("createTestOwnerAndSample: insert user: %v", err)
+	}
+
+	sampleName := fmt.Sprintf("owned-test-sample-%d", time.Now().UnixNano())
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO samples (sample_name, sample_owner, owner_user_id) VALUES ($1, $2, $3) RETURNING sample_id`,
+		sampleName, username, ownerUserID).Scan(&sampleID); err != nil {
+		pool.Exec(context.Background(), "DELETE FROM users WHERE user_id = $1", ownerUserID)
+		t.Fatalf("createTestOwnerAndSample: insert sample: %v", err)
+	}
+
+	cleanup = func() {
+		pool.Exec(context.Background(), "DELETE FROM samples WHERE sample_id = $1", sampleID)
+		pool.Exec(context.Background(), "DELETE FROM users WHERE user_id = $1", ownerUserID)
+	}
+	return sampleID, ownerUserID, cleanup
 }
 
 // ---------------------------------------------------------------------------
@@ -270,14 +373,15 @@ func TestHandleSampleShare_InvalidID(t *testing.T) {
 }
 
 func TestHandleSampleShare_GeneratesAndRedirects(t *testing.T) {
-	sampleID, cleanup := createTestSampleForSharing(t)
+	sampleID, ownerUserID, cleanup := createTestOwnerAndSample(t)
 	defer cleanup()
 
 	form := url.Values{"visibility": {"public"}}
 	path := fmt.Sprintf("/samples/%d/share", sampleID)
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req = withTestSession(req)
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: ownerUserID, Username: "owner", ExpiresAt: time.Now().Add(time.Hour)}))
 	rr := httptest.NewRecorder()
 	handleSampleShare(rr, req)
 
@@ -304,7 +408,7 @@ func TestHandleSampleShare_GeneratesAndRedirects(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestHandleSampleShareRevoke_RevokesToken(t *testing.T) {
-	sampleID, cleanup := createTestSampleForSharing(t)
+	sampleID, ownerUserID, cleanup := createTestOwnerAndSample(t)
 	defer cleanup()
 
 	// First generate a token.
@@ -314,7 +418,8 @@ func TestHandleSampleShareRevoke_RevokesToken(t *testing.T) {
 
 	path := fmt.Sprintf("/samples/%d/share/revoke", sampleID)
 	req := httptest.NewRequest(http.MethodPost, path, nil)
-	req = withTestSession(req)
+	req = req.WithContext(auth.ContextWithSession(req.Context(),
+		auth.Session{UserID: ownerUserID, Username: "owner", ExpiresAt: time.Now().Add(time.Hour)}))
 	rr := httptest.NewRecorder()
 	handleSampleShareRevoke(rr, req)
 
