@@ -5,20 +5,17 @@ import (
 
 	"sampleDB/internal/auth"
 	"sampleDB/internal/samples"
+	"sampleDB/internal/wiki"
 )
 
 // Handlers groups all HTTP handler functions the application needs.
-// Sample-domain handlers are wired directly in RegisterRoutes via the
-// samples.Handlers type; they are no longer kept here.
+// Sample-domain and wiki-domain handlers are wired directly in RegisterRoutes
+// via the samples.Handlers and wiki.Handlers types; they are no longer kept here.
 type Handlers struct {
 	// Booking
 	Booking       http.HandlerFunc
 	GetBookings   http.HandlerFunc
 	DeleteBooking http.HandlerFunc
-
-	// Wiki
-	Wiki           http.HandlerFunc
-	WikiAttachment http.HandlerFunc
 
 	// Admin
 	AdminPage       http.HandlerFunc
@@ -37,8 +34,7 @@ type Handlers struct {
 	ProfileTokens      http.HandlerFunc
 	ProfileTokenRevoke http.HandlerFunc
 
-	// REST API v1 — wiki / users / equipment (samples API is in samples.Handlers)
-	APIWiki      http.HandlerFunc
+	// REST API v1 — users / equipment (samples API in samples.Handlers, wiki in wiki.Handlers)
 	APIUsers     http.HandlerFunc
 	APIEquipment http.HandlerFunc
 	APINotFound  http.HandlerFunc
@@ -112,10 +108,19 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/bookings", withAuth(h.GetBookings))
 	mux.HandleFunc("/booking/delete", withAuth(h.DeleteBooking))
 
-	// Wiki routes
-	mux.HandleFunc("/wiki", withAuth(h.Wiki))
-	mux.HandleFunc("/wiki/", withAuth(h.Wiki))
-	mux.HandleFunc("/wiki/attachment/", withAuth(h.WikiAttachment))
+	// --- Wiki domain routes (wired via wiki.Handlers) ---
+	wikiSvc := wiki.NewService(a.DB)
+	wikiHdlrs := wiki.NewHandlers(wikiSvc, a.Renderer, wiki.HandlerConfig{
+		UploadsDir: a.Config.UploadsDir,
+		BaseDir:    a.Config.BaseDir,
+	})
+	mux.HandleFunc("/wiki", withAuth(wikiHdlrs.HandleWiki))
+	mux.HandleFunc("/wiki/", withAuth(wikiHdlrs.HandleWiki))
+	mux.HandleFunc("/wiki/attachment/", withAuth(wikiHdlrs.HandleAttachment))
+
+	// REST API v1 routes — wiki
+	mux.HandleFunc("/api/v1/wiki", withAuth(wikiHdlrs.APIWiki))
+	mux.HandleFunc("/api/v1/wiki/", withAuth(wikiHdlrs.APIWiki))
 
 	// Admin routes
 	mux.HandleFunc("/admin", withAuth(adminH(h.AdminPage)))
@@ -134,9 +139,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/profile/tokens", withAuth(h.ProfileTokens))
 	mux.HandleFunc("/profile/tokens/", withAuth(h.ProfileTokenRevoke))
 
-	// REST API v1 routes — wiki / users / equipment
-	mux.HandleFunc("/api/v1/wiki", withAuth(h.APIWiki))
-	mux.HandleFunc("/api/v1/wiki/", withAuth(h.APIWiki))
+	// REST API v1 routes — users / equipment
 	mux.HandleFunc("/api/v1/users", withAuth(h.APIUsers))
 	mux.HandleFunc("/api/v1/equipment", withAuth(h.APIEquipment))
 	mux.HandleFunc("/api/", withAuth(h.APINotFound))

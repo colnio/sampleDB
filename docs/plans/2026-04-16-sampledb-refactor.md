@@ -165,10 +165,10 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 14: Extract `internal/wiki` package
 
-- [ ] write failing tests for article CRUD, attachments, and preview against the new package's service interface
-- [ ] create `internal/wiki/` with service + handlers migrated from `wiki.go` and `api.go`
-- [ ] update route registration
-- [ ] run tests — must pass before task 15
+- [x] write failing tests for article CRUD, attachments, and preview against the new package's service interface
+- [x] create `internal/wiki/` with service + handlers migrated from `wiki.go` and `api.go`
+- [x] update route registration
+- [x] run tests — must pass before task 15
 
 ### Task 15: Extract `internal/booking` package
 
