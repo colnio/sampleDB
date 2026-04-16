@@ -27,12 +27,9 @@ func renderFabricationStepsSection(w http.ResponseWriter, r *http.Request, sessi
 	data.IsPartial = true
 	data.EditingStep = editingStep
 
-	tmpl, err := parseTemplates("templates/fabrication_steps.html", "templates/step_form.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	if err := tmpl.ExecuteTemplate(w, "fabrication_steps_panel", data); err != nil {
+	// "sample_detail" group includes fabrication_steps.html and step_form.html,
+	// which define the "fabrication_steps_panel" template section.
+	if err := theApp.Renderer.RenderSection(w, "sample_detail", "fabrication_steps_panel", data); err != nil {
 		http.Error(w, "Error rendering steps panel", http.StatusInternalServerError)
 	}
 }

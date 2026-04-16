@@ -13,20 +13,34 @@ import (
 	"time"
 
 	"sampleDB/internal/auth"
+	"sampleDB/internal/web"
 )
 
 // setTestTemplatesDir sets theApp.Config.TemplatesDir to the templates/
-// directory next to the test binary's working directory, and returns a restore
-// function.
+// directory next to the test binary's working directory, and initializes
+// theApp.Renderer from those templates.
 func setTestTemplatesDir(t *testing.T) {
 	t.Helper()
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("os.Getwd: %v", err)
 	}
-	orig := theApp.Config.TemplatesDir
-	theApp.Config.TemplatesDir = filepath.Join(wd, "templates")
-	t.Cleanup(func() { theApp.Config.TemplatesDir = orig })
+	templatesDir := filepath.Join(wd, "templates")
+
+	origCfg := theApp.Config.TemplatesDir
+	origRenderer := theApp.Renderer
+
+	renderer, err := web.NewRenderer(templatesDir, nil, time.UTC)
+	if err != nil {
+		t.Fatalf("web.NewRenderer: %v", err)
+	}
+
+	theApp.Config.TemplatesDir = templatesDir
+	theApp.Renderer = renderer
+	t.Cleanup(func() {
+		theApp.Config.TemplatesDir = origCfg
+		theApp.Renderer = origRenderer
+	})
 }
 
 // ---------------------------------------------------------------------------

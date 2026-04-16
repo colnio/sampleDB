@@ -142,11 +142,11 @@ The result is a testable, deployable app with strong ownership invariants and no
 
 ### Task 12: Unify template rendering
 
-- [ ] write failing test: `web.Renderer.Render(w, "template_name", data)` selects and executes the correct template
-- [ ] write failing test: `Renderer` is initialized once (not per-request) and concurrent calls are safe
-- [ ] replace `parseTemplates` and `parseTemplatesBooking` in `main.go` with a single `web.Renderer` that caches parsed templates at startup
-- [ ] update all call sites to use `Renderer.Render`
-- [ ] run tests — must pass before phase 2
+- [x] write failing test: `web.Renderer.Render(w, "template_name", data)` selects and executes the correct template
+- [x] write failing test: `Renderer` is initialized once (not per-request) and concurrent calls are safe
+- [x] replace `parseTemplates` and `parseTemplatesBooking` in `main.go` with a single `web.Renderer` that caches parsed templates at startup
+- [x] update all call sites to use `Renderer.Render`
+- [x] run tests — must pass before phase 2
 
 ---
 

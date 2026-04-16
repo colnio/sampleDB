@@ -29,6 +29,7 @@ import (
 	"sampleDB/internal/auth"
 	"sampleDB/internal/dbiface"
 	"sampleDB/internal/dbschema"
+	"sampleDB/internal/web"
 )
 
 type Attachment struct {
@@ -202,12 +203,10 @@ func isHTMXRequest(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
 }
 
-func renderTemplateSection(w http.ResponseWriter, templatePath, section string, data interface{}) error {
-	tmpl, err := parseTemplates(templatePath)
-	if err != nil {
-		return err
-	}
-	return tmpl.ExecuteTemplate(w, section, data)
+// renderTemplateSection renders a named partial section of a cached template group.
+// group is the registered group name (e.g. "sample_detail", "wiki_view").
+func renderTemplateSection(w http.ResponseWriter, group, section string, data interface{}) error {
+	return theApp.Renderer.RenderSection(w, group, section, data)
 }
 
 // initLocation loads the local timezone and returns it.
@@ -455,13 +454,7 @@ func handleChangePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderChangePasswordTemplate(w http.ResponseWriter, data ChangePasswordPageData) {
-	tmpl, err := parseTemplates("templates/change_password.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+	if err := theApp.Renderer.Render(w, "change_password", data); err != nil {
 		http.Error(w, "Template execution error", http.StatusInternalServerError)
 	}
 }
@@ -562,12 +555,7 @@ func handleProfileTokenRevoke(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderProfileTokensTemplate(w http.ResponseWriter, data ProfileTokensPageData) {
-	tmpl, err := parseTemplates("templates/profile_tokens.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+	if err := theApp.Renderer.Render(w, "profile_tokens", data); err != nil {
 		http.Error(w, "Template execution error", http.StatusInternalServerError)
 	}
 }
@@ -726,7 +714,12 @@ func main() {
 	}
 	authMgr.SetTemplateDir(cfg.TemplatesDir)
 
-	theApp, err = app.New(cfg, pool, authMgr, nil, nil, nil, loc)
+	renderer, err := web.NewRenderer(cfg.TemplatesDir, template.FuncMap{"markdown": renderMarkdown}, loc)
+	if err != nil {
+		log.Fatalf("Unable to initialize template renderer: %v\n", err)
+	}
+
+	theApp, err = app.New(cfg, pool, authMgr, renderer, nil, nil, loc)
 	if err != nil {
 		log.Fatalf("Unable to initialize application: %v\n", err)
 	}
@@ -826,36 +819,6 @@ func publicBaseURL() string {
 	return "http://" + theApp.Config.PublicHost
 }
 
-func parseTemplates(files ...string) (*template.Template, error) {
-	funcMap := template.FuncMap{
-		"markdown": renderMarkdown,
-		"split":    strings.Split,
-		"trim":     strings.TrimSpace,
-		"ownerSelected": func(ownerUserID *int, userID int) bool {
-			return ownerUserID != nil && *ownerUserID == userID
-		},
-		"formatDate": func(t *time.Time) string {
-			if t == nil {
-				return ""
-			}
-			return t.Format("2006-01-02")
-		},
-		"add": func(a, b int) int { return a + b },
-	}
-
-	// Always include base and header templates
-	baseTemplates := []string{"templates/base.html", "templates/header.html"}
-	resolved := make([]string, 0, len(files)+len(baseTemplates))
-	for _, f := range baseTemplates {
-		resolved = append(resolved, resolveTemplatePath(f))
-	}
-	for _, f := range files {
-		resolved = append(resolved, resolveTemplatePath(f))
-	}
-
-	return template.New("").Funcs(funcMap).ParseFiles(resolved...)
-}
-
 // mainPageHandler serves the main page and handles search functionality
 func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("query")
@@ -902,20 +865,16 @@ func mainPageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("main: unable to load admin flag for %s: %v", session.Username, err)
 	}
-	tmpl, err := parseTemplates("templates/main.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-
 	if isHTMXRequest(r) && r.Header.Get("HX-Target") == "samples-panel" {
-		if err := tmpl.ExecuteTemplate(w, "samples_panel", data); err != nil {
+		if err := theApp.Renderer.RenderSection(w, "main", "samples_panel", data); err != nil {
 			http.Error(w, "Error rendering samples", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	tmpl.ExecuteTemplate(w, "base", data)
+	if err := theApp.Renderer.Render(w, "main", data); err != nil {
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 // Update handleSample function to properly handle the upload path pattern
@@ -1231,18 +1190,9 @@ func sampleDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := parseTemplates(
-		"templates/sample_detail.html",
-		"templates/fabrication_steps.html",
-		"templates/step_form.html",
-	)
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
+	if err := theApp.Renderer.Render(w, "sample_detail", data); err != nil {
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
-
-	tmpl.ExecuteTemplate(w, "base", data)
-
 }
 
 func getSampleByID(ctx context.Context, sampleID string) (Sample, error) {
@@ -1353,7 +1303,7 @@ func renderSampleAttachmentsSection(w http.ResponseWriter, r *http.Request, sess
 	data.Error = errMsg
 	data.IsPartial = true
 
-	if err := renderTemplateSection(w, "templates/sample_detail.html", "sample_attachments", data); err != nil {
+	if err := renderTemplateSection(w, "sample_detail", "sample_attachments", data); err != nil {
 		http.Error(w, "Error rendering attachments", http.StatusInternalServerError)
 	}
 }
@@ -1368,7 +1318,7 @@ func renderSampleEditSection(w http.ResponseWriter, r *http.Request, session aut
 	data.Error = errMsg
 	data.IsPartial = true
 
-	if err := renderTemplateSection(w, "templates/sample_detail.html", "sample_edit_form", data); err != nil {
+	if err := renderTemplateSection(w, "sample_detail", "sample_edit_form", data); err != nil {
 		http.Error(w, "Error rendering form", http.StatusInternalServerError)
 	}
 }
@@ -1481,14 +1431,9 @@ func newSampleHandler(w http.ResponseWriter, r *http.Request) {
 			Users:        users,
 		}
 
-		tmpl, err := parseTemplates("templates/new_sample.html")
-		if err != nil {
-			http.Error(w, "Error loading template", http.StatusInternalServerError)
-			return
+		if err := theApp.Renderer.Render(w, "new_sample", data); err != nil {
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
 		}
-
-		tmpl.ExecuteTemplate(w, "base", data)
-
 		return
 	} else if r.Method == http.MethodPost {
 		session := auth.MustSessionFromContext(r.Context())

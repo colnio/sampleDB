@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"sampleDB/internal/web"
@@ -213,4 +215,72 @@ func TestExtractArticleTitle_Empty(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty title, got nil")
 	}
+}
+
+// ---------------------------------------------------------------------------
+// renderer.go — Renderer template execution
+// ---------------------------------------------------------------------------
+
+func TestRenderer_Render_ExecutesBaseTemplate(t *testing.T) {
+	tmpl := template.Must(template.New("base").Parse("hello {{.Name}}"))
+
+	r := &web.Renderer{}
+	r.Register("greeting", tmpl)
+
+	w := httptest.NewRecorder()
+	err := r.Render(w, "greeting", map[string]string{"Name": "world"})
+	if err != nil {
+		t.Fatalf("Render: unexpected error: %v", err)
+	}
+	if got := w.Body.String(); got != "hello world" {
+		t.Fatalf("Render: got body %q, want %q", got, "hello world")
+	}
+}
+
+func TestRenderer_Render_UnknownGroup(t *testing.T) {
+	r := &web.Renderer{}
+	w := httptest.NewRecorder()
+	err := r.Render(w, "nonexistent", nil)
+	if err == nil {
+		t.Fatal("Render: expected error for unknown group, got nil")
+	}
+}
+
+func TestRenderer_RenderSection_ExecutesNamedTemplate(t *testing.T) {
+	tmpl := template.Must(template.New("base").Parse("full: {{.}}"))
+	template.Must(tmpl.New("partial").Parse("partial: {{.}}"))
+
+	r := &web.Renderer{}
+	r.Register("page", tmpl)
+
+	w := httptest.NewRecorder()
+	err := r.RenderSection(w, "page", "partial", "data")
+	if err != nil {
+		t.Fatalf("RenderSection: unexpected error: %v", err)
+	}
+	if got := w.Body.String(); got != "partial: data" {
+		t.Fatalf("RenderSection: got body %q, want %q", got, "partial: data")
+	}
+}
+
+func TestRenderer_Concurrent_Safe(t *testing.T) {
+	// Renderer initialized once; many goroutines render concurrently.
+	tmpl := template.Must(template.New("base").Parse("{{.}}"))
+
+	r := &web.Renderer{}
+	r.Register("test", tmpl)
+
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			w := httptest.NewRecorder()
+			if err := r.Render(w, "test", "hello"); err != nil {
+				t.Errorf("Render: unexpected error: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
 }

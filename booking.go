@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"strconv"
@@ -61,97 +60,6 @@ func handleBooking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-}
-
-func parseTemplatesBooking(files ...string) (*template.Template, error) {
-	// Create a new template with base name and include all functions
-	funcMap := template.FuncMap{
-		"toJSON": func(value interface{}) template.JS {
-			data, err := json.Marshal(value)
-			if err != nil || string(data) == "null" {
-				return template.JS("[]")
-			}
-			return template.JS(data)
-		},
-		// Date formatting
-		"formatDate": func(t time.Time) string {
-			return t.Format("January 2, 2006")
-		},
-		"formatDateShort": func(t time.Time) string {
-			return t.Format("Jan 2")
-		},
-		"formatDateNumeric": func(t time.Time) string {
-			return t.Format("01/02/2006")
-		},
-		"formatDateISO": func(t time.Time) string {
-			return t.Format("2006-01-02")
-		},
-		"formatDayName": func(t time.Time) string {
-			return t.Format("Monday")
-		},
-
-		// Time formatting
-		"formatTime": func(t time.Time) string {
-			return t.Format("3:04 PM")
-		},
-		"formatTime24": func(t time.Time) string {
-			return t.Format("15:04")
-		},
-		"formatDateTime": func(t time.Time) string {
-			return t.Format("Jan 2, 15:04")
-		},
-
-		// Math operations
-		"add": func(a, b int) int {
-			return a + b
-		},
-		"subtract": func(a, b int) int {
-			return a - b
-		},
-
-		// Utility functions
-		"iterate": func(start, end int) []int {
-			var result []int
-			for i := start; i < end; i++ {
-				result = append(result, i)
-			}
-			return result
-		},
-		"combineDatetime": func(date, timeSlot time.Time) time.Time {
-			return time.Date(
-				date.Year(),
-				date.Month(),
-				date.Day(),
-				timeSlot.Hour(),
-				timeSlot.Minute(),
-				0, 0,
-				theApp.Location, // Use local timezone
-			)
-		},
-
-		"formatDateTimeISO": func(t time.Time) string {
-			return t.Format("2006-01-02T15:04")
-		},
-		"addDays": func(t time.Time, days int) time.Time {
-			return t.AddDate(0, 0, days)
-		},
-	}
-
-	// Create new template with function map
-	tmpl := template.New("").Funcs(funcMap)
-
-	// Always include base and header templates
-	baseTemplates := []string{"templates/base.html", "templates/header.html"}
-	resolved := make([]string, 0, len(files)+len(baseTemplates))
-	for _, f := range baseTemplates {
-		resolved = append(resolved, resolveTemplatePath(f))
-	}
-	for _, f := range files {
-		resolved = append(resolved, resolveTemplatePath(f))
-	}
-
-	// Parse all template files
-	return tmpl.ParseFiles(resolved...)
 }
 
 func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
@@ -248,14 +156,7 @@ func showBookingCalendar(w http.ResponseWriter, r *http.Request) {
 		Success:       r.URL.Query().Get("success"),
 	}
 
-	tmpl, err := parseTemplatesBooking("templates/booking.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.ExecuteTemplate(w, "base", data)
-	if err != nil {
+	if err := theApp.Renderer.Render(w, "booking", data); err != nil {
 		http.Error(w, fmt.Sprintf("Template execution error: %v", err), http.StatusInternalServerError)
 	}
 }

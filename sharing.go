@@ -168,16 +168,7 @@ func handleSharedSample(w http.ResponseWriter, r *http.Request) {
 		data.BasePageData = BasePageData{Username: session.Username, UserID: session.UserID}
 	}
 
-	tmpl, err := parseTemplates(
-		"templates/sample_shared.html",
-		"templates/fabrication_steps.html",
-		"templates/step_form.html",
-	)
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+	if err := theApp.Renderer.Render(w, "sample_shared", data); err != nil {
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -14,11 +14,6 @@ import (
 
 func TestRenderMainTemplate(t *testing.T) {
 	setTestTemplatesDir(t)
-
-	tmpl, err := parseTemplates("templates/main.html")
-	if err != nil {
-		t.Fatalf("parseTemplates(main.html): %v", err)
-	}
 
 	now := time.Now()
 	imgID := 42
@@ -58,12 +53,12 @@ func TestRenderMainTemplate(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "base", data); err != nil {
-		t.Fatalf("ExecuteTemplate(base): %v", err)
+	w := httptest.NewRecorder()
+	if err := theApp.Renderer.Render(w, "main", data); err != nil {
+		t.Fatalf("Render(main): %v", err)
 	}
 
-	html := buf.String()
+	html := w.Body.String()
 	if !strings.Contains(html, "Sample Alpha") {
 		t.Error("rendered HTML missing 'Sample Alpha'")
 	}
@@ -79,37 +74,23 @@ func TestRenderMainTemplate(t *testing.T) {
 func TestRenderMainTemplate_Empty(t *testing.T) {
 	setTestTemplatesDir(t)
 
-	tmpl, err := parseTemplates("templates/main.html")
-	if err != nil {
-		t.Fatalf("parseTemplates(main.html): %v", err)
-	}
-
 	data := MainPageData{
 		BasePageData: BasePageData{Username: "testuser", UserID: 1},
 		Samples:      nil,
 	}
 
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "base", data); err != nil {
-		t.Fatalf("ExecuteTemplate(base) with empty samples: %v", err)
+	w := httptest.NewRecorder()
+	if err := theApp.Renderer.Render(w, "main", data); err != nil {
+		t.Fatalf("Render(main) with empty samples: %v", err)
 	}
 
-	if !strings.Contains(buf.String(), "No samples found") {
+	if !strings.Contains(w.Body.String(), "No samples found") {
 		t.Error("empty-state message not found in rendered HTML")
 	}
 }
 
 func TestRenderSampleDetailTemplate(t *testing.T) {
 	setTestTemplatesDir(t)
-
-	tmpl, err := parseTemplates(
-		"templates/sample_detail.html",
-		"templates/fabrication_steps.html",
-		"templates/step_form.html",
-	)
-	if err != nil {
-		t.Fatalf("parseTemplates(sample_detail): %v", err)
-	}
 
 	now := time.Now()
 	ownerID := 3
@@ -157,12 +138,12 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 	}
 	_ = equipID
 
-	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "base", data); err != nil {
-		t.Fatalf("ExecuteTemplate(base) for sample_detail: %v", err)
+	w := httptest.NewRecorder()
+	if err := theApp.Renderer.Render(w, "sample_detail", data); err != nil {
+		t.Fatalf("Render(sample_detail): %v", err)
 	}
 
-	html := buf.String()
+	html := w.Body.String()
 	if !strings.Contains(html, "Detail Sample") {
 		t.Error("rendered HTML missing sample name 'Detail Sample'")
 	}
@@ -183,4 +164,3 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 		t.Error("rendered HTML missing 'Attachments' panel summary")
 	}
 }
-

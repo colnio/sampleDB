@@ -131,13 +131,9 @@ func listArticlesHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("wiki: unable to load admin flag for %s: %v", session.Username, err)
 	}
 
-	tmpl, err := parseTemplates("templates/wiki_list.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
+	if err := theApp.Renderer.Render(w, "wiki_list", data); err != nil {
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
-
-	tmpl.ExecuteTemplate(w, "base", data)
 }
 
 func loadArticleData(ctx context.Context, session auth.Session, title string) (*Article, error) {
@@ -230,13 +226,7 @@ func viewArticleHandler(w http.ResponseWriter, r *http.Request, title string) {
 		EditingContent: false,
 	}
 
-	tmpl, err := parseTemplates("templates/wiki_view.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
+	if err := theApp.Renderer.Render(w, "wiki_view", data); err != nil {
 		log.Printf("wiki: error rendering view template: %v", err)
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
@@ -274,7 +264,7 @@ func renderArticleContentPanel(w http.ResponseWriter, r *http.Request, session a
 		Error:          errMsg,
 	}
 
-	if err := renderTemplateSection(w, "templates/wiki_view.html", "article_content_panel", data); err != nil {
+	if err := renderTemplateSection(w, "wiki_view", "article_content_panel", data); err != nil {
 		http.Error(w, "Error rendering article content", http.StatusInternalServerError)
 	}
 }
@@ -291,13 +281,9 @@ func newArticleHandler(w http.ResponseWriter, r *http.Request) {
 			BasePageData: BasePageData{Username: session.Username},
 		}
 
-		tmpl, err := parseTemplates("templates/wiki_edit.html")
-		if err != nil {
-			http.Error(w, "Error loading template", http.StatusInternalServerError)
-			return
+		if err := theApp.Renderer.Render(w, "wiki_edit", data); err != nil {
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
 		}
-
-		tmpl.ExecuteTemplate(w, "base", data)
 		return
 	}
 
@@ -361,13 +347,9 @@ func editArticleHandler(w http.ResponseWriter, r *http.Request) {
 			ArticleImages: articleImages,
 		}
 
-		tmpl, err := parseTemplates("templates/wiki_edit.html")
-		if err != nil {
-			http.Error(w, "Error loading template", http.StatusInternalServerError)
-			return
+		if err := theApp.Renderer.Render(w, "wiki_edit", data); err != nil {
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
 		}
-
-		tmpl.ExecuteTemplate(w, "base", data)
 		return
 	}
 
@@ -610,7 +592,7 @@ func uploadArticleAttachmentHandler(w http.ResponseWriter, r *http.Request) {
 			Username: session.Username,
 			Article:  article,
 		}
-		if err := renderTemplateSection(w, "templates/wiki_view.html", "wiki_attachments_section", data); err != nil {
+		if err := renderTemplateSection(w, "wiki_view", "wiki_attachments_section", data); err != nil {
 			http.Error(w, "Error rendering attachments", http.StatusInternalServerError)
 		}
 		return
