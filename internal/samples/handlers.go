@@ -356,6 +356,10 @@ func (h *Handlers) NewSample(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Sample name is required", http.StatusBadRequest)
 			return
 		}
+		if len(name) > 100 {
+			http.Error(w, "Sample name must be 100 characters or fewer", http.StatusBadRequest)
+			return
+		}
 
 		newID, err := h.svc.Create(r.Context(), CreateParams{
 			Name:        name,

@@ -218,6 +218,10 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
+	if len(req.Name) > 100 {
+		writeError(w, http.StatusBadRequest, "name must be 100 characters or fewer")
+		return
+	}
 
 	// Default owner is the session user. Admins may supply a different owner_user_id
 	// or omit it entirely to create an ownerless (admin-only) sample.
@@ -273,6 +277,10 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 	}
 	if strings.TrimSpace(req.Name) == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if len(req.Name) > 100 {
+		writeError(w, http.StatusBadRequest, "name must be 100 characters or fewer")
 		return
 	}
 

@@ -162,7 +162,13 @@ func (s *DBService) UpdateArticleContent(ctx context.Context, title, content str
 // DB).  It returns the file-system paths of the deleted attachments so the
 // caller can remove the files.  The function does NOT touch the filesystem.
 func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, error) {
-	attRows, err := s.db.Query(ctx,
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("wiki: DeleteArticle: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	attRows, err := tx.Query(ctx,
 		`SELECT aa.attachment_address
 		   FROM article_attachments aa
 		   JOIN articles a ON aa.article_id = a.article_id
@@ -185,12 +191,15 @@ func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, 
 	}
 	attRows.Close()
 
-	cmdTag, err := s.db.Exec(ctx, "DELETE FROM articles WHERE title = $1", title)
+	cmdTag, err := tx.Exec(ctx, "DELETE FROM articles WHERE title = $1", title)
 	if err != nil {
 		return nil, fmt.Errorf("wiki: DeleteArticle: delete %q: %w", title, err)
 	}
 	if cmdTag.RowsAffected() == 0 {
 		return nil, web.ErrNotFound
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("wiki: DeleteArticle: commit: %w", err)
 	}
 	return filePaths, nil
 }

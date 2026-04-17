@@ -174,6 +174,7 @@ func TestUpdateArticleContent_UpdatesRow(t *testing.T) {
 func TestDeleteArticle_ReturnsFilePaths(t *testing.T) {
 	svc, mock := newSvc(t)
 
+	mock.ExpectBegin()
 	mock.ExpectQuery(`SELECT aa.attachment_address`).
 		WithArgs("Old Article").
 		WillReturnRows(pgxmock.NewRows([]string{"attachment_address"}).
@@ -183,6 +184,7 @@ func TestDeleteArticle_ReturnsFilePaths(t *testing.T) {
 	mock.ExpectExec(`DELETE FROM articles WHERE title`).
 		WithArgs("Old Article").
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+	mock.ExpectCommit()
 
 	paths, err := svc.DeleteArticle(context.Background(), "Old Article")
 	if err != nil {

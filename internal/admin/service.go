@@ -140,6 +140,11 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
 	}
 	defer rows.Close()
 
+	equipmentByID := make(map[int]Equipment, len(allEquipment))
+	for _, eq := range allEquipment {
+		equipmentByID[eq.ID] = eq
+	}
+
 	var users []UserAccess
 	for rows.Next() {
 		var (
@@ -153,13 +158,10 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
 		if groupName.Valid {
 			u.GroupName = groupName.String
 		}
-		u.EquipmentAccess = make([]Equipment, 0)
-		for _, eq := range allEquipment {
-			for _, id := range equipmentIDs {
-				if eq.ID == int(id) {
-					u.EquipmentAccess = append(u.EquipmentAccess, eq)
-					break
-				}
+		u.EquipmentAccess = make([]Equipment, 0, len(equipmentIDs))
+		for _, id := range equipmentIDs {
+			if eq, ok := equipmentByID[int(id)]; ok {
+				u.EquipmentAccess = append(u.EquipmentAccess, eq)
 			}
 		}
 		users = append(users, u)
