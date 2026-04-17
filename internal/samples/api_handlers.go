@@ -124,7 +124,7 @@ func (h *Handlers) apiListSamples(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("samples api: listSamples error: %v", err)
 		if errors.Is(err, web.ErrValidation) {
-			writeError(w, http.StatusBadRequest, err.Error())
+			writeError(w, http.StatusBadRequest, strings.TrimSuffix(err.Error(), ": "+web.ErrValidation.Error()))
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "database error")

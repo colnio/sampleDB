@@ -240,6 +240,7 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 		args = append(args, dateTo)
 		q += fmt.Sprintf(" AND s.created_at < $%d::date + interval '1 day'", len(args))
 	}
+	q += " ORDER BY s.sample_name ASC"
 
 	rows, err := s.db.Query(ctx, q, args...)
 	if err != nil {
