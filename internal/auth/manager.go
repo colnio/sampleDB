@@ -238,6 +238,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 
 		session, err := m.newSession(r.Context(), username, userID)
 		if err != nil {
+			log.Printf("auth: newSession failed for user %q (id=%d): %v", username, userID, err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
 			return
 		}

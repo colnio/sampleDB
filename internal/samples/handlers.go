@@ -460,6 +460,64 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/samples/"+sampleID, http.StatusSeeOther)
 }
 
+// DeleteSample handles POST /samples/{id}/delete. Admin-only: removes the
+// sample row, its attachment rows, and the attachment files on disk. The
+// cascade is run inside a transaction by svc.APIDeleteSample, so either the
+// whole sample disappears or nothing changes.
+func (h *Handlers) DeleteSample(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
+	if err != nil {
+		log.Printf("samples.DeleteSample: IsAdmin error: %v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	if !isAdmin {
+		http.Error(w, "Forbidden: admin privileges required", http.StatusForbidden)
+		return
+	}
+
+	// URL: /samples/{id}/delete  →  pathParts after /samples/ is [id, "delete"]
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/samples/"), "/")
+	if len(parts) != 2 || parts[1] != "delete" {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+	sampleID, err := strconv.Atoi(parts[0])
+	if err != nil {
+		http.Error(w, "Invalid sample ID", http.StatusBadRequest)
+		return
+	}
+
+	filePaths, err := h.svc.APIDeleteSample(r.Context(), sampleID)
+	if err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "Sample not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("samples.DeleteSample: APIDeleteSample: %v", err)
+		http.Error(w, "Failed to delete sample", http.StatusInternalServerError)
+		return
+	}
+
+	// Remove attachment files from disk (best-effort; DB row is already gone).
+	for _, fp := range filePaths {
+		if fp == "" {
+			continue
+		}
+		if removeErr := removeFile(h.resolveAppPath(fp)); removeErr != nil {
+			log.Printf("samples.DeleteSample: remove file %q: %v", fp, removeErr)
+		}
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 // SampleDetail handles GET /samples/{id}.
 func (h *Handlers) sampleDetail(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -511,6 +569,9 @@ func (h *Handlers) HandleSample(w http.ResponseWriter, r *http.Request) {
 
 	case len(pathParts) == 2 && pathParts[1] == "share":
 		h.handleShare(w, r)
+
+	case len(pathParts) == 2 && pathParts[1] == "delete":
+		h.DeleteSample(w, r)
 
 	case len(pathParts) == 1:
 		h.sampleDetail(w, r)

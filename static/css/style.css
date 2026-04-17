@@ -1192,6 +1192,21 @@ label {
     color: var(--text-muted);
 }
 
+.sample-detail__description {
+    margin: var(--space-md) 0 var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--surface-muted, var(--surface));
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    white-space: pre-wrap;
+    line-height: 1.55;
+}
+
+.sample-detail__description p {
+    margin: 0;
+}
+
 .sample-prep {
     display: flex;
     flex-direction: column;
@@ -2210,4 +2225,115 @@ html[data-theme="dark"] body .markdown-body table th {
 
 .sample-card__keywords {
     margin-top: auto;
+}
+
+/* ============================================================
+   EasyMDE dark-mode overrides — keep the markdown editor readable
+   when the rest of the UI is in dark theme.
+   ============================================================ */
+
+html[data-theme="dark"] .EasyMDEContainer .CodeMirror {
+    background: var(--surface, #161b22);
+    color: var(--text, #e6edf3);
+    border-color: var(--border, #30363d);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .CodeMirror-cursor {
+    border-left-color: var(--text, #e6edf3);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .CodeMirror-selected,
+html[data-theme="dark"] .EasyMDEContainer .CodeMirror-focused .CodeMirror-selected {
+    background: rgba(88, 166, 255, 0.25);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .CodeMirror-gutters {
+    background: var(--surface-muted, #0d1117);
+    border-right-color: var(--border, #30363d);
+    color: var(--text-muted, #7d8590);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .editor-toolbar {
+    background: var(--surface-muted, #0d1117);
+    border-color: var(--border, #30363d);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .editor-toolbar button {
+    color: var(--text, #e6edf3);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .editor-toolbar button:hover,
+html[data-theme="dark"] .EasyMDEContainer .editor-toolbar button.active {
+    background: rgba(88, 166, 255, 0.15);
+    border-color: var(--border, #30363d);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .editor-toolbar i.separator {
+    border-left-color: var(--border, #30363d);
+    border-right-color: transparent;
+}
+
+html[data-theme="dark"] .EasyMDEContainer .editor-statusbar {
+    color: var(--text-muted, #7d8590);
+}
+
+html[data-theme="dark"] .EasyMDEContainer .editor-preview,
+html[data-theme="dark"] .EasyMDEContainer .editor-preview-side {
+    background: var(--surface, #161b22);
+    color: var(--text, #e6edf3);
+    border-color: var(--border, #30363d);
+}
+
+html[data-theme="dark"] .CodeMirror .cm-header { color: #79c0ff; }
+html[data-theme="dark"] .CodeMirror .cm-quote { color: #8b949e; }
+html[data-theme="dark"] .CodeMirror .cm-link { color: #58a6ff; }
+html[data-theme="dark"] .CodeMirror .cm-url { color: #8b949e; }
+html[data-theme="dark"] .CodeMirror .cm-comment { color: #8b949e; }
+html[data-theme="dark"] .CodeMirror .cm-string { color: #a5d6ff; }
+html[data-theme="dark"] .CodeMirror .cm-keyword { color: #ff7b72; }
+html[data-theme="dark"] .CodeMirror .cm-variable-2 { color: #d2a8ff; }
+
+/* ============================================================
+   Danger zone — admin-only destructive action block at the end
+   of a form (e.g. delete sample). Kept visually separate so it
+   is hard to trigger by accident.
+   ============================================================ */
+
+.form-danger-zone {
+    margin-top: var(--space-lg, 24px);
+    padding: var(--space-md, 16px);
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    border-radius: var(--radius-md, 8px);
+    background: rgba(220, 38, 38, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm, 10px);
+}
+
+.form-danger-zone__heading {
+    margin: 0;
+    font-size: var(--font-size-sm, 0.9rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #b91c1c;
+}
+
+.form-danger-zone__hint {
+    margin: 0;
+    color: var(--text-muted, #64748b);
+    font-size: var(--font-size-sm, 0.9rem);
+}
+
+.form-danger-zone__form {
+    align-self: flex-start;
+}
+
+html[data-theme="dark"] .form-danger-zone {
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(220, 38, 38, 0.12);
+}
+
+html[data-theme="dark"] .form-danger-zone__heading {
+    color: #f87171;
 }

@@ -22,12 +22,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css" integrity="sha512-Ya9H+OPj8NgcQk34nCrbehaA0atbzGdZCI2uCbqVRELgnlrh8vQ2INMnkadVMSniC54HChLIh5htabVuKJww8g==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="/static/css/easymde.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
     <script src="/static/js/htmx.min.js"></script>
     <script src="/static/js/easymde.min.js"></script>
     {{block "additional_styles" .}}{{end}}
 </head>
-<body hx-boost="true" hx-target="#page-root" hx-select="#page-root" hx-indicator="#page-indicator">
+<body hx-boost="true" hx-target="#page-root" hx-select="#page-root" hx-swap="innerHTML" hx-indicator="#page-indicator">
     {{template "header" .}}
     <main id="page-root" class="content" role="main">
         {{template "content" .}}
@@ -36,6 +36,24 @@
         <span class="spinner" aria-hidden="true"></span>
         <span class="sr-only">Loading</span>
     </div>
+    <script>
+    // Boosted navigations (hx-boost) should feel like full page loads: jump
+    // back to the top after each swap so the user never starts the new page
+    // mid-scroll. Browser-initiated back/forward restores its own scroll
+    // position, so we only reset after push-state navigations.
+    (function () {
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            var req = evt && evt.detail && evt.detail.requestConfig;
+            if (req && req.boosted && !req.historyRestore) {
+                window.scrollTo(0, 0);
+            } else if (!req) {
+                // Fallback: any top-level boosted swap that targets page-root
+                var tgt = evt && evt.detail && evt.detail.target;
+                if (tgt && tgt.id === 'page-root') window.scrollTo(0, 0);
+            }
+        });
+    })();
+    </script>
     {{block "footer_scripts" .}}{{end}}
 </body>
 </html>

@@ -19,6 +19,12 @@
         </div>
     </header>
 
+    {{if .Sample.Description}}
+    <section class="sample-detail__description" aria-label="Sample description">
+        <p>{{.Sample.Description}}</p>
+    </section>
+    {{end}}
+
     <details class="panel-details" open>
         <summary>Attachments</summary>
         {{template "sample_attachments" .}}
@@ -198,6 +204,19 @@
             </div>
         </div>
     </form>
+    {{if .IsAdmin}}
+    <div class="form-danger-zone" role="group" aria-labelledby="sample-danger-heading-{{.Sample.ID}}">
+        <h3 id="sample-danger-heading-{{.Sample.ID}}" class="form-danger-zone__heading">Danger zone</h3>
+        <p class="form-danger-zone__hint">Permanently removes this sample, its fabrication steps, and every attachment. This cannot be undone.</p>
+        <form action="/samples/{{.Sample.ID}}/delete"
+              method="POST"
+              class="inline-form form-danger-zone__form"
+              hx-boost="false"
+              onsubmit="return confirm('Permanently delete sample \u201C{{.Sample.Name}}\u201D and all its attachments? This cannot be undone.');">
+            <button type="submit" class="button button--destructive">Delete sample</button>
+        </form>
+    </div>
+    {{end}}
 </section>
 {{end}}
 

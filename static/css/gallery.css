@@ -139,7 +139,11 @@
 
 .gallery-set {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    /* Fixed upper bound of 180px per tile so a sample with a single image
+       doesn't stretch that image across the full panel width. Extra space is
+       left empty at the end of the row instead. */
+    grid-template-columns: repeat(auto-fill, minmax(130px, 180px));
+    justify-content: start;
     gap: var(--space-sm, 8px);
     margin-bottom: var(--space-md, 12px);
 }

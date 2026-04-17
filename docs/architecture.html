@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SampleDB — Architecture & Data Flow</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --fg: #1f2328;
+    --muted: #57606a;
+    --bg: #ffffff;
+    --card: #f6f8fa;
+    --border: #d0d7de;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px 28px 80px;
+    line-height: 1.55;
+  }
+  h1 { font-size: 2rem; margin: 0 0 6px; }
+  h2 { font-size: 1.5rem; margin-top: 2.2rem; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin-top: 1.6rem; color: var(--fg); }
+  h4 { font-size: 1rem; margin: 1.2rem 0 0.4rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  p { margin: 0.6rem 0; }
+  .lede { color: var(--muted); font-size: 1.05rem; }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88rem;
+  }
+  code {
+    background: var(--card);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+  }
+  pre code { border: 0; padding: 0; background: transparent; }
+  .diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 14px 0 18px;
+    overflow-x: auto;
+  }
+  .diagram .mermaid { text-align: center; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0 18px;
+    font-size: 0.93rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 7px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--card);
+    font-weight: 600;
+  }
+  td code { white-space: nowrap; }
+  .tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid #b6e3ff;
+    margin-right: 4px;
+  }
+  .tag.warn { background: #fff8c5; color: #7d4e00; border-color: #eac54f; }
+  .tag.good { background: #dafbe1; color: #1a7f37; border-color: #aceebb; }
+  .note { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; }
+  nav.toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0 24px;
+    font-size: 0.95rem;
+  }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  nav.toc ul { margin: 4px 0; padding-left: 22px; }
+</style>
+</head>
+<body>
+
+<h1>SampleDB — Architecture &amp; Data-Flow Review</h1>
+<p class="lede">
+  Go 1.21 / PostgreSQL lab-management portal. ~13k lines of Go, split into a thin <code>main</code>
+  binary and eight domain packages under <code>internal/</code>. This document captures the
+  <strong>high-level architecture</strong>, the <strong>request-lifecycle data flow</strong>, and per-module
+  <strong>function-level flowcharts</strong> with descriptions.
+</p>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#summary">1. Executive summary</a></li>
+    <li><a href="#hl-arch">2. High-level architecture</a></li>
+    <li><a href="#request">3. Request lifecycle (dataflow)</a></li>
+    <li><a href="#domains">4. Domain modules &amp; function flowcharts</a>
+      <ul>
+        <li><a href="#d-auth">4.1 auth</a></li>
+        <li><a href="#d-samples">4.2 samples</a></li>
+        <li><a href="#d-wiki">4.3 wiki</a></li>
+        <li><a href="#d-booking">4.4 booking</a></li>
+        <li><a href="#d-admin">4.5 admin</a></li>
+        <li><a href="#d-profile">4.6 profile</a></li>
+        <li><a href="#d-dbschema">4.7 dbschema</a></li>
+        <li><a href="#d-web">4.8 web / dbiface</a></li>
+      </ul>
+    </li>
+    <li><a href="#schema">5. Database schema overview</a></li>
+    <li><a href="#bootstrap">6. Boot sequence</a></li>
+  </ul>
+</nav>
+
+<h2 id="summary">1. Executive summary</h2>
+<p>
+  SampleDB follows a classic <strong>layered monolith</strong> pattern: a single Go HTTP
+  server receives requests, runs them through auth middleware, dispatches to per-domain
+  handlers, which call per-domain service objects that talk to PostgreSQL through a
+  pgx connection pool. The <code>internal/app</code> package owns wiring;
+  <code>main.go</code> only handles config, template pre-parse, and server start.
+</p>
+<p>
+  The app exposes two parallel interfaces over the same services:
+  an <strong>HTML UI</strong> (server-rendered templates, with HTMX partials) and a
+  <strong>JSON REST API</strong> under <code>/api/v1</code> sharing identical auth,
+  identical services, identical validation.
+</p>
+
+<table>
+  <thead><tr><th>Concern</th><th>Choice</th></tr></thead>
+  <tbody>
+    <tr><td>HTTP multiplexer</td><td>stdlib <code>net/http.ServeMux</code> (no 3rd-party router)</td></tr>
+    <tr><td>Database driver</td><td><code>github.com/jackc/pgx/v5</code> with pool interface (<code>dbiface.Pool</code>) for testability</td></tr>
+    <tr><td>Auth</td><td>Session cookie + Bearer token (SHA-256 hashed, one-time display)</td></tr>
+    <tr><td>Templating</td><td><code>html/template</code> with shared <code>web.Renderer</code> cache; HTMX section partials</td></tr>
+    <tr><td>Migration</td><td><code>internal/dbschema.Ensure</code> runs idempotent DDL on every boot</td></tr>
+    <tr><td>Markdown</td><td><code>gomarkdown</code> + sanitizer in <code>internal/web/markdown.go</code></td></tr>
+    <tr><td>TLS / Security</td><td>Optional TLS listener, HSTS, <code>X-Frame-Options: DENY</code>, plain-HTTP redirect</td></tr>
+  </tbody>
+</table>
+
+<h2 id="hl-arch">2. High-level architecture</h2>
+<p>
+  The system is organised into four vertical layers (entry → middleware → domain → storage)
+  and six domain modules. Every domain exposes a <code>Service</code> interface (business
+  rules + SQL) and a <code>Handlers</code> struct (HTTP glue, template data, HTMX partials,
+  REST JSON). Both layers are constructed in <code>app.RegisterRoutes</code> and attached
+  to one shared <code>ServeMux</code>.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  classDef entry fill:#ddf4ff,stroke:#0969da,color:#0550ae;
+  classDef mw fill:#fff8c5,stroke:#bf8700,color:#633c01;
+  classDef domain fill:#dafbe1,stroke:#1a7f37,color:#0a3622;
+  classDef infra fill:#f6f8fa,stroke:#57606a,color:#24292f;
+  classDef store fill:#ffebe9,stroke:#cf222e,color:#82071e;
+
+  subgraph CLIENT["Clients"]
+    direction LR
+    Browser["Browser&lt;br/&gt;(HTML + HTMX)"]:::entry
+    CLI["API client&lt;br/&gt;(curl / script, Bearer token)"]:::entry
+    Shared["Public share link&lt;br/&gt;(/s/{token})"]:::entry
+  end
+
+  subgraph ENTRY["Entry / HTTP layer — main.go"]
+    direction LR
+    Redirect["HTTP →HTTPS redirect&lt;br/&gt;(optional)"]:::entry
+    TLS["TLS listener + security headers&lt;br/&gt;(HSTS, X-Frame-Options, no-sniff)"]:::entry
+    Mux["http.ServeMux&lt;br/&gt;(stdlib)"]:::entry
+  end
+
+  subgraph APP["internal/app — wiring"]
+    direction LR
+    Config["Config&lt;br/&gt;(env vars)"]:::infra
+    AppStruct["App{DB, Auth, Renderer, Location}"]:::infra
+    Routes["RegisterRoutes"]:::infra
+  end
+
+  subgraph MW["Middleware"]
+    direction LR
+    Auth["Auth.RequireAuth&lt;br/&gt;cookie OR Bearer token"]:::mw
+    AdminMW["App.RequireAdmin&lt;br/&gt;(admin-only guard)"]:::mw
+  end
+
+  subgraph DOMAIN["Domain modules (internal/*)"]
+    direction TB
+    subgraph Auth_pkg["auth"]
+      AuthMgr["Manager&lt;br/&gt;(sessions + API tokens)"]:::domain
+    end
+    subgraph Samples_pkg["samples"]
+      SamplesSvc["Service&lt;br/&gt;CRUD + attachments + steps + sharing"]:::domain
+      SamplesH["Handlers&lt;br/&gt;(HTML + /api/v1/samples)"]:::domain
+    end
+    subgraph Wiki_pkg["wiki"]
+      WikiSvc["Service&lt;br/&gt;Markdown articles + attachments"]:::domain
+      WikiH["Handlers&lt;br/&gt;(HTML + /api/v1/wiki)"]:::domain
+    end
+    subgraph Booking_pkg["booking"]
+      BookingSvc["Service&lt;br/&gt;calendar + conflict detection"]:::domain
+      BookingH["Handlers&lt;br/&gt;(HTML + /api/bookings)"]:::domain
+    end
+    subgraph Admin_pkg["admin"]
+      AdminSvc["Service&lt;br/&gt;users/groups/equipment"]:::domain
+      AdminH["Handlers + /api/v1/users, /api/v1/equipment"]:::domain
+    end
+    subgraph Profile_pkg["profile"]
+      ProfileSvc["Service&lt;br/&gt;password + tokens"]:::domain
+      ProfileH["Handlers&lt;br/&gt;/change-password, /profile/tokens"]:::domain
+    end
+  end
+
+  subgraph INFRA["Cross-cutting (internal/web, dbiface, dbschema)"]
+    direction LR
+    Renderer["web.Renderer&lt;br/&gt;template cache + HTMX partials"]:::infra
+    JSONHelp["web.JSON / DecodeJSON / RenderError"]:::infra
+    Paths["web.PathSegments / ExtractID*"]:::infra
+    MD["web.RenderMarkdown&lt;br/&gt;(sanitized)"]:::infra
+    DBIface["dbiface.Pool&lt;br/&gt;(pgx pool interface)"]:::infra
+    Schema["dbschema.Ensure&lt;br/&gt;(idempotent DDL)"]:::infra
+  end
+
+  subgraph STORE["Storage"]
+    direction LR
+    PG[("PostgreSQL 13+&lt;br/&gt;users, samples, wiki,&lt;br/&gt;bookings, groups,&lt;br/&gt;sessions, api_tokens")]:::store
+    FS["Local filesystem&lt;br/&gt;UPLOADS_DIR"]:::store
+    Static["STATIC_DIR&lt;br/&gt;(/static/*)"]:::store
+    Templates["TEMPLATES_DIR"]:::store
+  end
+
+  Browser --> Redirect --> TLS
+  CLI --> TLS
+  Shared --> TLS
+  TLS --> Mux
+  Mux --> Routes
+  Routes --> Auth
+  Routes --> AdminMW
+  Auth --> AuthMgr
+  AdminMW --> SamplesH & WikiH & BookingH & AdminH & ProfileH
+  Auth --> SamplesH & WikiH & BookingH & AdminH & ProfileH
+  SamplesH --> SamplesSvc
+  WikiH --> WikiSvc
+  BookingH --> BookingSvc
+  AdminH --> AdminSvc
+  ProfileH --> ProfileSvc
+  SamplesSvc & WikiSvc & BookingSvc & AdminSvc & ProfileSvc & AuthMgr --> DBIface
+  DBIface --> PG
+  SamplesH & WikiH --> FS
+  Mux --> Static
+  Renderer --> Templates
+  SamplesH & WikiH & BookingH & AdminH & ProfileH --> Renderer
+  SamplesH & WikiH & AdminH --> JSONHelp
+  SamplesH & WikiH --> Paths
+  WikiH --> MD
+  Config --> AppStruct
+  AppStruct --> Routes
+  Schema -. runs at boot .-> PG
+</pre>
+</div>
+
+<h3>Module boundaries</h3>
+<table>
+  <thead><tr><th>Package</th><th>Responsibility</th><th>Depends on</th></tr></thead>
+  <tbody>
+    <tr><td><code>main</code></td><td>env parsing, TLS, security headers, template pre-parse, server start</td><td><code>app, auth, dbschema, web, dbiface</code></td></tr>
+    <tr><td><code>internal/app</code></td><td><code>App</code> struct, <code>Config</code>, <code>RegisterRoutes</code>, <code>RequireAdmin</code></td><td>all domain packages</td></tr>
+    <tr><td><code>internal/auth</code></td><td>session cookies, bcrypt login/register, Bearer-token auth, context injection</td><td><code>dbiface, web</code></td></tr>
+    <tr><td><code>internal/samples</code></td><td>sample CRUD, uploads, fabrication steps, sharing tokens, HTML + REST</td><td><code>auth, web, dbiface</code></td></tr>
+    <tr><td><code>internal/wiki</code></td><td>Markdown wiki CRUD + attachments, HTMX edit/preview, REST</td><td><code>auth, web, dbiface</code></td></tr>
+    <tr><td><code>internal/booking</code></td><td>weekly calendar, equipment permissions, conflict detection, soft-delete</td><td><code>auth, web, dbiface</code></td></tr>
+    <tr><td><code>internal/admin</code></td><td>user approvals, groups, equipment, reports, /api/v1/users &amp; /equipment</td><td><code>auth, web, dbiface</code></td></tr>
+    <tr><td><code>internal/profile</code></td><td>change password, API-token lifecycle (create/list/revoke)</td><td><code>auth, web, dbiface</code></td></tr>
+    <tr><td><code>internal/dbschema</code></td><td>idempotent DDL executor (tables, indexes, ALTER migrations)</td><td><code>dbiface</code></td></tr>
+    <tr><td><code>internal/dbiface</code></td><td>minimal <code>Pool</code> interface so tests can mock with <code>pgxmock</code></td><td>— (pgx types)</td></tr>
+    <tr><td><code>internal/web</code></td><td>template renderer, JSON helpers, sanitized markdown, path parsing, sentinel errors</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<h2 id="request">3. Request lifecycle (dataflow)</h2>
+<p>
+  Every authenticated request — HTML or JSON — follows the same pipeline. The only branches
+  are at <em>auth resolution</em> (cookie vs Bearer) and at <em>render</em> (template vs JSON).
+  HTMX requests reuse the same handlers and receive <em>section</em> partials (via
+  <code>Renderer.RenderSection</code>) instead of full pages.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as Client (browser or API)
+  participant S as http.Server (main.go)
+  participant H as securityHeaders mw
+  participant M as ServeMux
+  participant A as auth.RequireAuth
+  participant D as RequireAdmin<br/>(admin routes only)
+  participant Hd as Domain Handler<br/>(samples/wiki/booking/admin/profile)
+  participant Sv as Domain Service
+  participant P as pgxpool (dbiface.Pool)
+  participant F as Filesystem<br/>(uploads)
+  participant R as web.Renderer
+
+  C->>S: HTTP(S) request
+  S->>H: add X-Frame-Options, HSTS, no-sniff
+  H->>M: ServeHTTP
+  M->>A: route match → wrapped handler
+
+  alt Has Bearer token
+    A->>P: SELECT user_id FROM api_tokens WHERE hash=$1
+    P-->>A: userID
+  else Has session cookie
+    A->>P: SELECT user from sessions WHERE token_hash=$1 AND expires_at > now
+    P-->>A: Session{UserID, Username}
+  else No credentials
+    A-->>C: 302 /login (HTML) or 401 (JSON)
+  end
+
+  A->>A: ContextWithSession(ctx, s)
+  A->>D: (optional) RequireAdmin check
+  D->>P: SELECT admin FROM users
+  alt Not admin
+    D-->>C: 303 redirect /
+  end
+  D->>Hd: next(w, r)
+
+  Hd->>Hd: parse form / JSON / path segments<br/>(web.ExtractID*, DecodeJSON)
+  Hd->>Sv: service call (e.g. Create, Update, ListAll)
+  Sv->>P: pgx query (QueryRow / Query / Exec / Begin)
+  P-->>Sv: rows / tag / error
+  Sv-->>Hd: domain struct or ErrNotFound / ErrForbidden / ErrConflict
+
+  opt File upload / download
+    Hd->>F: save / read uploaded file<br/>(sanitizeFilename, generateUniqueFilename)
+  end
+
+  alt HTML request
+    alt Full page
+      Hd->>R: Render("page", data)
+    else HTMX partial (HX-Request: true)
+      Hd->>R: RenderSection("page", "section", data)
+    end
+    R-->>C: text/html
+  else JSON request (/api/v1/*)
+    Hd->>Hd: web.JSON(status, v) or writeError
+    Hd-->>C: application/json
+  end
+</pre>
+</div>
+
+<h3>Auth resolution detail</h3>
+<p>
+  <code>auth.Manager.RequireAuth</code> is the single gate. It calls <code>TryAuth(r)</code>,
+  which inspects the request in this order and returns a <code>Session</code> on first hit:
+</p>
+<ol>
+  <li><strong>Authorization: Bearer &lt;token&gt;</strong> — SHA-256 hash the token, look it up in <code>api_tokens</code>, fetch owner <code>user_id</code>, update <code>last_used_at</code>.</li>
+  <li><strong><code>session</code> cookie</strong> — SHA-256 hash, look up in <code>sessions</code> with <code>expires_at &gt; now()</code>, hydrate <code>{UserID, Username}</code>.</li>
+  <li><strong>Neither</strong> → content-negotiated fallback: HTML paths get <code>302 /login</code>, paths under <code>/api/</code> get <code>401 {"error":"unauthorized"}</code>.</li>
+</ol>
+
+<h2 id="domains">4. Domain modules &amp; function flowcharts</h2>
+
+<h3 id="d-auth">4.1 <code>internal/auth</code></h3>
+<p>Owns the session + API-token lifecycle. Templates for <code>/login</code> and <code>/register</code> are lazy-parsed and cached behind a <code>sync.RWMutex</code>.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  classDef h fill:#ddf4ff,stroke:#0969da;
+  classDef s fill:#dafbe1,stroke:#1a7f37;
+  classDef db fill:#ffebe9,stroke:#cf222e;
+
+  Req[Incoming request]:::h --> RA[RequireAuth]:::h
+  RA --> TA[TryAuth]:::s
+  TA -->|Bearer header| VT[ValidateAPIToken]:::s
+  TA -->|session cookie| GS[getSession]:::s
+  VT --> T[(api_tokens)]:::db
+  GS --> Se[(sessions)]:::db
+  TA -->|ok| CTX[ContextWithSession]:::s
+  CTX --> Next[domain handler]:::h
+
+  Login["/LoginHandler/"]:::h --> Bcrypt[bcrypt.Compare]:::s
+  Bcrypt --> U[(users)]:::db
+  Bcrypt -->|ok| NS["newSession → cookie"]:::s
+  NS --> Se
+
+  Register["/RegisterHandler/"]:::h --> NewUser["INSERT users<br/>is_approved=false"]:::s --> U
+
+  Logout["/LogoutHandler/"]:::h --> DelS[deleteSession]:::s --> Se
+
+  CreateTok[CreateAPIToken]:::s --> GenT["GenerateToken + SHA-256"]:::s --> T
+  ListTok[ListAPITokens]:::s --> T
+  Revoke[RevokeAPIToken]:::s --> T
+  AdminRevoke["RevokeUserSessions<br/>(admin unapprove/set-admin/delete/reset-pw)"]:::s --> Se
+</pre>
+</div>
+
+<table>
+  <thead><tr><th>Function</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>NewManager(pool)</code></td><td>Constructs the auth manager bound to the DB pool.</td></tr>
+    <tr><td><code>RequireAuth(next)</code></td><td>Middleware: resolves cookie or Bearer, injects <code>Session</code> into request context; 302 / 401 on failure.</td></tr>
+    <tr><td><code>TryAuth(r)</code></td><td>Non-writing auth probe used by <code>RequireAuth</code> and tests; returns <code>(Session, bool, error)</code>.</td></tr>
+    <tr><td><code>LoginHandler()</code></td><td>GET renders login template; POST verifies bcrypt + approval, creates session.</td></tr>
+    <tr><td><code>RegisterHandler()</code></td><td>GET renders register template; POST inserts pending (<code>is_approved=false</code>) user.</td></tr>
+    <tr><td><code>LogoutHandler()</code></td><td>Deletes session row, clears cookie, redirects to <code>/login</code>.</td></tr>
+    <tr><td><code>RevokeUserSessions(userID)</code></td><td>Bulk deletes sessions; called by admin flows that must log a user out.</td></tr>
+    <tr><td><code>newSession / getSession / deleteSession</code></td><td>CRUD over <code>sessions</code>, keyed by SHA-256 hash of the cookie value.</td></tr>
+    <tr><td><code>GenerateToken / HashToken</code></td><td>32 random bytes → hex plaintext + SHA-256 hash (plaintext shown to user once).</td></tr>
+    <tr><td><code>CreateAPIToken / ListAPITokens / RevokeAPIToken</code></td><td>Per-user API-token lifecycle used by <code>/profile/tokens</code>.</td></tr>
+    <tr><td><code>ValidateAPIToken(plain)</code></td><td>Resolves Bearer → <code>userID</code>, updates <code>last_used_at</code>; returns <code>ErrTokenInvalid</code> if revoked/absent.</td></tr>
+    <tr><td><code>ContextWithSession / SessionFromContext / MustSessionFromContext</code></td><td>Context plumbing for the authenticated <code>Session</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="d-samples">4.2 <code>internal/samples</code> — largest module (~2,800 LOC)</h3>
+<p>
+  Sample CRUD plus three orthogonal sub-features: <strong>attachments</strong>
+  (multipart upload, sanitized/unique filenames, disk storage),
+  <strong>fabrication steps</strong> (ordered list with reorder), and
+  <strong>sharing</strong> (share token with <code>private | public | authenticated</code> visibility).
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  classDef h fill:#ddf4ff,stroke:#0969da;
+  classDef s fill:#dafbe1,stroke:#1a7f37;
+  classDef db fill:#ffebe9,stroke:#cf222e;
+  classDef fs fill:#fff8c5,stroke:#bf8700;
+
+  subgraph HTML["HTML handlers"]
+    Main["MainPage&lt;br/&gt;GET /"]:::h
+    New["NewSample&lt;br/&gt;GET|POST /samples/new"]:::h
+    Edit["EditSample&lt;br/&gt;POST /samples/edit/"]:::h
+    Detail["HandleSample&lt;br/&gt;GET /samples/&#123;id&#125;"]:::h
+    Att[HandleAttachment]:::h
+    Steps["stepsEndpoint / StepAction"]:::h
+    Share["handleShare / handleShareRevoke"]:::h
+    Shared["SharedSample /s/&#123;token&#125;"]:::h
+  end
+
+  subgraph REST["/api/v1 JSON"]
+    APIs[APISamples dispatcher]:::h
+    APISt[APISteps dispatcher]:::h
+  end
+
+  subgraph SVC["Service"]
+    ListAll:::s
+    Search:::s
+    GetByID:::s
+    Create:::s
+    Update:::s
+    Delete:::s
+    CheckOwner:::s
+    Attachments["AddAttachment/GetAttachments/DeleteAttachment/AttachmentInfo"]:::s
+    StepOps["GetSteps/AddStep/UpdateStep/DeleteStep/ReorderSteps"]:::s
+    ShareOps["GenerateShareToken/GetByShareToken/RevokeShareToken/SharedAttachmentInfo"]:::s
+    Users["GetApprovedUsers/IsAdmin/GetUsernameByID*"]:::s
+    APIL["APIListSamples/APIGetSample/APICreate/APIUpdate/APIDelete"]:::s
+    ParsePg[ParsePagination]:::s
+  end
+
+  subgraph Store
+    SamplesT[(samples)]:::db
+    AttT[(attachments)]:::db
+    StepT[(fabrication_steps)]:::db
+    UsersT[(users)]:::db
+    EqT[(equipment)]:::db
+    Disk[(UPLOADS_DIR)]:::fs
+  end
+
+  Main --> ListAll & Search
+  New --> Create & Users
+  Edit --> Update & CheckOwner
+  Detail --> GetByID & Users & StepOps
+  Att --> Attachments --> Disk & AttT
+  Steps --> StepOps --> StepT
+  Share --> ShareOps --> SamplesT
+  Shared --> ShareOps
+
+  APIs --> APIL --> SamplesT & AttT
+  APISt --> StepOps
+
+  ListAll & Search & GetByID & Create & Update & Delete --> SamplesT
+  Users --> UsersT & EqT
+</pre>
+</div>
+
+<h4>Key sample service functions</h4>
+<table>
+  <thead><tr><th>Function</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>ListAll / Search</code></td><td>List all samples; <code>Search</code> splits <code>q</code> into keywords and matches name/owner/keywords with optional date window.</td></tr>
+    <tr><td><code>GetByID</code></td><td>Loads sample + hydrated attachments (original filename, MIME).</td></tr>
+    <tr><td><code>Create / Update / Delete</code></td><td>CRUD; <code>Update/Delete</code> return <code>ErrNotFound</code> on zero rows.</td></tr>
+    <tr><td><code>CheckOwner(sampleID,userID)</code></td><td>Returns <code>nil</code> if owner or admin; else <code>ErrForbidden</code> / <code>ErrNotFound</code>. Used before every mutation.</td></tr>
+    <tr><td><code>AddAttachment / DeleteAttachment / AttachmentInfo</code></td><td>Attachment table CRUD; <code>DeleteAttachment</code> returns the file path so the handler can <code>os.Remove</code>.</td></tr>
+    <tr><td><code>GenerateShareToken(visibility)</code></td><td>Stores random token with visibility (<code>private</code>, <code>public</code>, <code>authenticated</code>).</td></tr>
+    <tr><td><code>GetByShareToken / SharedAttachmentInfo</code></td><td>Resolve share token to sample / attachment; enforce visibility in handler.</td></tr>
+    <tr><td><code>AddStep / UpdateStep / DeleteStep / ReorderSteps</code></td><td>Fabrication-step CRUD; reorder uses a single transaction.</td></tr>
+    <tr><td><code>APIListSamples / APIGetSample / APICreate / APIUpdate / APIDelete</code></td><td>JSON-shaped counterparts used by <code>/api/v1/samples/*</code>.</td></tr>
+    <tr><td><code>ParsePagination(limit,offset)</code></td><td>Bounded helper: defaults 100/0, capped at 1000.</td></tr>
+  </tbody>
+</table>
+
+<h4>Key sample handler functions</h4>
+<table>
+  <thead><tr><th>Function</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>MainPage</code></td><td><code>GET /</code>. Renders sample list or search results. HTMX-aware (returns list partial on HX requests).</td></tr>
+    <tr><td><code>NewSample</code></td><td><code>GET /samples/new</code> form; <code>POST</code> creates. Non-admins auto-own; admins can pick owner.</td></tr>
+    <tr><td><code>EditSample / HandleSample</code></td><td>Detail view dispatcher: routes <code>/samples/{id}/(upload|share|share/revoke|steps|steps/reorder)</code>.</td></tr>
+    <tr><td><code>uploadAttachment</code></td><td>multipart parse → <code>sanitizeFilename</code> → <code>generateUniqueFilename</code> → save under <code>UPLOADS_DIR</code> → <code>AddAttachment</code>.</td></tr>
+    <tr><td><code>downloadAttachment</code></td><td>Serves file; inline for images, <code>Content-Disposition: attachment</code> otherwise.</td></tr>
+    <tr><td><code>SharedSample / serveSharedAttachment</code></td><td>Public endpoint under <code>/s/{token}</code>; checks visibility vs auth state before serving HTML or attachment bytes.</td></tr>
+    <tr><td><code>APISamples / APISteps</code></td><td>Method+path dispatchers (GET/POST/PUT/DELETE) for the REST surface; reuse the same service calls.</td></tr>
+    <tr><td><code>loadSampleDetailData</code></td><td>Aggregator that assembles <code>SampleDetailPageData</code> (sample + users + equipment + steps) in one place, shared by HTML + HTMX partials.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="d-wiki">4.3 <code>internal/wiki</code></h3>
+<p>Markdown knowledge base with attachments. Same shape as <code>samples</code> but article-addressed by URL-escaped title; edit/view split lets HTMX swap the content panel in place.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  classDef h fill:#ddf4ff,stroke:#0969da;
+  classDef s fill:#dafbe1,stroke:#1a7f37;
+  classDef db fill:#ffebe9,stroke:#cf222e;
+  classDef fs fill:#fff8c5,stroke:#bf8700;
+
+  HW["HandleWiki&lt;br/&gt;dispatcher"]:::h --> L[listArticles]:::h
+  HW --> VA[viewArticle]:::h
+  HW --> NA[newArticle]:::h
+  HW --> EA[editArticle]:::h
+  HW --> DA[deleteArticle]:::h
+  HW --> UA[uploadAttachment]:::h
+  HW --> PV["Preview POST /wiki/preview"]:::h
+
+  HAtt[HandleAttachment] --> DLA[downloadAttachment]:::h
+  HAtt --> DelA[deleteAttachment]:::h
+
+  AW[APIWiki dispatcher]:::h --> AL[apiListArticles]:::h
+  AW --> AG[apiGetArticle]:::h
+  AW --> AC[apiCreateArticle]:::h
+  AW --> AU[apiUpdateArticle]:::h
+
+  L & AL --> Svc1["ListArticles / APIListArticles"]:::s --> ArtT[(articles)]:::db
+  VA & AG --> Svc2["GetArticle / APIGetArticle"]:::s --> ArtT & AttT2[(article_attachments)]:::db
+  NA & AC --> Svc3["CreateArticle / APICreateArticle"]:::s --> ArtT
+  EA & AU --> Svc4["UpdateArticleContent / APIUpdate"]:::s --> ArtT
+  DA --> Svc5[DeleteArticle]:::s --> ArtT & AttT2
+  UA --> Svc6[AddAttachment]:::s --> AttT2
+  UA --> Disk[(UPLOADS_DIR)]:::fs
+  DLA --> Svc7[GetAttachmentInfo]:::s --> AttT2
+  DelA --> Svc8[DeleteAttachment]:::s --> AttT2
+  EA & PV --> MD["web.RenderMarkdown&lt;br/&gt;(sanitize)"]:::s
+</pre>
+</div>
+
+<table>
+  <thead><tr><th>Function</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>ListArticles / APIListArticles</code></td><td>Paginated article list (reverse-chronological; minimal columns for the index page).</td></tr>
+    <tr><td><code>GetArticle(title)</code></td><td>Loads content + attachments; rendered Markdown is produced by <code>web.RenderMarkdown</code>.</td></tr>
+    <tr><td><code>CreateArticle / UpdateArticleContent</code></td><td>Insert/update with <code>created_by</code> / <code>modified_by</code>.</td></tr>
+    <tr><td><code>DeleteArticle</code></td><td>Soft-deletes the row, returns attachment file paths so the handler can purge disk.</td></tr>
+    <tr><td><code>ArticleEditAccess / ArticleUploadAccess / AttachmentDeleteAccess</code></td><td>Return <code>(createdBy, isAdmin)</code> for the handler to decide HTTP 403 vs continue.</td></tr>
+    <tr><td><code>AddAttachment / GetAttachmentInfo / DeleteAttachment</code></td><td>Attachment CRUD parallel to the samples module.</td></tr>
+    <tr><td><code>Preview</code></td><td><code>POST /wiki/preview</code>; accepts JSON or form, returns sanitized HTML. Used by the in-browser editor.</td></tr>
+    <tr><td><code>viewArticle / renderContentPanel</code></td><td>Full-page render vs HTMX content-panel swap for edit → view toggles.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="d-booking">4.4 <code>internal/booking</code></h3>
+<p>Weekly calendar over equipment. The booking row uses a <strong>PostgreSQL exclusion constraint</strong> (via <code>tstzrange</code>) to make overlaps impossible; the service catches that error and returns <code>ErrConflict</code>, with a single deadlock retry.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  classDef h fill:#ddf4ff,stroke:#0969da;
+  classDef s fill:#dafbe1,stroke:#1a7f37;
+  classDef db fill:#ffebe9,stroke:#cf222e;
+
+  HB[HandleBooking]:::h --> Show["showCalendar GET /booking"]:::h
+  HB --> Submit["submitBooking POST /booking"]:::h
+  DB["DeleteBooking POST /booking/delete"]:::h
+  GB["GetBookings GET /api/bookings&lt;br/&gt;(max 90 days)"]:::h
+
+  Show --> GE[GetAllEquipment]:::s
+  Show --> GW[GetBookingsForWeek]:::s --> BT[(bookings)]:::db
+  GE --> ET[(equipment)]:::db
+
+  Submit --> CP[CheckUserPermission]:::s --> UET[(user_equipment_access)]:::db
+  Submit --> CC["CheckConflict&lt;br/&gt;(half-open interval)"]:::s --> BT
+  Submit --> Cr["Create&lt;br/&gt;with 1x deadlock retry&lt;br/&gt;catches 23P01 → ErrConflict"]:::s --> BT
+
+  DB --> Del["Delete&lt;br/&gt;(owner or admin; soft-delete)"]:::s --> BT
+  GB --> GW
+</pre>
+</div>
+
+<table>
+  <thead><tr><th>Function</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>GetAllEquipment</code></td><td>Returns every <code>equipment</code> row ordered by name (for the calendar column headers).</td></tr>
+    <tr><td><code>CheckUserPermission(userID,equipmentID)</code></td><td>Gate: either the user has an explicit per-equipment grant, or is admin.</td></tr>
+    <tr><td><code>GetBookingsForWeek(start,end)</code></td><td>Returns bookings overlapping <code>[start,end)</code>; times are converted to the configured timezone.</td></tr>
+    <tr><td><code>CheckConflict(equipmentID,start,end)</code></td><td>Pre-flight check using half-open interval semantics (back-to-back bookings allowed).</td></tr>
+    <tr><td><code>Create(params)</code></td><td>Inserts the booking, retries once on deadlock, maps the exclusion-constraint violation to <code>ErrConflict</code>.</td></tr>
+    <tr><td><code>Delete(bookingID,userID,isAdmin)</code></td><td>Soft-delete with ownership enforcement (admin bypass).</td></tr>
+  </tbody>
+</table>
+
+<h3 id="d-admin">4.5 <code>internal/admin</code></h3>
+<p>All handlers in this package are wrapped by <code>RequireAuth</code> <em>and</em> <code>RequireAdmin</code> in <code>app.RegisterRoutes</code>. Many flows revoke the affected user's sessions so changes take effect immediately.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  classDef h fill:#ddf4ff,stroke:#0969da;
+  classDef s fill:#dafbe1,stroke:#1a7f37;
+  classDef db fill:#ffebe9,stroke:#cf222e;
+  classDef mw fill:#fff8c5,stroke:#bf8700;
+
+  MW["RequireAuth → RequireAdmin"]:::mw
+  AP[AdminPage]:::h --> MW --> UA[UpdateAccess]:::h
+  MW --> SA[SetAdmin]:::h
+  MW --> DU[DeleteUser]:::h
+  MW --> RP[ResetPassword]:::h
+  MW --> AE[AddEquipment]:::h
+  MW --> DE[DeleteEquipment]:::h
+  MW --> AG[AddGroup]:::h
+  MW --> DG[DeleteGroup]:::h
+  MW --> ER[EquipmentReport CSV]:::h
+  NoMW[RequireAuth only] --> AU[APIUsers]:::h
+  NoMW --> AQ[APIEquipment]:::h
+
+  AP --> GAU[GetAllUsers]:::s --> UT[(users)]:::db
+  AP --> GAG[GetAllGroups]:::s --> GT[(groups)]:::db
+  AP --> GAE[GetAllEquipment]:::s --> ET[(equipment)]:::db
+
+  UA --> SvcUA["UpdateAccess&lt;br/&gt;(tx: approval + group + permissions)"]:::s --> UT & GT & UET[(user_equipment_access)]:::db
+  SA --> SetA[SetAdmin]:::s --> UT
+  DU --> SvcDel["DeleteUser&lt;br/&gt;(soft-delete + revoke approval)"]:::s --> UT
+  RP --> SvcRP["ResetPassword&lt;br/&gt;(bcrypt of random 8-digit)"]:::s --> UT
+  UA -. on unapprove .-> Rev[Auth.RevokeUserSessions]:::s
+  SA -. on clear .-> Rev
+  DU --> Rev
+  RP --> Rev
+
+  AE --> AddEq[AddEquipment]:::s --> ET
+  DE --> DelEq["DeleteEquipment&lt;br/&gt;(tx: bookings, permissions, equipment)"]:::s --> ET & BT[(bookings)]:::db
+  AG --> AddGr[AddGroup ON CONFLICT DO NOTHING]:::s --> GT
+  DG --> DelGr["DeleteGroup&lt;br/&gt;(tx: unlink users)"]:::s --> GT & UT
+  ER --> GER[GetEquipmentReport]:::s --> BT
+  AU --> LU[ListAPIUsers]:::s --> UT
+  AQ --> GAE
+</pre>
+</div>
+
+<table>
+  <thead><tr><th>Function</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>AdminPage</code></td><td>GET <code>/admin</code> — renders the admin dashboard (<code>GetAllUsers</code>, equipment, groups in one query batch).</td></tr>
+    <tr><td><code>UpdateAccess</code></td><td>POST JSON — transactionally updates approval + group + per-equipment permissions. Triggers <code>RevokeUserSessions</code> when revoking approval.</td></tr>
+    <tr><td><code>SetAdmin / DeleteUser / ResetPassword</code></td><td>User lifecycle; all revoke sessions. <code>ResetPassword</code> returns the new 8-digit plaintext to the admin UI (shown once).</td></tr>
+    <tr><td><code>AddEquipment / DeleteEquipment / AddGroup / DeleteGroup</code></td><td>Equipment and group lifecycle; deletes are transactional and cascade cleanups.</td></tr>
+    <tr><td><code>EquipmentReport</code></td><td>CSV download of bookings in a date range (stream-writes response).</td></tr>
+    <tr><td><code>APIUsers / APIEquipment</code></td><td>Lightweight JSON listings used by sample/booking form pickers; auth-only, no admin gate.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="d-profile">4.6 <code>internal/profile</code></h3>
+<p>Thin layer over <code>users.password_hash</code> and the <code>auth</code> token APIs. Deliberately small so admin + auth can evolve independently.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  classDef h fill:#ddf4ff,stroke:#0969da;
+  classDef s fill:#dafbe1,stroke:#1a7f37;
+  classDef db fill:#ffebe9,stroke:#cf222e;
+
+  CP["ChangePassword GET|POST"]:::h --> GPH[GetPasswordHash]:::s --> U[(users)]:::db
+  CP --> UPw[UpdatePassword]:::s --> U
+  CP -. bcrypt compare + generate .- CP
+
+  PT["ProfileTokens GET list | POST create"]:::h --> CT[Auth.CreateAPIToken]:::s --> TT[(api_tokens)]:::db
+  PT --> LT[Auth.ListAPITokens]:::s --> TT
+  PTR[ProfileTokenRevoke POST]:::h --> RT[Auth.RevokeAPIToken]:::s --> TT
+
+  CP --> BD["baseData&lt;br/&gt;(admin status for layout)"]:::s
+  PT --> BD
+  BD --> GAS[GetAdminStatus]:::s --> U
+</pre>
+</div>
+
+<h3 id="d-dbschema">4.7 <code>internal/dbschema</code></h3>
+<p>Single exported function — <code>Ensure(ctx, pool)</code> — run at boot. It executes a fixed list of <code>CREATE TABLE IF NOT EXISTS</code>, <code>CREATE INDEX IF NOT EXISTS</code>, and additive <code>ALTER TABLE … ADD COLUMN IF NOT EXISTS</code> statements so the schema converges to the target DDL (which is also kept as a human-readable copy in <code>DDL/init.sql</code>).</p>
+
+<div class="note">
+  <strong>Migration model:</strong> idempotent forward-only DDL, no versioning table. Safe because every statement is <code>IF NOT EXISTS</code> / <code>ADD COLUMN IF NOT EXISTS</code>. Downside: no rollback and no ordering guarantees across multiple app instances booting simultaneously.
+</div>
+
+<h3 id="d-web">4.8 <code>internal/web</code> &amp; <code>internal/dbiface</code></h3>
+<table>
+  <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+  <tbody>
+    <tr><td><code>renderer.go</code></td><td><code>Renderer</code> caches template groups parsed at startup. <code>Render</code> executes the <code>"base"</code> definition; <code>RenderSection</code> executes any named sub-template — this is what makes HTMX partials work with the same template file.</td></tr>
+    <tr><td><code>markdown.go</code></td><td><code>RenderMarkdown</code> → gomarkdown + strip raw HTML + whitelist URL schemes → <code>template.HTML</code>.</td></tr>
+    <tr><td><code>json.go</code></td><td><code>JSON(w,status,v)</code> and <code>DecodeJSON(r,dst)</code> — single point for Content-Type and decode-error handling.</td></tr>
+    <tr><td><code>errors.go</code></td><td>Sentinel errors (<code>ErrNotFound</code>, <code>ErrForbidden</code>, <code>ErrConflict</code>, <code>ErrValidation</code>) + <code>RenderError</code> to map them to HTTP status codes.</td></tr>
+    <tr><td><code>paths.go</code></td><td><code>PathSegments / ExtractIDFromPath / ExtractIDAndAction / ExtractArticleTitle</code> — shared path-parsing for sub-routes (since <code>net/http.ServeMux</code> doesn't do params).</td></tr>
+    <tr><td><code>dbiface/dbiface.go</code></td><td>The single interface <code>Pool { Exec, Query, QueryRow, Begin, Close }</code>. Services depend on this interface, so tests plug in <code>pgxmock</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="schema">5. Database schema overview</h2>
+<p>
+  All tables are created by <code>internal/dbschema.Ensure</code> on every boot. Entity-relationship
+  (simplified; constraint columns omitted):
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+erDiagram
+  users ||--o{ sessions       : "has"
+  users ||--o{ api_tokens     : "owns"
+  users ||--o{ samples        : "owns (owner_user_id)"
+  users }o--o| groups         : "belongs to"
+  users ||--o{ user_equipment_access : "granted"
+  equipment ||--o{ user_equipment_access : "grants"
+  equipment ||--o{ bookings   : "reserved on"
+  users ||--o{ bookings       : "booked by"
+  samples ||--o{ attachments  : "has"
+  samples ||--o{ fabrication_steps : "has"
+  articles ||--o{ article_attachments : "has"
+  users ||--o{ articles       : "authors"
+
+  users {
+    int    user_id PK
+    text   username UK
+    text   password_hash
+    bool   is_approved
+    bool   admin
+    bool   deleted
+    int    group_id FK
+  }
+  sessions {
+    text   token_hash PK
+    int    user_id FK
+    ts     expires_at
+  }
+  api_tokens {
+    int    id PK
+    int    user_id FK
+    text   token_hash UK
+    text   name
+    ts     created_at
+    ts     last_used_at
+    bool   revoked
+  }
+  samples {
+    int    id PK
+    text   name
+    text   description
+    text   keywords
+    text   owner
+    int    owner_user_id FK
+    text   share_token
+    text   visibility
+  }
+  attachments {
+    int    id PK
+    int    sample_id FK
+    text   file_path
+    text   original_name
+    text   mime_type
+  }
+  fabrication_steps {
+    int    id PK
+    int    sample_id FK
+    int    step_order
+    int    user_id FK
+    int    equipment_id FK
+    text   notes
+  }
+  articles {
+    int    id PK
+    text   title UK
+    text   content
+    int    created_by FK
+    int    modified_by FK
+    bool   deleted
+  }
+  article_attachments {
+    int    id PK
+    int    article_id FK
+    text   file_path
+    text   original_name
+  }
+  equipment {
+    int    id PK
+    text   name UK
+  }
+  bookings {
+    int    id PK
+    int    equipment_id FK
+    int    user_id FK
+    tstzrange time_range
+    bool   deleted
+  }
+  groups {
+    int    id PK
+    text   name UK
+  }
+  user_equipment_access {
+    int    user_id FK
+    int    equipment_id FK
+  }
+</pre>
+</div>
+
+<h2 id="bootstrap">6. Boot sequence (<code>main.go</code>)</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  Start([go run ./...]):::e --> L1["initLocation → time.Local"]
+  L1 --> L2["loadConfig&lt;br/&gt;(env vars, TLS port, base dirs)"]
+  L2 --> L3["pgxpool.New&lt;br/&gt;connect to DATABASE_URL"]
+  L3 --> L4["dbschema.Ensure&lt;br/&gt;(idempotent DDL)"]
+  L4 --> L5["ensureDefaultAdmin&lt;br/&gt;(seed admin/admin if users empty)"]
+  L5 --> L6[auth.NewManager + SetCookieSecure]
+  L6 --> L7["web.NewRenderer&lt;br/&gt;(pre-parse all templates)"]
+  L7 --> L8["app.New(cfg,db,auth,renderer,loc)"]
+  L8 --> L9["Parse standalone ai_agents* templates"]
+  L9 --> L10["theApp.RegisterRoutes(mux)"]
+  L10 --> L11["MkdirAll uploads/, static/css/"]
+  L11 --> L12{TLS configured?}
+  L12 -- yes --> L13["Spawn HTTP → HTTPS redirect server&lt;br/&gt;+ ListenAndServeTLS"]
+  L12 -- no  --> L14[ListenAndServe]
+  classDef e fill:#ddf4ff,stroke:#0969da;
+</pre>
+</div>
+
+<div class="note">
+  <strong>Notable observations from the walk-through</strong>
+  <ul>
+    <li>Three root-level Go files are <em>stubs</em> (<code>fabrication_steps.go</code>, <code>sharing.go</code>, <code>owner_test.go</code>, <code>fabrication_steps_test.go</code>, <code>fabrication_steps_handler.go</code> are all 13 bytes — effectively empty package declarations). The real implementations live in <code>internal/samples</code>.</li>
+    <li>Booking conflict detection uses Postgres' <code>EXCLUDE USING gist</code> on a <code>tstzrange</code> (inferred from the error-code handling); the Go-side <code>CheckConflict</code> is a best-effort pre-check, the DB is the source of truth.</li>
+    <li>The <code>app.RequireAdmin</code> middleware re-queries <code>users.admin</code> on every admin request rather than trusting a cached flag on the session — a good defense against stale sessions after a demotion.</li>
+    <li>Admin mutations that change a user's effective permissions call <code>Auth.RevokeUserSessions</code> so cookies are invalidated immediately (belt-and-braces alongside the <code>deleted</code> / <code>is_approved</code> flags that <code>RequireAuth</code> checks).</li>
+  </ul>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: 'loose',
+    theme: 'default',
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+    er: { useMaxWidth: true }
+  });
+</script>
+
+</body>
+</html>

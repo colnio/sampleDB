@@ -23,6 +23,19 @@ type Handlers struct {
 	AIAgentExamples http.HandlerFunc
 }
 
+// noCacheStatic wraps a static-file handler so every response carries a
+// Cache-Control header that disables raw browser caching but still allows
+// conditional requests (ETag / If-Modified-Since). This means CSS and JS
+// changes take effect on the next navigation without users having to hard
+// refresh, at the cost of one conditional HTTP round-trip per asset per
+// page load.
+func noCacheStatic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // RequireAdmin is a middleware that rejects non-admin users with a redirect to
 // "/".  It must be applied after RequireAuth so that a valid session is already
 // in the request context.
@@ -54,10 +67,14 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	adminMW := a.RequireAdmin
 	h := a.Handlers
 
-	// Static files
+	// Static files — served with Cache-Control: no-cache so the browser always
+	// revalidates. Go's http.FileServer already supports If-Modified-Since /
+	// If-None-Match via ServeFile, so the revalidation is cheap (304 Not
+	// Modified) while guaranteeing that CSS/JS updates reach users as soon as
+	// they navigate, without requiring a hard refresh.
 	if a.Config.StaticDir != "" {
 		fs := http.FileServer(http.Dir(a.Config.StaticDir))
-		mux.Handle("/static/", http.StripPrefix("/static/", fs))
+		mux.Handle("/static/", http.StripPrefix("/static/", noCacheStatic(fs)))
 	}
 
 	// Auth routes (no RequireAuth wrapper)
