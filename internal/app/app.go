@@ -13,23 +13,6 @@ import (
 	"sampleDB/internal/web"
 )
 
-// Config holds all runtime configuration for the application.
-// Values are read from environment variables at startup by main.go.
-type Config struct {
-	Addr         string
-	RedirectAddr string
-	DatabaseURL  string
-	TLSCertFile  string
-	TLSKeyFile   string
-	PublicHost   string
-	TLSPort      string
-	BaseDir      string
-	TemplatesDir string
-	StaticDir    string
-	UploadsDir   string
-	UseTLS       bool
-}
-
 // App aggregates every application-wide dependency so handlers no longer need
 // to reach for package-level globals.
 type App struct {
