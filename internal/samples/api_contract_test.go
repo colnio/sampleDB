@@ -36,7 +36,7 @@ type sampleAPIServiceStub struct {
 	updateStep       func(ctx context.Context, stepID int, step samples.FabricationStep) error
 	deleteStep       func(ctx context.Context, stepID int) error
 	getAttachments   func(ctx context.Context, sampleID int) ([]samples.Attachment, error)
-	addAttachment    func(ctx context.Context, sampleID int, path string) error
+	addAttachment    func(ctx context.Context, sampleID int, path string) (int, error)
 	attachmentPath   func(ctx context.Context, attachmentID int) (string, error)
 	attachmentInfo   func(ctx context.Context, attachmentID int) (int, string, error)
 	deleteAttachment func(ctx context.Context, attachmentID int) (string, error)
@@ -102,7 +102,7 @@ func (s *sampleAPIServiceStub) GetAttachments(ctx context.Context, sampleID int)
 	return s.getAttachments(ctx, sampleID)
 }
 
-func (s *sampleAPIServiceStub) AddAttachment(ctx context.Context, sampleID int, path string) error {
+func (s *sampleAPIServiceStub) AddAttachment(ctx context.Context, sampleID int, path string) (int, error) {
 	return s.addAttachment(ctx, sampleID, path)
 }
 
@@ -619,7 +619,7 @@ func TestAPIAttachments_UploadAttachments_ReturnsCreatedRecords(t *testing.T) {
 	var baseDir string
 	stub := &sampleAPIServiceStub{
 		checkOwner: func(_ context.Context, _, _ int) error { return nil },
-		addAttachment: func(_ context.Context, sampleID int, path string) error {
+		addAttachment: func(_ context.Context, sampleID int, path string) (int, error) {
 			if sampleID != 42 {
 				t.Fatalf("AddAttachment called with sampleID=%d, want 42", sampleID)
 			}
@@ -627,7 +627,8 @@ func TestAPIAttachments_UploadAttachments_ReturnsCreatedRecords(t *testing.T) {
 				t.Fatalf("expected uploaded file at %s: %v", path, err)
 			}
 			addedPaths = append(addedPaths, path)
-			return nil
+			// Return IDs 20, 21 for the first and second file respectively.
+			return 19 + len(addedPaths), nil
 		},
 		getAttachments: func(_ context.Context, sampleID int) ([]samples.Attachment, error) {
 			if len(addedPaths) != 2 {

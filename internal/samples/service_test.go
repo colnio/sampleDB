@@ -357,7 +357,7 @@ func TestService_Attachments_Integration(t *testing.T) {
 	}
 
 	// Add one
-	if err := svc.AddAttachment(context.Background(), sampleID, "uploads/abc_file.txt"); err != nil {
+	if _, err := svc.AddAttachment(context.Background(), sampleID, "uploads/abc_file.txt"); err != nil {
 		t.Fatalf("AddAttachment: %v", err)
 	}
 

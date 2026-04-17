@@ -13,7 +13,8 @@ import (
 )
 
 func TestAdmin_SeedDefaultAdminExists(t *testing.T) {
-	// SeedDefaultAdmin ran at schema setup; verify at least one admin exists.
+	// The integration test setup inserts a test user with admin=true.
+	// Verify that at least one admin user exists.
 	var count int
 	if err := pool.QueryRow(bgCtx,
 		"SELECT COUNT(*) FROM users WHERE admin = true AND COALESCE(deleted, false) = false").Scan(&count); err != nil {
@@ -56,10 +57,8 @@ func TestAdmin_ListUsersEndpoint(t *testing.T) {
 	}
 
 	var envelope struct {
-		Items  []admin.APIUser `json:"items"`
-		Total  int             `json:"total"`
-		Limit  int             `json:"limit"`
-		Offset int             `json:"offset"`
+		Items []admin.APIUser `json:"items"`
+		Total int             `json:"total"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		t.Fatalf("decode users: %v", err)

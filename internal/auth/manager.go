@@ -254,11 +254,16 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 		})
 
 		// Honor ?next= redirect only for local paths to prevent open-redirect.
+		// Require an empty scheme, host, and user, and that the path starts with
+		// exactly one slash (rejects //host and /\host which some clients normalize
+		// to an external host).
 		next := r.FormValue("next")
 		if next == "" {
 			next = r.URL.Query().Get("next")
 		}
-		if u, err := url.Parse(next); next != "" && err == nil && u.Host == "" && strings.HasPrefix(next, "/") {
+		if u, err := url.Parse(next); next != "" && err == nil &&
+			u.Scheme == "" && u.Host == "" && u.User == nil && u.Opaque == "" &&
+			len(next) >= 1 && next[0] == '/' && (len(next) == 1 || next[1] != '/') {
 			http.Redirect(w, r, next, http.StatusSeeOther)
 		} else {
 			http.Redirect(w, r, "/", http.StatusSeeOther)

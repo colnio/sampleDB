@@ -309,7 +309,11 @@ func (h *Handlers) DeleteEquipment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DeleteEquipment(r.Context(), equipmentID); err != nil {
-		http.Error(w, "Error deleting equipment", http.StatusInternalServerError)
+		if errors.Is(err, web.ErrNotFound) {
+			http.Error(w, "Equipment not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error deleting equipment", http.StatusInternalServerError)
+		}
 		return
 	}
 	w.WriteHeader(http.StatusOK)

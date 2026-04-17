@@ -638,8 +638,9 @@ func (h *Handlers) apiUploadAttachments(w http.ResponseWriter, r *http.Request, 
 	}
 
 	var (
-		created []APIAttachment
-		errs    []uploadError
+		created     []APIAttachment
+		errs        []uploadError
+		insertedIDs = make(map[int]struct{})
 	)
 	for _, fh := range fileHeaders {
 		f, openErr := fh.Open()
@@ -653,29 +654,28 @@ func (h *Handlers) apiUploadAttachments(w http.ResponseWriter, r *http.Request, 
 			errs = append(errs, uploadError{Filename: fh.Filename, Error: "could not save file"})
 			continue
 		}
-		if dbErr := h.svc.AddAttachment(r.Context(), id, fp); dbErr != nil {
+		attID, dbErr := h.svc.AddAttachment(r.Context(), id, fp)
+		if dbErr != nil {
 			_ = os.Remove(h.resolveAppPath(fp))
 			errs = append(errs, uploadError{Filename: fh.Filename, Error: "could not store attachment record"})
 			continue
 		}
+		insertedIDs[attID] = struct{}{}
 	}
 
-	// Re-fetch to get the newly-inserted rows with their IDs and MIME metadata.
+	// Re-fetch to get full metadata (MIME type, original name) for inserted rows.
+	// Filter by the IDs we just inserted to avoid returning unrelated attachments
+	// that may have been added concurrently.
 	atts, listErr := h.svc.GetAttachments(r.Context(), id)
 	if listErr != nil {
 		log.Printf("samples api: uploadAttachments refetch error: %v", listErr)
 		writeError(w, http.StatusInternalServerError, "attachments were saved but could not be listed")
 		return
 	}
-	// Return the most recently-uploaded attachments (last N where N = number
-	// successfully stored). GetAttachments returns them ordered with newest
-	// first per hydrateAttachments, so take the first N.
-	successCount := len(fileHeaders) - len(errs)
-	if successCount > len(atts) {
-		successCount = len(atts)
-	}
-	for i := 0; i < successCount; i++ {
-		created = append(created, AttachmentToAPI(atts[i]))
+	for _, att := range atts {
+		if _, ok := insertedIDs[att.ID]; ok {
+			created = append(created, AttachmentToAPI(att))
+		}
 	}
 
 	status := http.StatusCreated

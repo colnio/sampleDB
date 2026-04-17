@@ -35,7 +35,7 @@ type Service interface {
 
 	// Attachments
 	GetAttachments(ctx context.Context, sampleID int) ([]Attachment, error)
-	AddAttachment(ctx context.Context, sampleID int, path string) error
+	AddAttachment(ctx context.Context, sampleID int, path string) (int, error)
 	// DeleteAttachment removes the DB row and returns the file path for cleanup.
 	DeleteAttachment(ctx context.Context, attachmentID int) (filePath string, err error)
 	// AttachmentInfo returns (sampleID, filePath) for a given attachment ID.
@@ -363,11 +363,12 @@ func (s *DBService) GetAttachments(ctx context.Context, sampleID int) ([]Attachm
 	return atts, nil
 }
 
-func (s *DBService) AddAttachment(ctx context.Context, sampleID int, path string) error {
-	_, err := s.db.Exec(ctx,
-		`INSERT INTO attachments (source_id, attachment_address, source_type) VALUES ($1, $2, 'sample')`,
-		sampleID, path)
-	return err
+func (s *DBService) AddAttachment(ctx context.Context, sampleID int, path string) (int, error) {
+	var id int
+	err := s.db.QueryRow(ctx,
+		`INSERT INTO attachments (source_id, attachment_address, source_type) VALUES ($1, $2, 'sample') RETURNING attachment_id`,
+		sampleID, path).Scan(&id)
+	return id, err
 }
 
 func (s *DBService) DeleteAttachment(ctx context.Context, attachmentID int) (string, error) {

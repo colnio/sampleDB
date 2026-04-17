@@ -761,7 +761,7 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 			errMsgs = append(errMsgs, fmt.Sprintf("could not save %s", fh.Filename))
 			continue
 		}
-		if dbErr := h.svc.AddAttachment(r.Context(), sampleID, fp); dbErr != nil {
+		if _, dbErr := h.svc.AddAttachment(r.Context(), sampleID, fp); dbErr != nil {
 			_ = os.Remove(h.resolveAppPath(fp))
 			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
