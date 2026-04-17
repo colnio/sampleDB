@@ -365,9 +365,16 @@ func (s *DBService) GetAttachments(ctx context.Context, sampleID int) ([]Attachm
 
 func (s *DBService) AddAttachment(ctx context.Context, sampleID int, path string) (int, error) {
 	var id int
+	// The subquery guards against inserting an attachment for a sample that
+	// was concurrently deleted (no FK constraint exists on this table).
 	err := s.db.QueryRow(ctx,
-		`INSERT INTO attachments (source_id, attachment_address, source_type) VALUES ($1, $2, 'sample') RETURNING attachment_id`,
+		`INSERT INTO attachments (source_id, attachment_address, source_type)
+		 SELECT $1, $2, 'sample' FROM samples WHERE sample_id = $1
+		 RETURNING attachment_id`,
 		sampleID, path).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, web.ErrNotFound
+	}
 	return id, err
 }
 

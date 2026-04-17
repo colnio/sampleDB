@@ -231,7 +231,9 @@ DO $$ BEGIN
             equipment_id WITH =,
             tstzrange(start_time, end_time, '[)') WITH &&
         );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+    WHEN duplicate_table  THEN NULL;
 END $$;`
 
 const createSessionsTable = `

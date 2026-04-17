@@ -378,10 +378,11 @@ func (m *Manager) SetCookieSecure(enable bool) {
 	m.cookieSecure = enable
 }
 
-func (m *Manager) RevokeUserSessions(ctx context.Context, userID int) {
+func (m *Manager) RevokeUserSessions(ctx context.Context, userID int) error {
 	if _, err := m.db.Exec(ctx, "DELETE FROM sessions WHERE user_id = $1", userID); err != nil {
-		log.Printf("auth: RevokeUserSessions failed for user %d: %v", userID, err)
+		return fmt.Errorf("auth: RevokeUserSessions failed for user %d: %w", userID, err)
 	}
+	return nil
 }
 
 // IssueSessionCookie creates a new session for the given user and sets the

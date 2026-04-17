@@ -285,6 +285,12 @@ func TestAPISamples_CreateSample_AcceptsSamplePrep(t *testing.T) {
 			}
 			return true, nil
 		},
+		getUsernameByID: func(_ context.Context, userID int) (string, error) {
+			if userID != ownerID {
+				t.Fatalf("GetUsernameByID called with userID=%d, want %d", userID, ownerID)
+			}
+			return "alice", nil
+		},
 		apiCreateSample: func(_ context.Context, name, description, keywords, owner, samplePrep string, ownerUserID *int) (samples.APISampleItem, error) {
 			captured = struct {
 				Name        string
@@ -345,6 +351,12 @@ func TestAPISamples_UpdateSample_ReturnsUpdatedDetail(t *testing.T) {
 			return nil
 		},
 		isAdmin: func(_ context.Context, _ int) (bool, error) { return true, nil },
+		getUsernameByID: func(_ context.Context, userID int) (string, error) {
+			if userID != ownerID {
+				t.Fatalf("GetUsernameByID called with userID=%d, want %d", userID, ownerID)
+			}
+			return ownerUsername, nil
+		},
 		apiUpdateSample: func(_ context.Context, id int, _, _, _, _, samplePrep string, ownerUserID *int) error {
 			captured.ID = id
 			captured.SamplePrep = samplePrep

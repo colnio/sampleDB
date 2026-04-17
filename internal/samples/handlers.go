@@ -736,6 +736,7 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 
 	fileHeaders := r.MultipartForm.File["files"]
 	if len(fileHeaders) == 0 {

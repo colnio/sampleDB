@@ -104,7 +104,9 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.authMgr != nil && !payload.Approved {
-		h.authMgr.RevokeUserSessions(r.Context(), payload.UserID)
+		if err := h.authMgr.RevokeUserSessions(r.Context(), payload.UserID); err != nil {
+			log.Printf("admin: UpdateAccess revoke sessions: %v", err)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -148,7 +150,9 @@ func (h *Handlers) SetAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.authMgr != nil && !isAdmin {
-		h.authMgr.RevokeUserSessions(r.Context(), userID)
+		if err := h.authMgr.RevokeUserSessions(r.Context(), userID); err != nil {
+			log.Printf("admin: SetAdmin revoke sessions: %v", err)
+		}
 	}
 
 	http.Redirect(w, r, "/admin?success=Admin+status+updated", http.StatusSeeOther)
@@ -209,7 +213,9 @@ func (h *Handlers) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.authMgr != nil {
-		h.authMgr.RevokeUserSessions(r.Context(), userID)
+		if err := h.authMgr.RevokeUserSessions(r.Context(), userID); err != nil {
+			log.Printf("admin: DeleteUser revoke sessions: %v", err)
+		}
 	}
 
 	if strings.Contains(contentType, "application/json") {
@@ -257,7 +263,11 @@ func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.authMgr != nil {
-		h.authMgr.RevokeUserSessions(r.Context(), payload.UserID)
+		if err := h.authMgr.RevokeUserSessions(r.Context(), payload.UserID); err != nil {
+			log.Printf("admin: ResetPassword revoke sessions for user %d: %v", payload.UserID, err)
+			http.Error(w, "Password was reset but sessions could not be invalidated", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -303,7 +303,9 @@ func TestRevokeUserSessions(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("DELETE", 2))
 
 	m := NewManager(mock)
-	m.RevokeUserSessions(context.Background(), 7)
+	if err := m.RevokeUserSessions(context.Background(), 7); err != nil {
+		t.Fatalf("RevokeUserSessions: %v", err)
+	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet expectations: %v", err)

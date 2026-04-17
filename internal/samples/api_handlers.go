@@ -236,11 +236,16 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	if isAdmin {
 		ownerUserIDPtr = req.OwnerUserID // nil = ownerless; explicit ID overrides
 		ownerName = req.Owner
-		if ownerUserIDPtr != nil && ownerName == "" {
+		if ownerUserIDPtr != nil {
+			// Always resolve from DB so name and ID stay consistent.
 			ownerName, err = h.svc.GetUsernameByID(r.Context(), *ownerUserIDPtr)
 			if err != nil {
 				log.Printf("samples api: createSample resolve owner error: %v", err)
 				writeError(w, http.StatusInternalServerError, "database error")
+				return
+			}
+			if ownerName == "" {
+				writeError(w, http.StatusBadRequest, "owner_user_id does not refer to an existing user")
 				return
 			}
 		}
@@ -297,6 +302,19 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 	if !isAdmin {
 		ownerUserID = &session.UserID
 		ownerName = session.Username
+	} else if ownerUserID != nil {
+		// Resolve name from DB so name and ID stay consistent.
+		resolved, resolveErr := h.svc.GetUsernameByID(r.Context(), *ownerUserID)
+		if resolveErr != nil {
+			log.Printf("samples api: updateSample resolve owner error: %v", resolveErr)
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		if resolved == "" {
+			writeError(w, http.StatusBadRequest, "owner_user_id does not refer to an existing user")
+			return
+		}
+		ownerName = resolved
 	}
 
 	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, ownerName, req.SamplePrep, ownerUserID); err != nil {
@@ -626,6 +644,7 @@ func (h *Handlers) apiUploadAttachments(w http.ResponseWriter, r *http.Request, 
 		writeError(w, http.StatusBadRequest, "unable to parse request (max 100 MiB)")
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 
 	fileHeaders := r.MultipartForm.File["files"]
 	if len(fileHeaders) == 0 {

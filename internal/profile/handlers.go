@@ -143,7 +143,13 @@ func (h *Handlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		// Invalidate all existing sessions so a stolen cookie cannot be
 		// reused after the password has been changed, then immediately issue
 		// a fresh session so the current user is not silently logged out.
-		h.authMgr.RevokeUserSessions(r.Context(), session.UserID)
+		if err := h.authMgr.RevokeUserSessions(r.Context(), session.UserID); err != nil {
+			log.Printf("profile: revoke sessions after password change for user %d: %v", session.UserID, err)
+			data.Error = "Password was updated but existing sessions could not be invalidated; please try again"
+			w.WriteHeader(http.StatusInternalServerError)
+			h.renderChangePassword(w, data)
+			return
+		}
 		if err := h.authMgr.IssueSessionCookie(r.Context(), w, session.Username, session.UserID); err != nil {
 			log.Printf("profile: reissue session after password change for user %d: %v", session.UserID, err)
 		}
