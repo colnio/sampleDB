@@ -42,6 +42,7 @@ var schemaStatements = []string{
 	// Migration 008 – see DDL/migrations/008_sessions_table.sql
 	createSessionsTable,
 	createSessionsExpiresAtIndex,
+	createSessionsUserIDIndex,
 }
 
 var dataStatements = []string{
@@ -243,6 +244,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 const createSessionsExpiresAtIndex = `
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);`
+
+const createSessionsUserIDIndex = `
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);`
 
 // seedEquipment inserts the default equipment rows when the database is blank
 // (no users, no samples, and no equipment present yet).  Matches the seed block

@@ -173,7 +173,6 @@ func (s *DBService) Create(ctx context.Context, p CreateParams) error {
 		}
 		return err
 	}
-	// maxAttempts exhausted (only reachable if maxAttempts == 0)
 	return errors.New("booking: no insert attempts made")
 }
 

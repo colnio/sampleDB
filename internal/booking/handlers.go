@@ -130,6 +130,7 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := r.ParseForm(); err != nil {
 		http.Redirect(w, r, "/booking?error=Invalid+form+data", http.StatusSeeOther)
 		return

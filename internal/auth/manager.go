@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -32,20 +33,36 @@ type Manager struct {
 	db           dbiface.Pool
 	cookieSecure bool
 	templateDir  string
-	authOnce     sync.Once
+	authMu       sync.RWMutex
 	authTmpl     *template.Template
-	authTmplErr  error
 }
 
 // loadAuthTemplate parses and caches the login/register templates on first use.
+// Unlike sync.Once, a parse failure is not cached: the next request will retry,
+// so a misconfigured deployment does not permanently lock users out.
 func (m *Manager) loadAuthTemplate() (*template.Template, error) {
-	m.authOnce.Do(func() {
-		m.authTmpl, m.authTmplErr = template.ParseFiles(
-			m.templatePath("auth_base.html"),
-			m.templatePath("login.html"),
-		)
-	})
-	return m.authTmpl, m.authTmplErr
+	m.authMu.RLock()
+	if m.authTmpl != nil {
+		t := m.authTmpl
+		m.authMu.RUnlock()
+		return t, nil
+	}
+	m.authMu.RUnlock()
+
+	m.authMu.Lock()
+	defer m.authMu.Unlock()
+	if m.authTmpl != nil {
+		return m.authTmpl, nil
+	}
+	tmpl, err := template.ParseFiles(
+		m.templatePath("auth_base.html"),
+		m.templatePath("login.html"),
+	)
+	if err != nil {
+		return nil, err
+	}
+	m.authTmpl = tmpl
+	return tmpl, nil
 }
 
 type contextKey string
@@ -288,7 +305,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 			return
 		}
 
-		if len(password) < 8 {
+		if utf8.RuneCountInString(password) < 8 {
 			http.Redirect(w, r, "/register?error=Password+must+be+at+least+8+characters", http.StatusSeeOther)
 			return
 		}

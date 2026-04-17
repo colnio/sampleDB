@@ -184,6 +184,7 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	// Default owner is the session user. Admins may supply a different owner_user_id
 	// or omit it entirely to create an ownerless (admin-only) sample.
 	ownerUserIDPtr := &session.UserID
+	ownerName := session.Username // non-admins always get their own username as owner
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
 	if err != nil {
 		log.Printf("samples api: createSample admin check error: %v", err)
@@ -192,10 +193,11 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	}
 	if isAdmin {
 		ownerUserIDPtr = req.OwnerUserID // nil = ownerless; explicit ID overrides
+		ownerName = req.Owner
 	}
 
 	item, err := h.svc.APICreateSample(r.Context(),
-		req.Name, req.Description, req.Keywords, req.Owner, ownerUserIDPtr)
+		req.Name, req.Description, req.Keywords, ownerName, ownerUserIDPtr)
 	if err != nil {
 		log.Printf("samples api: createSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")

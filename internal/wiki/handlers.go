@@ -331,6 +331,7 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
 	title := r.FormValue("title")
 	if strings.TrimSpace(title) == "" {
 		http.Error(w, "Article title is required", http.StatusBadRequest)
@@ -391,6 +392,7 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// POST
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
 	if err := r.ParseForm(); err != nil {
 		if isHTMXRequest(r) {
 			h.renderContentPanel(w, r, session, title, "", "Invalid form submission.", true)
@@ -624,7 +626,7 @@ func (h *Handlers) deleteAttachment(w http.ResponseWriter, r *http.Request, atta
 
 	redirect := ""
 	if ref := r.Header.Get("Referer"); ref != "" {
-		if u, err := url.Parse(ref); err == nil {
+		if u, err := url.Parse(ref); err == nil && u.Path != "" && !strings.HasPrefix(u.Path, "//") {
 			redirect = u.Path
 		}
 	}
