@@ -194,6 +194,14 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	if isAdmin {
 		ownerUserIDPtr = req.OwnerUserID // nil = ownerless; explicit ID overrides
 		ownerName = req.Owner
+		if ownerUserIDPtr != nil && ownerName == "" {
+			ownerName, err = h.svc.GetUsernameByID(r.Context(), *ownerUserIDPtr)
+			if err != nil {
+				log.Printf("samples api: createSample resolve owner error: %v", err)
+				writeError(w, http.StatusInternalServerError, "database error")
+				return
+			}
+		}
 	}
 
 	item, err := h.svc.APICreateSample(r.Context(),

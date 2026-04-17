@@ -253,7 +253,9 @@ func TestRequireAuth_CookiePath(t *testing.T) {
 	mock, _ := pgxmock.NewPool()
 	defer mock.Close()
 
-	// newSession inserts into DB.
+	// newSession first purges expired sessions, then inserts.
+	mock.ExpectExec(`DELETE FROM sessions WHERE expires_at`).
+		WillReturnResult(pgxmock.NewResult("DELETE", 0))
 	mock.ExpectExec(`INSERT INTO sessions`).
 		WithArgs(pgxmock.AnyArg(), 1, "alice", pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
@@ -267,7 +269,7 @@ func TestRequireAuth_CookiePath(t *testing.T) {
 
 	// RequireAuth will SELECT the session from DB (joined with users) using the hash.
 	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
-		WithArgs(hashToken(session.Token)).
+		WithArgs(HashToken(session.Token)).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
 			AddRow(1, "alice", time.Now().Add(24*time.Hour)))
 

@@ -117,9 +117,9 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/equipment-report", withAuth(adminMW(adminHdlrs.EquipmentReport)))
 	mux.HandleFunc("/admin/delete-user", withAuth(adminMW(adminHdlrs.DeleteUser)))
 
-	// REST API v1 — users / equipment (admin only)
-	mux.HandleFunc("/api/v1/users", withAuth(adminMW(adminHdlrs.APIUsers)))
-	mux.HandleFunc("/api/v1/equipment", withAuth(adminMW(adminHdlrs.APIEquipment)))
+	// REST API v1 — users / equipment (any authenticated user, matching original contract)
+	mux.HandleFunc("/api/v1/users", withAuth(adminHdlrs.APIUsers))
+	mux.HandleFunc("/api/v1/equipment", withAuth(adminHdlrs.APIEquipment))
 	mux.HandleFunc("/api/", withAuth(h.APINotFound))
 
 	// --- Profile domain routes (wired via profile.Handlers) ---

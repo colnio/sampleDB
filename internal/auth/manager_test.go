@@ -249,7 +249,7 @@ func TestLogoutHandler_ClearsSessionAndRedirects(t *testing.T) {
 	defer mock.Close()
 
 	mock.ExpectExec(`DELETE FROM sessions WHERE id = \$1`).
-		WithArgs(hashToken("test-token-123")).
+		WithArgs(HashToken("test-token-123")).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
 	m := NewManager(mock)
@@ -338,7 +338,7 @@ func TestTryAuth_ValidCookie(t *testing.T) {
 
 	expiresAt := time.Now().Add(24 * time.Hour)
 	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
-		WithArgs(hashToken("valid-token")).
+		WithArgs(HashToken("valid-token")).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
 			AddRow(5, "alice", expiresAt))
 
@@ -388,7 +388,7 @@ func TestSessionSurvivesManagerRestart(t *testing.T) {
 	// Manager2 uses the same DB pool — simulates a restart with no in-memory state.
 	expiresAt := time.Now().Add(24 * time.Hour)
 	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
-		WithArgs(hashToken(session.Token)).
+		WithArgs(HashToken(session.Token)).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
 			AddRow(42, "alice", expiresAt))
 
