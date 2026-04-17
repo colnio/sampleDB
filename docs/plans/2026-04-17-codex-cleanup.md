@@ -97,17 +97,17 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Confirm no `.DS_Store` or empty tracked directories remain
 
 ### Task 9: `internal/integration` — API tests against real Postgres
-- [ ] Create `internal/integration/` package with `//go:build integration` tag on all files
-- [ ] Create `internal/integration/setup_test.go` — `TestMain` opens `pgxpool`, runs `dbschema.Ensure()`, spins up `httptest.NewServer` with the full app router, exposes a `*http.Client` + base URL to subtests; defers server/pool teardown
-- [ ] Create `internal/integration/samples_test.go` — golden-path HTTP contract: `POST /samples` (create), `GET /samples/:id` (read), `PUT /samples/:id` (update), `DELETE /samples/:id`; each test cleans up its own rows via `t.Cleanup`
-- [ ] Create `internal/integration/wiki_test.go` — golden-path: create wiki entry, read, update, delete; `t.Cleanup`
-- [ ] Create `internal/integration/booking_test.go` — golden-path: create booking, list bookings; `t.Cleanup`
-- [ ] Create `internal/integration/auth_test.go` — register new user, login (expect session cookie), logout; `t.Cleanup` deletes test user row
-- [ ] Create `internal/integration/admin_test.go` — verify default admin exists after `SeedDefaultAdmin`; list admin endpoint returns 200
-- [ ] Each test asserts HTTP status, `Content-Type: application/json`, and key response fields (no schema-dump, just sentinel values)
-- [ ] Document run command in `README` or `docs/api.md`: `DATABASE_URL=postgres://app:app@localhost:5432/sampledb go test -tags=integration ./internal/integration/... -v`
-- [ ] Run integration suite locally against `localhost:5432` — all tests green
-- [ ] Run `go test ./...` (no tag) — must still pass (integration files excluded)
+- [x] Create `internal/integration/` package with `//go:build integration` tag on all files
+- [x] Create `internal/integration/setup_test.go` — `TestMain` opens `pgxpool`, runs `dbschema.Ensure()`, spins up `httptest.NewServer` with the full app router, exposes a `*http.Client` + base URL to subtests; defers server/pool teardown
+- [x] Create `internal/integration/samples_test.go` — golden-path HTTP contract: `POST /samples` (create), `GET /samples/:id` (read), `PUT /samples/:id` (update), `DELETE /samples/:id`; each test cleans up its own rows via `t.Cleanup`
+- [x] Create `internal/integration/wiki_test.go` — golden-path: create wiki entry, read, update, delete; `t.Cleanup`
+- [x] Create `internal/integration/booking_test.go` — golden-path: create booking, list bookings; `t.Cleanup`
+- [x] Create `internal/integration/auth_test.go` — register new user, login (expect session cookie), logout; `t.Cleanup` deletes test user row
+- [x] Create `internal/integration/admin_test.go` — verify default admin exists after `SeedDefaultAdmin`; list admin endpoint returns 200
+- [x] Each test asserts HTTP status, `Content-Type: application/json`, and key response fields (no schema-dump, just sentinel values)
+- [x] Document run command in `README` or `docs/api.md`: `DATABASE_URL=postgres://app:app@localhost:5432/sampledb go test -tags=integration ./internal/integration/... -v`
+- [x] Run integration suite locally against `localhost:5432` — all tests green
+- [x] Run `go test ./...` (no tag) — must still pass (integration files excluded)
 
 ---
 

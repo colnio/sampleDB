@@ -308,6 +308,158 @@ Delete a fabrication step.
 
 ---
 
+## Attachments
+
+Attachments are files (images, PDFs, datasheets, etc.) associated with a sample. Each attachment has a stable integer ID and a download URL.
+
+### GET /api/v1/samples/{id}/attachments
+
+List all attachments for a sample, ordered by upload time.
+
+**Response 200**
+```json
+{
+  "items": [
+    {
+      "id": 20,
+      "original_name": "wafer.jpg",
+      "url": "/attachment/20",
+      "content_type": "image/jpeg",
+      "is_image": true,
+      "uploaded_at": "2026-01-15T10:05:00Z"
+    }
+  ],
+  "total": 1,
+  "limit": 1,
+  "offset": 0
+}
+```
+
+**Response 404**
+```json
+{"error": "sample not found"}
+```
+
+---
+
+### POST /api/v1/samples/{id}/attachments
+
+Upload one or more files to a sample. Uses `multipart/form-data` with the form field name `files` (repeatable). Per-request upload size is capped at 100 MiB total.
+
+**Request**
+```
+POST /api/v1/samples/42/attachments HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: multipart/form-data; boundary=----boundary
+
+------boundary
+Content-Disposition: form-data; name="files"; filename="wafer.jpg"
+Content-Type: image/jpeg
+
+<binary>
+------boundary
+Content-Disposition: form-data; name="files"; filename="datasheet.pdf"
+Content-Type: application/pdf
+
+<binary>
+------boundary--
+```
+
+**cURL example**
+```sh
+curl -X POST https://host/api/v1/samples/42/attachments \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "files=@wafer.jpg" \
+  -F "files=@datasheet.pdf"
+```
+
+**Response 201** — all files saved successfully:
+```json
+{
+  "created": [
+    {
+      "id": 20,
+      "original_name": "wafer.jpg",
+      "url": "/attachment/20",
+      "content_type": "image/jpeg",
+      "is_image": true,
+      "uploaded_at": "2026-04-17T10:05:00Z"
+    },
+    {
+      "id": 21,
+      "original_name": "datasheet.pdf",
+      "url": "/attachment/21",
+      "content_type": "application/pdf",
+      "is_image": false,
+      "uploaded_at": "2026-04-17T10:05:00Z"
+    }
+  ],
+  "errors": []
+}
+```
+
+**Response 207** — partial success (some files saved, some failed):
+```json
+{
+  "created": [
+    {
+      "id": 20,
+      "original_name": "wafer.jpg",
+      "url": "/attachment/20",
+      "content_type": "image/jpeg",
+      "is_image": true,
+      "uploaded_at": "2026-04-17T10:05:00Z"
+    }
+  ],
+  "errors": [
+    {"filename": "corrupt.bin", "error": "failed to save file"}
+  ]
+}
+```
+
+**Response 400** — no files supplied or request body exceeds the 100 MiB cap:
+```json
+{"error": "no files provided (expected multipart field \"files\")"}
+```
+
+**Response 404**
+```json
+{"error": "sample not found"}
+```
+
+---
+
+### GET /api/v1/attachments/{id}
+
+Download the raw bytes of an attachment. Image attachments are served with `Content-Disposition: inline`; all other types are served as `attachment` (browser download).
+
+**Response 200** — the raw file bytes. Headers include:
+```
+Content-Type: <original upload MIME>
+Content-Disposition: inline; filename="wafer.jpg"     (for images)
+Content-Disposition: attachment; filename="datasheet.pdf"  (otherwise)
+```
+
+**Response 404**
+```json
+{"error": "attachment not found"}
+```
+
+---
+
+### DELETE /api/v1/attachments/{id}
+
+Delete an attachment. Removes both the database row and the file on disk.
+
+**Response 204** — no body.
+
+**Response 404**
+```json
+{"error": "attachment not found"}
+```
+
+---
+
 ## Wiki
 
 ### GET /api/v1/wiki
@@ -453,3 +605,18 @@ List all equipment entries.
 ## Sample sharing (web, not API)
 
 Shared sample links (`/s/{token}`) are managed through the web UI only (no dedicated API endpoint). From the sample detail page you can generate a link, set visibility (Public or Authenticated), copy it, or revoke it. The `/s/{token}` route is accessible without authentication for public-visibility samples.
+
+---
+
+## Integration tests
+
+The `internal/integration` package contains end-to-end HTTP tests that run against a real PostgreSQL database. They are excluded from the default `go test ./...` run by the `integration` build tag.
+
+**Prerequisites:** PostgreSQL running at `localhost:5432` with database `sampledb` accessible as user `app`.
+
+```
+DATABASE_URL=postgres://app:app@localhost:5432/sampledb \
+  go test -tags=integration ./internal/integration/... -v
+```
+
+The test suite spins up an `httptest.Server` backed by the full application router, creates a temporary admin user and API token, runs all subtests, then cleans up. Each subtest removes its own rows via `t.Cleanup`.
