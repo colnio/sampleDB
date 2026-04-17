@@ -17,6 +17,8 @@ import (
 // when templates are unavailable.
 func NewRouter(cfg Config, db dbiface.Pool) http.Handler {
 	authMgr := auth.NewManager(db)
+	authMgr.SetCookieSecure(cfg.UseTLS)
+	authMgr.SetTemplateDir(cfg.TemplatesDir)
 
 	loc, err := time.LoadLocation("Local")
 	if err != nil || loc == nil {

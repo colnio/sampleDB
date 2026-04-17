@@ -380,7 +380,7 @@ func (h *Handlers) apiListSteps(w http.ResponseWriter, r *http.Request, sampleID
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items":  items,
 		"total":  len(items),
-		"limit":  len(items),
+		"limit":  0,
 		"offset": 0,
 	})
 }
@@ -588,7 +588,7 @@ func (h *Handlers) apiListAttachments(w http.ResponseWriter, r *http.Request, sa
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items":  items,
 		"total":  len(items),
-		"limit":  len(items),
+		"limit":  0,
 		"offset": 0,
 	})
 }

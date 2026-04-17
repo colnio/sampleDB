@@ -432,10 +432,8 @@ func (h *Handlers) APIUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items":  users,
-		"total":  len(users),
-		"limit":  len(users),
-		"offset": 0,
+		"items": users,
+		"total": len(users),
 	})
 }
 
@@ -455,17 +453,16 @@ func (h *Handlers) APIEquipment(w http.ResponseWriter, r *http.Request) {
 	items := make([]APIEquipment, 0, len(equipment))
 	for _, item := range equipment {
 		items = append(items, APIEquipment{
-			EquipmentID: item.ID,
+			ID:          item.ID,
 			Name:        item.Name,
+			Description: item.Description,
 			Location:    item.Location,
 		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items":  items,
-		"total":  len(items),
-		"limit":  len(items),
-		"offset": 0,
+		"items": items,
+		"total": len(items),
 	})
 }
 

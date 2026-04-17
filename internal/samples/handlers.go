@@ -1253,11 +1253,9 @@ func (h *Handlers) reorderSteps(w http.ResponseWriter, r *http.Request) {
 		orderedIDs = append(orderedIDs, id)
 	}
 
-	if len(orderedIDs) > 0 {
-		if err := h.svc.ReorderSteps(r.Context(), sampleID, orderedIDs); err != nil {
-			h.renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Failed to reorder steps.", 0)
-			return
-		}
+	if err := h.svc.ReorderSteps(r.Context(), sampleID, orderedIDs); err != nil {
+		h.renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Failed to reorder steps.", 0)
+		return
 	}
 
 	if isHTMXRequest(r) {

@@ -866,11 +866,11 @@ func TestAPIUsers_ReturnsJSON(t *testing.T) {
 	if body["total"] != float64(2) {
 		t.Errorf("expected total=2, got %v", body["total"])
 	}
-	if body["limit"] != float64(2) {
-		t.Errorf("expected limit=2, got %v", body["limit"])
+	if _, ok := body["limit"]; ok {
+		t.Errorf("unexpected limit field in response")
 	}
-	if body["offset"] != float64(0) {
-		t.Errorf("expected offset=0, got %v", body["offset"])
+	if _, ok := body["offset"]; ok {
+		t.Errorf("unexpected offset field in response")
 	}
 }
 
@@ -903,11 +903,11 @@ func TestAPIEquipment_ReturnsJSON(t *testing.T) {
 	if body["total"] != float64(2) {
 		t.Errorf("expected total=2, got %v", body["total"])
 	}
-	if body["limit"] != float64(2) {
-		t.Errorf("expected limit=2, got %v", body["limit"])
+	if _, ok := body["limit"]; ok {
+		t.Errorf("unexpected limit field in response")
 	}
-	if body["offset"] != float64(0) {
-		t.Errorf("expected offset=0, got %v", body["offset"])
+	if _, ok := body["offset"]; ok {
+		t.Errorf("unexpected offset field in response")
 	}
 	items, ok := body["items"].([]any)
 	if !ok || len(items) != 2 {
@@ -917,8 +917,8 @@ func TestAPIEquipment_ReturnsJSON(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected first item object, got %#v", items[0])
 	}
-	if first["equipment_id"] != float64(1) {
-		t.Errorf("expected equipment_id=1, got %v", first["equipment_id"])
+	if first["id"] != float64(1) {
+		t.Errorf("expected id=1, got %v", first["id"])
 	}
 	if first["name"] != "SEM" {
 		t.Errorf("expected name=SEM, got %v", first["name"])

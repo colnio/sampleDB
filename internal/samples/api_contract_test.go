@@ -453,7 +453,7 @@ func TestAPISteps_ListSteps_ReturnsEnvelope(t *testing.T) {
 		Offset int                          `json:"offset"`
 	}](t, rr.Body)
 
-	if resp.Total != 2 || resp.Limit != 2 || resp.Offset != 0 {
+	if resp.Total != 2 || resp.Limit != 0 || resp.Offset != 0 {
 		t.Fatalf("unexpected envelope: %#v", resp)
 	}
 	if len(resp.Items) != 2 || resp.Items[0].StepDate == nil || *resp.Items[0].StepDate != "2026-01-14" {
@@ -606,7 +606,7 @@ func TestAPIAttachments_ListAttachments_ReturnsEnvelope(t *testing.T) {
 		Offset int                     `json:"offset"`
 	}](t, rr.Body)
 
-	if resp.Total != 2 || resp.Limit != 2 || resp.Offset != 0 {
+	if resp.Total != 2 || resp.Limit != 0 || resp.Offset != 0 {
 		t.Fatalf("unexpected envelope: %#v", resp)
 	}
 	if len(resp.Items) != 2 || resp.Items[0].OriginalName != "wafer.jpg" {

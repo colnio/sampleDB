@@ -65,8 +65,9 @@ type APIUser struct {
 
 // APIEquipment is the JSON representation of equipment in the /api/v1/equipment response.
 type APIEquipment struct {
-	EquipmentID int    `json:"equipment_id"`
+	ID          int    `json:"id"`
 	Name        string `json:"name"`
+	Description string `json:"description"`
 	Location    string `json:"location"`
 }
 
