@@ -67,9 +67,9 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Run `go test ./internal/agents/... ./...` — must pass before Task 5
 
 ### Task 5: Delete obsolete root handler files
-- [ ] Delete `admin.go`, `booking.go`, `fabrication_steps.go`, `fabrication_steps_handler.go`, `sample_prep_handler.go`, `sharing.go` from repo root
-- [ ] Confirm all symbols previously defined there are now in their respective `internal/*` packages (grep for any remaining references)
-- [ ] Run `go build ./...` and `go vet ./...` — must be clean before Task 6
+- [x] Delete `admin.go`, `booking.go`, `fabrication_steps.go`, `fabrication_steps_handler.go`, `sample_prep_handler.go`, `sharing.go` from repo root
+- [x] Confirm all symbols previously defined there are now in their respective `internal/*` packages (grep for any remaining references)
+- [x] Run `go build ./...` and `go vet ./...` — must be clean before Task 6
 
 ### Task 6: Migrate root tests into their correct packages
 - [ ] Move JSON/markdown root tests → `internal/web` (new or augmented test file)
