@@ -379,6 +379,26 @@ func (m *Manager) RevokeUserSessions(ctx context.Context, userID int) {
 	}
 }
 
+// IssueSessionCookie creates a new session for the given user and sets the
+// session cookie on w. It is used after operations (e.g. password change) that
+// revoke all prior sessions so the current user is not silently logged out.
+func (m *Manager) IssueSessionCookie(ctx context.Context, w http.ResponseWriter, username string, userID int) error {
+	session, err := m.newSession(ctx, username, userID)
+	if err != nil {
+		return err
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    session.Token,
+		Path:     "/",
+		Expires:  session.ExpiresAt,
+		HttpOnly: true,
+		Secure:   m.cookieSecure,
+		SameSite: http.SameSiteStrictMode,
+	})
+	return nil
+}
+
 func (m *Manager) SetTemplateDir(dir string) {
 	m.templateDir = dir
 }

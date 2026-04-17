@@ -193,7 +193,12 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ## Tests
 
 ```bash
+# Unit and contract tests (no database required)
 go test ./...
+
+# Integration tests (requires PostgreSQL)
+DATABASE_URL=postgres://app:app@localhost:5432/sampledb \
+  go test -tags=integration ./internal/integration/... -v
 ```
 
 ## Project structure

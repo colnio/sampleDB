@@ -34,6 +34,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	os.Exit(runTests(m))
+}
+
+func runTests(m *testing.M) int {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "postgres://app:app@localhost:5432/sampledb"
@@ -44,6 +48,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("integration: connect postgres: %v", err)
 	}
+	defer pool.Close()
 
 	if err = dbschema.Ensure(bgCtx, pool); err != nil {
 		log.Fatalf("integration: ensure schema: %v", err)
@@ -53,6 +58,7 @@ func TestMain(m *testing.M) {
 	cfg.DatabaseURL = dsn
 
 	srv = httptest.NewServer(app.NewRouter(cfg, pool))
+	defer srv.Close()
 
 	testUser.username = "inttest_" + randomHex(8)
 	hash, _ := bcrypt.GenerateFromPassword([]byte("inttest_password"), bcrypt.DefaultCost)
@@ -61,6 +67,7 @@ func TestMain(m *testing.M) {
 		testUser.username, string(hash)).Scan(&testUser.id); err != nil {
 		log.Fatalf("integration: create test user: %v", err)
 	}
+	defer pool.Exec(bgCtx, "DELETE FROM users WHERE user_id = $1", testUser.id)
 
 	plain, tokenHash, genErr := auth.GenerateToken()
 	if genErr != nil {
@@ -73,12 +80,7 @@ func TestMain(m *testing.M) {
 	}
 	apiToken = plain
 
-	code := m.Run()
-
-	pool.Exec(bgCtx, "DELETE FROM users WHERE user_id = $1", testUser.id)
-	srv.Close()
-	pool.Close()
-	os.Exit(code)
+	return m.Run()
 }
 
 // apiDo executes an authenticated JSON request and returns the response.

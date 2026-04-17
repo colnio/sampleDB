@@ -40,5 +40,5 @@ func NewRouter(cfg Config, db dbiface.Pool) http.Handler {
 
 	mux := http.NewServeMux()
 	theApp.RegisterRoutes(mux)
-	return mux
+	return SecurityHeaders(mux, cfg.UseTLS)
 }

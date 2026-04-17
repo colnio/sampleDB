@@ -28,7 +28,9 @@ func TestBookings_ListEmpty(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&bookings); err != nil {
 		t.Fatalf("decode bookings: %v", err)
 	}
-	// Result may be empty or have items — just confirm JSON is valid.
+	if len(bookings) != 0 {
+		t.Errorf("expected 0 bookings in year 2099, got %d", len(bookings))
+	}
 }
 
 func TestBookings_CreateAndList(t *testing.T) {

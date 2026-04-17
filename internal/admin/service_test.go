@@ -649,8 +649,12 @@ func TestDeleteUser_JSONSuccess(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "true") {
-		t.Errorf("expected success:true in response, got %q", rr.Body.String())
+	var resp map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["success"] != true {
+		t.Errorf("expected success:true in response, got %v", resp)
 	}
 }
 

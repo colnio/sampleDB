@@ -2,6 +2,7 @@ package profile
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -140,8 +141,12 @@ func (h *Handlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Invalidate all existing sessions so a stolen cookie cannot be
-		// reused after the password has been changed.
+		// reused after the password has been changed, then immediately issue
+		// a fresh session so the current user is not silently logged out.
 		h.authMgr.RevokeUserSessions(r.Context(), session.UserID)
+		if err := h.authMgr.IssueSessionCookie(r.Context(), w, session.Username, session.UserID); err != nil {
+			log.Printf("profile: reissue session after password change for user %d: %v", session.UserID, err)
+		}
 
 		data.Success = "Password updated successfully"
 		h.renderChangePassword(w, data)
