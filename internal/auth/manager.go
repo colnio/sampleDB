@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html/template"
@@ -480,7 +482,7 @@ func (m *Manager) newSession(ctx context.Context, username string, userID int) (
 	expiresAt := time.Now().Add(24 * time.Hour)
 	_, err = m.db.Exec(ctx,
 		"INSERT INTO sessions (id, user_id, username, expires_at) VALUES ($1, $2, $3, $4)",
-		token, userID, username, expiresAt)
+		hashToken(token), userID, username, expiresAt)
 	if err != nil {
 		return Session{}, fmt.Errorf("create session: %w", err)
 	}
@@ -501,7 +503,7 @@ func (m *Manager) getSession(ctx context.Context, token string) (Session, bool, 
 		   JOIN users u ON u.user_id = s.user_id
 		  WHERE s.id = $1 AND s.expires_at > NOW()
 		    AND u.is_approved = true AND COALESCE(u.deleted, false) = false`,
-		token).Scan(&s.UserID, &s.Username, &s.ExpiresAt)
+		hashToken(token)).Scan(&s.UserID, &s.Username, &s.ExpiresAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Session{}, false, nil
@@ -512,7 +514,7 @@ func (m *Manager) getSession(ctx context.Context, token string) (Session, bool, 
 }
 
 func (m *Manager) deleteSession(ctx context.Context, token string) {
-	if _, err := m.db.Exec(ctx, "DELETE FROM sessions WHERE id = $1", token); err != nil {
+	if _, err := m.db.Exec(ctx, "DELETE FROM sessions WHERE id = $1", hashToken(token)); err != nil {
 		log.Printf("auth: deleteSession: %v", err)
 	}
 }
@@ -524,6 +526,14 @@ func generateSessionToken() (string, error) {
 		return "", fmt.Errorf("generate session token: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// hashToken returns the hex-encoded SHA-256 digest of a session token.
+// Only the hash is stored in the database so that a DB read does not
+// directly yield a usable credential.
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 type authPageData struct {

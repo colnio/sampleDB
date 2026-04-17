@@ -1057,8 +1057,10 @@ func (s *DBService) APIUpdateSample(ctx context.Context, id int, name, descripti
 	return nil
 }
 
-// APIDeleteSample deletes a sample and returns the attachment file paths for disk cleanup.
-// File paths are collected before deletion because the CASCADE delete removes attachment rows.
+// APIDeleteSample deletes a sample and its attachment rows, returning the
+// attachment file paths so the caller can remove the files from disk.
+// File paths are collected first so the caller still has them after the rows
+// are removed.
 func (s *DBService) APIDeleteSample(ctx context.Context, id int) ([]string, error) {
 	rows, err := s.db.Query(ctx,
 		`SELECT attachment_address FROM attachments WHERE source_id = $1 AND source_type = 'sample'`, id)
@@ -1086,6 +1088,14 @@ func (s *DBService) APIDeleteSample(ctx context.Context, id int) ([]string, erro
 	if tag.RowsAffected() == 0 {
 		return nil, web.ErrNotFound
 	}
+
+	// Explicitly remove attachment rows. The attachments table has no FK
+	// constraint with ON DELETE CASCADE, so orphan rows must be cleaned up here.
+	if _, err := s.db.Exec(ctx,
+		`DELETE FROM attachments WHERE source_id = $1 AND source_type = 'sample'`, id); err != nil {
+		log.Printf("samples: delete attachments for sample %d: %v", id, err)
+	}
+
 	return filePaths, nil
 }
 

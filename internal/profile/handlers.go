@@ -139,6 +139,10 @@ func (h *Handlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Invalidate all existing sessions so a stolen cookie cannot be
+		// reused after the password has been changed.
+		h.authMgr.RevokeUserSessions(r.Context(), session.UserID)
+
 		data.Success = "Password updated successfully"
 		h.renderChangePassword(w, data)
 

@@ -265,9 +265,9 @@ func TestRequireAuth_CookiePath(t *testing.T) {
 		t.Fatalf("newSession: %v", err)
 	}
 
-	// RequireAuth will SELECT the session from DB (joined with users).
+	// RequireAuth will SELECT the session from DB (joined with users) using the hash.
 	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
-		WithArgs(session.Token).
+		WithArgs(hashToken(session.Token)).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
 			AddRow(1, "alice", time.Now().Add(24*time.Hour)))
 

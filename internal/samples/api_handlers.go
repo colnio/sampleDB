@@ -230,7 +230,8 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
-	// Non-admins cannot change or clear owner_user_id; force it to their own user ID.
+	// Non-admins cannot change owner_user_id or the displayed owner name;
+	// both are forced to the caller's own identity.
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
 	if err != nil {
 		log.Printf("samples api: updateSample admin check error: %v", err)
@@ -238,11 +239,13 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 	ownerUserID := req.OwnerUserID
+	ownerName := req.Owner
 	if !isAdmin {
 		ownerUserID = &session.UserID
+		ownerName = session.Username
 	}
 
-	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, req.Owner, ownerUserID); err != nil {
+	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, ownerName, ownerUserID); err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "sample not found")
 			return
@@ -269,8 +272,8 @@ func (h *Handlers) apiDeleteSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
-	// APIDeleteSample collects file paths before the DELETE (which CASCADE-removes attachment rows),
-	// so disk cleanup can proceed even though DB rows are gone.
+	// APIDeleteSample collects file paths and removes both the sample row and
+	// its attachment rows, returning the paths for disk cleanup.
 	filePaths, err := h.svc.APIDeleteSample(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, web.ErrNotFound) {
