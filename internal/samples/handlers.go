@@ -332,6 +332,10 @@ func (h *Handlers) NewSample(w http.ResponseWriter, r *http.Request) {
 		session := auth.MustSessionFromContext(r.Context())
 		isAdmin, _ := h.svc.IsAdmin(r.Context(), session.UserID)
 
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
 		name := r.FormValue("name")
 		description := r.FormValue("description")
 		keywords := r.FormValue("keywords")
@@ -558,10 +562,6 @@ func (h *Handlers) sampleDetail(w http.ResponseWriter, r *http.Request) {
 // HandleSample dispatches requests under /samples/{id}[/...].
 func (h *Handlers) HandleSample(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/samples/"), "/")
-	if len(pathParts) < 1 {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return
-	}
 
 	switch {
 	case len(pathParts) == 2 && pathParts[1] == "upload":
