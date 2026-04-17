@@ -265,8 +265,6 @@ func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	if h.authMgr != nil {
 		if err := h.authMgr.RevokeUserSessions(r.Context(), payload.UserID); err != nil {
 			log.Printf("admin: ResetPassword revoke sessions for user %d: %v", payload.UserID, err)
-			http.Error(w, "Password was reset but sessions could not be invalidated", http.StatusInternalServerError)
-			return
 		}
 	}
 

@@ -185,6 +185,15 @@ func (s *DBService) ListAll(ctx context.Context, dateFrom, dateTo string) ([]Sam
 	return out, rows.Err()
 }
 
+// escapeLike escapes ILIKE metacharacters so that literal %, _, and \ are not
+// treated as wildcards. Use with ESCAPE '\' in the query string.
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, "%", `\%`)
+	s = strings.ReplaceAll(s, "_", `\_`)
+	return s
+}
+
 // ------------------------------------------------------------------ Search --
 
 func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) ([]Sample, error) {
@@ -208,11 +217,7 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 		args = append(args, kw)
 	}
 
-	// Escape ILIKE metacharacters so literal % and _ are not treated as
-	// wildcards; use ESCAPE '\' in the query.
-	escapedTrimmed := strings.ReplaceAll(trimmed, `\`, `\\`)
-	escapedTrimmed = strings.ReplaceAll(escapedTrimmed, "%", `\%`)
-	escapedTrimmed = strings.ReplaceAll(escapedTrimmed, "_", `\_`)
+	escapedTrimmed := escapeLike(trimmed)
 
 	nameIdx := len(args) + 1
 	args = append(args, "%"+escapedTrimmed+"%")
@@ -879,13 +884,13 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 	if p.Q != "" {
 		idx := len(args) + 1
 		conditions = append(conditions, fmt.Sprintf(
-			"(s.sample_name ILIKE $%[1]d OR s.sample_owner ILIKE $%[1]d OR s.sample_keywords ILIKE $%[1]d)", idx))
-		args = append(args, "%"+p.Q+"%")
+			`(s.sample_name ILIKE $%[1]d ESCAPE '\' OR s.sample_owner ILIKE $%[1]d ESCAPE '\' OR s.sample_keywords ILIKE $%[1]d ESCAPE '\')`, idx))
+		args = append(args, "%"+escapeLike(p.Q)+"%")
 	}
 	if p.Owner != "" {
 		idx := len(args) + 1
-		conditions = append(conditions, fmt.Sprintf("(s.sample_owner ILIKE $%[1]d OR u.username ILIKE $%[1]d)", idx))
-		args = append(args, "%"+p.Owner+"%")
+		conditions = append(conditions, fmt.Sprintf(`(s.sample_owner ILIKE $%[1]d ESCAPE '\' OR u.username ILIKE $%[1]d ESCAPE '\')`, idx))
+		args = append(args, "%"+escapeLike(p.Owner)+"%")
 	}
 	if p.From != "" {
 		if _, err := time.Parse("2006-01-02", p.From); err != nil {
