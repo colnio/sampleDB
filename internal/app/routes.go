@@ -135,7 +135,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/profile/tokens/", withAuth(profileHdlrs.ProfileTokenRevoke))
 
 	// Public routes (no auth required)
-	mux.HandleFunc("/agents", a.AIAgentsHandler)
-	mux.HandleFunc("/agents/examples", a.AIAgentExamplesHandler)
-	mux.HandleFunc("/agents/examples/", a.AIAgentExamplesHandler)
+	mux.HandleFunc("/agents", a.Agents.AgentsPage)
+	mux.HandleFunc("/agents/examples", a.Agents.ExamplesPage)
+	mux.HandleFunc("/agents/examples/", a.Agents.ExamplesPage)
 }

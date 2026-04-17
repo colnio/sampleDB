@@ -39,8 +39,6 @@ func newTestApp(t *testing.T) *app.App {
 		t.Fatalf("app.New: %v", err)
 	}
 	a.APINotFoundHandler = stub
-	a.AIAgentsHandler = stub
-	a.AIAgentExamplesHandler = stub
 	return a
 }
 

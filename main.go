@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"html/template"
 	"log"
 	"net"
@@ -10,32 +9,17 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"sampleDB/internal/agents"
 	"sampleDB/internal/app"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/dbschema"
 	"sampleDB/internal/web"
 )
-
-// BasePageData holds session-derived fields shared by all page templates.
-// Handlers in wiki.go, sharing.go, and other root-level files embed this
-// struct when building template data.
-type BasePageData struct {
-	Username string
-	UserID   int
-	IsAdmin  bool
-}
-
-type AIAgentExamplesPageData struct {
-	DataProcessingHTML      template.HTML
-	ScriptingAutomationHTML template.HTML
-	SoftwareDevelopmentHTML template.HTML
-}
 
 // theApp holds all application-wide dependencies (DB pool, auth manager,
 // template renderer, logger, timezone, and config). Initialized once in main
@@ -95,49 +79,6 @@ func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
 }
 
 
-var markdownImagePattern = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
-
-func rewriteRelativeMarkdownImages(md, baseURL string) string {
-	base := strings.TrimRight(baseURL, "/")
-	return markdownImagePattern.ReplaceAllStringFunc(md, func(match string) string {
-		parts := markdownImagePattern.FindStringSubmatch(match)
-		if len(parts) != 3 {
-			return match
-		}
-
-		alt := parts[1]
-		rawTarget := strings.TrimSpace(parts[2])
-		if rawTarget == "" {
-			return match
-		}
-
-		pathPart := rawTarget
-		suffix := ""
-		if split := strings.IndexAny(rawTarget, " \t"); split >= 0 {
-			pathPart = rawTarget[:split]
-			suffix = rawTarget[split:]
-		}
-
-		trimmedPath := strings.Trim(pathPart, "<>")
-		if strings.HasPrefix(trimmedPath, "http://") ||
-			strings.HasPrefix(trimmedPath, "https://") ||
-			strings.HasPrefix(trimmedPath, "/") ||
-			strings.HasPrefix(trimmedPath, "#") ||
-			strings.HasPrefix(trimmedPath, "data:") {
-			return match
-		}
-
-		trimmedPath = strings.TrimPrefix(trimmedPath, "./")
-		trimmedPath = strings.TrimPrefix(trimmedPath, ".\\")
-		qualified := fmt.Sprintf("%s/%s", base, trimmedPath)
-		if strings.HasPrefix(pathPart, "<") && strings.HasSuffix(pathPart, ">") {
-			qualified = "<" + qualified + ">"
-		}
-
-		return fmt.Sprintf("![%s](%s%s)", alt, qualified, suffix)
-	})
-}
-
 func main() {
 	loc := initLocation()
 	cfg := app.LoadConfig()
@@ -177,57 +118,15 @@ func main() {
 		log.Fatalf("Unable to initialize application: %v\n", err)
 	}
 
-	// Pre-parse standalone AI agent templates at startup (cached, not per-request).
-	aiAgentsTmpl, err := template.ParseFiles(filepath.Join(cfg.TemplatesDir, "ai_agents.html"))
+	examplesDir := filepath.Join(cfg.StaticDir, "examples")
+	agentsHdlrs, err := agents.New(cfg.TemplatesDir, examplesDir)
 	if err != nil {
-		log.Fatalf("Unable to parse ai_agents template: %v", err)
+		log.Fatalf("Unable to parse agents templates: %v", err)
 	}
-	aiExamplesTmpl, err := template.ParseFiles(filepath.Join(cfg.TemplatesDir, "ai_agent_examples.html"))
-	if err != nil {
-		log.Fatalf("Unable to parse ai_agent_examples template: %v", err)
-	}
-	examplesBase := cfg.BaseDir
-	if examplesBase == "" {
-		examplesBase = "."
-	}
-	examplesDir := filepath.Join(examplesBase, "static", "examples")
+	theApp.Agents = agentsHdlrs
 
 	theApp.APINotFoundHandler = func(w http.ResponseWriter, r *http.Request) {
 		web.Error(w, http.StatusNotFound, "not found")
-	}
-	theApp.AIAgentsHandler = func(w http.ResponseWriter, r *http.Request) {
-		if err := aiAgentsTmpl.Execute(w, nil); err != nil {
-			http.Error(w, "Error rendering page", http.StatusInternalServerError)
-		}
-	}
-	theApp.AIAgentExamplesHandler = func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/agents/examples" && r.URL.Path != "/agents/examples/" {
-			http.Redirect(w, r, "/agents/examples", http.StatusTemporaryRedirect)
-			return
-		}
-		dataProcessingMD, err := os.ReadFile(filepath.Join(examplesDir, "data_processing.md"))
-		if err != nil {
-			http.Error(w, "Error loading example content", http.StatusInternalServerError)
-			return
-		}
-		scriptingMD, err := os.ReadFile(filepath.Join(examplesDir, "scrpiting_automation.md"))
-		if err != nil {
-			http.Error(w, "Error loading example content", http.StatusInternalServerError)
-			return
-		}
-		softwareMD, err := os.ReadFile(filepath.Join(examplesDir, "software_development.md"))
-		if err != nil {
-			http.Error(w, "Error loading example content", http.StatusInternalServerError)
-			return
-		}
-		pageData := AIAgentExamplesPageData{
-			DataProcessingHTML:      web.RenderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
-			ScriptingAutomationHTML: web.RenderMarkdown(rewriteRelativeMarkdownImages(string(scriptingMD), "/static/examples")),
-			SoftwareDevelopmentHTML: web.RenderMarkdown(rewriteRelativeMarkdownImages(string(softwareMD), "/static/examples")),
-		}
-		if err := aiExamplesTmpl.Execute(w, pageData); err != nil {
-			http.Error(w, "Error rendering page", http.StatusInternalServerError)
-		}
 	}
 
 	mux := http.NewServeMux()

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"sampleDB/internal/agents"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/dbiface"
 	"sampleDB/internal/web"
@@ -25,11 +26,11 @@ type App struct {
 	Clock    func() time.Time
 	Location *time.Location
 
-	// Handler functions not yet migrated to their own packages.
-	// Will be wired by callers until Tasks 3-4 complete the migration.
-	APINotFoundHandler     http.HandlerFunc
-	AIAgentsHandler        http.HandlerFunc
-	AIAgentExamplesHandler http.HandlerFunc
+	// APINotFoundHandler is called for unmatched /api/* routes.
+	APINotFoundHandler http.HandlerFunc
+	// Agents handles the public /agents and /agents/examples pages.
+	// A nil value causes those routes to return 503.
+	Agents *agents.Handlers
 }
 
 // New constructs an App, validating that the required fields are provided.

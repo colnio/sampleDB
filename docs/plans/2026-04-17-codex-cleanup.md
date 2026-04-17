@@ -59,12 +59,12 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Run `go test ./internal/web/... ./...` — must pass before Task 4
 
 ### Task 4: Add `internal/agents` package
-- [ ] Create `internal/agents/` with `handlers.go` — `AgentsHandler` and `AgentsExamplesHandler` (page data type, template parse/cache, example markdown loading)
-- [ ] Add `rewriteRelativeImages(md string, prefix string) string` helper in `internal/agents/markdown.go`
-- [ ] Wire `/agents` and `/agents/examples` routes in `internal/app/routes.go` to use `agents.AgentsHandler` / `agents.AgentsExamplesHandler`; remove any root-level handler stubs
-- [ ] Rename `static/examples/scrpiting_automation.md` → `static/examples/scripting_automation.md`; update all string references (grep for the old name)
-- [ ] Write unit tests in `internal/agents/handlers_test.go` — template rendering smoke test, image rewrite cases
-- [ ] Run `go test ./internal/agents/... ./...` — must pass before Task 5
+- [x] Create `internal/agents/` with `handlers.go` — `AgentsHandler` and `AgentsExamplesHandler` (page data type, template parse/cache, example markdown loading)
+- [x] Add `rewriteRelativeImages(md string, prefix string) string` helper in `internal/agents/markdown.go`
+- [x] Wire `/agents` and `/agents/examples` routes in `internal/app/routes.go` to use `agents.AgentsHandler` / `agents.AgentsExamplesHandler`; remove any root-level handler stubs
+- [x] Rename `static/examples/scrpiting_automation.md` → `static/examples/scripting_automation.md`; update all string references (grep for the old name)
+- [x] Write unit tests in `internal/agents/handlers_test.go` — template rendering smoke test, image rewrite cases
+- [x] Run `go test ./internal/agents/... ./...` — must pass before Task 5
 
 ### Task 5: Delete obsolete root handler files
 - [ ] Delete `admin.go`, `booking.go`, `fabrication_steps.go`, `fabrication_steps_handler.go`, `sample_prep_handler.go`, `sharing.go` from repo root
