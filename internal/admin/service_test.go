@@ -866,6 +866,12 @@ func TestAPIUsers_ReturnsJSON(t *testing.T) {
 	if body["total"] != float64(2) {
 		t.Errorf("expected total=2, got %v", body["total"])
 	}
+	if body["limit"] != float64(2) {
+		t.Errorf("expected limit=2, got %v", body["limit"])
+	}
+	if body["offset"] != float64(0) {
+		t.Errorf("expected offset=0, got %v", body["offset"])
+	}
 }
 
 func TestAPIEquipment_MethodNotAllowed(t *testing.T) {
@@ -880,8 +886,8 @@ func TestAPIEquipment_MethodNotAllowed(t *testing.T) {
 
 func TestAPIEquipment_ReturnsJSON(t *testing.T) {
 	equipment := []admin.Equipment{
-		{ID: 1, Name: "SEM"},
-		{ID: 2, Name: "AFM"},
+		{ID: 1, Name: "SEM", Location: "Lab A"},
+		{ID: 2, Name: "AFM", Location: "Lab B"},
 	}
 	h := newHandlers(&mockService{equipment: equipment})
 	req := newAuthenticatedRequest(http.MethodGet, "/api/v1/equipment", nil)
@@ -896,5 +902,28 @@ func TestAPIEquipment_ReturnsJSON(t *testing.T) {
 	}
 	if body["total"] != float64(2) {
 		t.Errorf("expected total=2, got %v", body["total"])
+	}
+	if body["limit"] != float64(2) {
+		t.Errorf("expected limit=2, got %v", body["limit"])
+	}
+	if body["offset"] != float64(0) {
+		t.Errorf("expected offset=0, got %v", body["offset"])
+	}
+	items, ok := body["items"].([]any)
+	if !ok || len(items) != 2 {
+		t.Fatalf("expected 2 items, got %#v", body["items"])
+	}
+	first, ok := items[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected first item object, got %#v", items[0])
+	}
+	if first["equipment_id"] != float64(1) {
+		t.Errorf("expected equipment_id=1, got %v", first["equipment_id"])
+	}
+	if first["name"] != "SEM" {
+		t.Errorf("expected name=SEM, got %v", first["name"])
+	}
+	if first["location"] != "Lab A" {
+		t.Errorf("expected location=Lab A, got %v", first["location"])
 	}
 }

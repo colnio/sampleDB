@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -82,8 +84,43 @@ func (h *Handlers) APISamples(w http.ResponseWriter, r *http.Request) {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
+	case "attachments":
+		switch r.Method {
+		case http.MethodGet:
+			h.apiListAttachments(w, r, sampleID)
+		case http.MethodPost:
+			h.apiUploadAttachments(w, r, sampleID)
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		}
 	default:
 		writeError(w, http.StatusNotFound, "not found")
+	}
+}
+
+// APIAttachments handles /api/v1/attachments/{id}.
+//
+//	GET    — serve the file bytes (same as /attachment/{id}, but with JSON errors)
+//	DELETE — delete the attachment (owner/admin only)
+func (h *Handlers) APIAttachments(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimRight(strings.TrimPrefix(r.URL.Path, "/api/v1/attachments/"), "/")
+	if idStr == "" {
+		writeError(w, http.StatusBadRequest, "attachment id required")
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid attachment id")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		h.apiDownloadAttachment(w, r, id)
+	case http.MethodDelete:
+		h.apiDeleteAttachment(w, r, id)
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
 
@@ -164,6 +201,7 @@ type sampleRequest struct {
 	Description string `json:"description"`
 	Keywords    string `json:"keywords"`
 	Owner       string `json:"owner"`
+	SamplePrep  string `json:"sample_prep"`
 	OwnerUserID *int   `json:"owner_user_id,omitempty"`
 }
 
@@ -205,7 +243,7 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 	}
 
 	item, err := h.svc.APICreateSample(r.Context(),
-		req.Name, req.Description, req.Keywords, ownerName, ownerUserIDPtr)
+		req.Name, req.Description, req.Keywords, ownerName, req.SamplePrep, ownerUserIDPtr)
 	if err != nil {
 		log.Printf("samples api: createSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -253,7 +291,7 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		ownerName = session.Username
 	}
 
-	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, ownerName, ownerUserID); err != nil {
+	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, ownerName, req.SamplePrep, ownerUserID); err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "sample not found")
 			return
@@ -342,7 +380,7 @@ func (h *Handlers) apiListSteps(w http.ResponseWriter, r *http.Request, sampleID
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items":  items,
 		"total":  len(items),
-		"limit":  0,
+		"limit":  len(items),
 		"offset": 0,
 	})
 }
@@ -511,4 +549,202 @@ func removeFile(path string) error {
 		return nil
 	}
 	return err
+}
+
+// ---------------------------------------------------------------------------
+// Attachments API
+// ---------------------------------------------------------------------------
+
+// apiListAttachments handles GET /api/v1/samples/{id}/attachments.
+func (h *Handlers) apiListAttachments(w http.ResponseWriter, r *http.Request, sampleID string) {
+	id, err := strconv.Atoi(sampleID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid sample id")
+		return
+	}
+
+	exists, err := h.svc.SampleExistsByID(r.Context(), id)
+	if err != nil {
+		log.Printf("samples api: listAttachments existence check error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if !exists {
+		writeError(w, http.StatusNotFound, "sample not found")
+		return
+	}
+
+	atts, err := h.svc.GetAttachments(r.Context(), id)
+	if err != nil {
+		log.Printf("samples api: listAttachments error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+
+	items := make([]APIAttachment, 0, len(atts))
+	for _, a := range atts {
+		items = append(items, AttachmentToAPI(a))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":  items,
+		"total":  len(items),
+		"limit":  len(items),
+		"offset": 0,
+	})
+}
+
+// apiUploadAttachments handles POST /api/v1/samples/{id}/attachments.
+// Accepts multipart/form-data with a "files" field (one or more). Returns
+// the newly-created attachment records plus structured error details for
+// any rejected files.
+func (h *Handlers) apiUploadAttachments(w http.ResponseWriter, r *http.Request, sampleID string) {
+	id, err := strconv.Atoi(sampleID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid sample id")
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	if err := h.svc.CheckOwner(r.Context(), id, session.UserID); err != nil {
+		writeOwnerError(w, err)
+		return
+	}
+
+	// 100 MiB hard cap on the whole request; 32 MiB kept in memory.
+	const maxUploadBytes = 100 << 20
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "unable to parse multipart form (max 100 MiB): "+err.Error())
+		return
+	}
+
+	fileHeaders := r.MultipartForm.File["files"]
+	if len(fileHeaders) == 0 {
+		writeError(w, http.StatusBadRequest, `no files provided (expected multipart field "files")`)
+		return
+	}
+
+	type uploadError struct {
+		Filename string `json:"filename"`
+		Error    string `json:"error"`
+	}
+
+	var (
+		created []APIAttachment
+		errs    []uploadError
+	)
+	for _, fh := range fileHeaders {
+		f, openErr := fh.Open()
+		if openErr != nil {
+			errs = append(errs, uploadError{Filename: fh.Filename, Error: "could not open file"})
+			continue
+		}
+		fp, saveErr := h.saveUploadedFile(f, fh.Filename)
+		f.Close()
+		if saveErr != nil {
+			errs = append(errs, uploadError{Filename: fh.Filename, Error: "could not save file"})
+			continue
+		}
+		if dbErr := h.svc.AddAttachment(r.Context(), id, fp); dbErr != nil {
+			_ = os.Remove(h.resolveAppPath(fp))
+			errs = append(errs, uploadError{Filename: fh.Filename, Error: "could not store attachment record"})
+			continue
+		}
+	}
+
+	// Re-fetch to get the newly-inserted rows with their IDs and MIME metadata.
+	atts, listErr := h.svc.GetAttachments(r.Context(), id)
+	if listErr != nil {
+		log.Printf("samples api: uploadAttachments refetch error: %v", listErr)
+		writeError(w, http.StatusInternalServerError, "attachments were saved but could not be listed")
+		return
+	}
+	// Return the most recently-uploaded attachments (last N where N = number
+	// successfully stored). GetAttachments returns them ordered with newest
+	// first per hydrateAttachments, so take the first N.
+	successCount := len(fileHeaders) - len(errs)
+	if successCount > len(atts) {
+		successCount = len(atts)
+	}
+	for i := 0; i < successCount; i++ {
+		created = append(created, AttachmentToAPI(atts[i]))
+	}
+
+	status := http.StatusCreated
+	if len(created) == 0 {
+		status = http.StatusBadRequest
+	} else if len(errs) > 0 {
+		status = http.StatusMultiStatus // 207: partial success
+	}
+
+	writeJSON(w, status, map[string]any{
+		"created": created,
+		"errors":  errs,
+	})
+}
+
+// apiDownloadAttachment handles GET /api/v1/attachments/{id}.
+// Returns the raw file bytes with the correct Content-Type.
+func (h *Handlers) apiDownloadAttachment(w http.ResponseWriter, r *http.Request, attachmentID int) {
+	filePath, err := h.svc.AttachmentFilePath(r.Context(), attachmentID)
+	if err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "attachment not found")
+			return
+		}
+		log.Printf("samples api: downloadAttachment filepath error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	resolved := h.resolveAppPath(filePath)
+	if resolved == "" {
+		writeError(w, http.StatusNotFound, "attachment not found")
+		return
+	}
+	// Reuse the same Content-Disposition logic as the non-API download path:
+	// images render inline, everything else is forced as a download.
+	if isImage(mime.TypeByExtension(filepath.Ext(filePath))) {
+		setInlineHeaders(w, originalFilenameFromPath(filePath))
+	} else {
+		setDownloadHeaders(w, originalFilenameFromPath(filePath))
+	}
+	http.ServeFile(w, r, resolved)
+}
+
+// apiDeleteAttachment handles DELETE /api/v1/attachments/{id}.
+func (h *Handlers) apiDeleteAttachment(w http.ResponseWriter, r *http.Request, attachmentID int) {
+	sampleID, _, err := h.svc.AttachmentInfo(r.Context(), attachmentID)
+	if err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "attachment not found")
+			return
+		}
+		log.Printf("samples api: deleteAttachment info error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+
+	session := auth.MustSessionFromContext(r.Context())
+	if ownerErr := h.svc.CheckOwner(r.Context(), sampleID, session.UserID); ownerErr != nil {
+		writeOwnerError(w, ownerErr)
+		return
+	}
+
+	filePath, err := h.svc.DeleteAttachment(r.Context(), attachmentID)
+	if err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "attachment not found")
+			return
+		}
+		log.Printf("samples api: deleteAttachment error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if filePath != "" {
+		if rmErr := removeFile(h.resolveAppPath(filePath)); rmErr != nil {
+			log.Printf("samples api: deleteAttachment remove file %q: %v", filePath, rmErr)
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

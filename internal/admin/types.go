@@ -63,6 +63,13 @@ type APIUser struct {
 	GroupName string `json:"group"`
 }
 
+// APIEquipment is the JSON representation of equipment in the /api/v1/equipment response.
+type APIEquipment struct {
+	EquipmentID int    `json:"equipment_id"`
+	Name        string `json:"name"`
+	Location    string `json:"location"`
+}
+
 // UpdateAccessParams holds the fields for updating a user's access.
 type UpdateAccessParams struct {
 	UserID    int

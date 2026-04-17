@@ -77,8 +77,8 @@ type Service interface {
 	// API-specific operations (paginated/aggregate queries for JSON endpoints)
 	APIListSamples(ctx context.Context, p APIListParams) (APIListResult, error)
 	APIGetSample(ctx context.Context, id int) (APISampleDetail, error)
-	APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID *int) (APISampleItem, error)
-	APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string, ownerUserID *int) error
+	APICreateSample(ctx context.Context, name, description, keywords, owner, samplePrep string, ownerUserID *int) (APISampleItem, error)
+	APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner, samplePrep string, ownerUserID *int) error
 	APIDeleteSample(ctx context.Context, id int) ([]string, error)
 	SampleExistsByID(ctx context.Context, id int) (bool, error)
 }
@@ -340,7 +340,8 @@ func (s *DBService) GetAttachments(ctx context.Context, sampleID int) ([]Attachm
 	rows, err := s.db.Query(ctx,
 		`SELECT attachment_id, source_id, attachment_address, uploaded_at
 		   FROM attachments
-		  WHERE source_type = 'sample' AND source_id = $1`,
+		  WHERE source_type = 'sample' AND source_id = $1
+		  ORDER BY uploaded_at DESC, attachment_id DESC`,
 		sampleID)
 	if err != nil {
 		return nil, err
@@ -1008,20 +1009,20 @@ func (s *DBService) APIGetSample(ctx context.Context, id int) (APISampleDetail, 
 }
 
 // APICreateSample inserts a new sample and returns the created item.
-func (s *DBService) APICreateSample(ctx context.Context, name, description, keywords, owner string, ownerUserID *int) (APISampleItem, error) {
+func (s *DBService) APICreateSample(ctx context.Context, name, description, keywords, owner, samplePrep string, ownerUserID *int) (APISampleItem, error) {
 	var id int
 	var createdAt time.Time
 	var ownerUsername *string
 	err := s.db.QueryRow(ctx, `
 		WITH ins AS (
-			INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, sample_prep, owner_user_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING sample_id, owner_user_id, created_at
 		)
 		SELECT ins.sample_id, ins.created_at, u.username
 		  FROM ins
 		  LEFT JOIN users u ON u.user_id = ins.owner_user_id`,
-		name, description, keywords, owner, ownerUserID,
+		name, description, keywords, owner, samplePrep, ownerUserID,
 	).Scan(&id, &createdAt, &ownerUsername)
 	if err != nil {
 		return APISampleItem{}, err
@@ -1039,16 +1040,17 @@ func (s *DBService) APICreateSample(ctx context.Context, name, description, keyw
 }
 
 // APIUpdateSample updates a sample's editable fields.
-func (s *DBService) APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner string, ownerUserID *int) error {
+func (s *DBService) APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner, samplePrep string, ownerUserID *int) error {
 	tag, err := s.db.Exec(ctx, `
 		UPDATE samples
 		   SET sample_name        = $1,
 		       sample_description = $2,
 		       sample_keywords    = $3,
 		       sample_owner       = $4,
-		       owner_user_id      = $5
-		 WHERE sample_id = $6`,
-		name, description, keywords, owner, ownerUserID, id)
+		       sample_prep        = $5,
+		       owner_user_id      = $6
+		 WHERE sample_id = $7`,
+		name, description, keywords, owner, samplePrep, ownerUserID, id)
 	if err != nil {
 		return err
 	}

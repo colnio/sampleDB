@@ -35,10 +35,10 @@ type HandlerConfig struct {
 
 // Handlers groups all HTTP handler methods for the samples domain.
 type Handlers struct {
-	svc     Service
+	svc      Service
 	renderer *web.Renderer
-	authMgr *auth.Manager
-	cfg     HandlerConfig
+	authMgr  *auth.Manager
+	cfg      HandlerConfig
 }
 
 // NewHandlers constructs a Handlers value.
@@ -81,15 +81,24 @@ func generateUniqueFilename(originalName string) (string, error) {
 	return fmt.Sprintf("%s_%s", hex.EncodeToString(buffer), clean), nil
 }
 
-func setDownloadHeaders(w http.ResponseWriter, filename string) {
+func setContentDisposition(w http.ResponseWriter, disposition, filename string) {
 	if filename == "" {
 		return
 	}
 	safeName := strings.ReplaceAll(filename, "\"", "")
 	safeName = strings.ReplaceAll(safeName, "\\", "")
 	w.Header().Set("Content-Disposition",
-		fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s",
+		fmt.Sprintf("%s; filename=\"%s\"; filename*=UTF-8''%s",
+			disposition,
 			safeName, url.PathEscape(safeName)))
+}
+
+func setDownloadHeaders(w http.ResponseWriter, filename string) {
+	setContentDisposition(w, "attachment", filename)
+}
+
+func setInlineHeaders(w http.ResponseWriter, filename string) {
+	setContentDisposition(w, "inline", filename)
 }
 
 func (h *Handlers) resolveAppPath(path string) string {
