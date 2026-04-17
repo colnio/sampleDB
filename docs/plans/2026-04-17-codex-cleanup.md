@@ -52,11 +52,11 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Run `go test ./internal/app/... ./...` — must pass before Task 3
 
 ### Task 3: Standardise `internal/web` helpers; remove root wrappers
-- [ ] Audit root `api.go` and `markdown.go` — list every exported symbol they expose
-- [ ] Verify each symbol already exists (or move it) into `internal/web`
-- [ ] Delete `api.go` and `markdown.go` from repo root; fix any import errors
-- [ ] Add/update unit tests in `internal/web` for any logic that moved (JSON helpers, markdown renderer)
-- [ ] Run `go test ./internal/web/... ./...` — must pass before Task 4
+- [x] Audit root `api.go` and `markdown.go` — list every exported symbol they expose
+- [x] Verify each symbol already exists (or move it) into `internal/web`
+- [x] Delete `api.go` and `markdown.go` from repo root; fix any import errors
+- [x] Add/update unit tests in `internal/web` for any logic that moved (JSON helpers, markdown renderer)
+- [x] Run `go test ./internal/web/... ./...` — must pass before Task 4
 
 ### Task 4: Add `internal/agents` package
 - [ ] Create `internal/agents/` with `handlers.go` — `AgentsHandler` and `AgentsExamplesHandler` (page data type, template parse/cache, example markdown loading)

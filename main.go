@@ -167,7 +167,7 @@ func main() {
 	}
 	authMgr.SetTemplateDir(cfg.TemplatesDir)
 
-	renderer, err := web.NewRenderer(cfg.TemplatesDir, template.FuncMap{"markdown": renderMarkdown}, loc)
+	renderer, err := web.NewRenderer(cfg.TemplatesDir, template.FuncMap{"markdown": web.RenderMarkdown}, loc)
 	if err != nil {
 		log.Fatalf("Unable to initialize template renderer: %v\n", err)
 	}
@@ -192,7 +192,9 @@ func main() {
 	}
 	examplesDir := filepath.Join(examplesBase, "static", "examples")
 
-	theApp.APINotFoundHandler = apiNotFoundHandler
+	theApp.APINotFoundHandler = func(w http.ResponseWriter, r *http.Request) {
+		web.Error(w, http.StatusNotFound, "not found")
+	}
 	theApp.AIAgentsHandler = func(w http.ResponseWriter, r *http.Request) {
 		if err := aiAgentsTmpl.Execute(w, nil); err != nil {
 			http.Error(w, "Error rendering page", http.StatusInternalServerError)
@@ -219,9 +221,9 @@ func main() {
 			return
 		}
 		pageData := AIAgentExamplesPageData{
-			DataProcessingHTML:      renderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
-			ScriptingAutomationHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(scriptingMD), "/static/examples")),
-			SoftwareDevelopmentHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(softwareMD), "/static/examples")),
+			DataProcessingHTML:      web.RenderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
+			ScriptingAutomationHTML: web.RenderMarkdown(rewriteRelativeMarkdownImages(string(scriptingMD), "/static/examples")),
+			SoftwareDevelopmentHTML: web.RenderMarkdown(rewriteRelativeMarkdownImages(string(softwareMD), "/static/examples")),
 		}
 		if err := aiExamplesTmpl.Execute(w, pageData); err != nil {
 			http.Error(w, "Error rendering page", http.StatusInternalServerError)

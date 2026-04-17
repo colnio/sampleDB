@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,44 +12,10 @@ import (
 	"sampleDB/internal/auth"
 )
 
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-
 // withTestSession returns a copy of req with a test auth session in context.
 func withTestSession(req *http.Request) *http.Request {
 	s := auth.Session{UserID: 1, Username: "testuser", ExpiresAt: time.Now().Add(time.Hour)}
 	return req.WithContext(auth.ContextWithSession(req.Context(), s))
-}
-
-// ---------------------------------------------------------------------------
-// writeJSON / writeError
-// ---------------------------------------------------------------------------
-
-func TestWriteJSON_SetsContentType(t *testing.T) {
-	rr := httptest.NewRecorder()
-	writeJSON(rr, http.StatusOK, map[string]string{"key": "value"})
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rr.Code)
-	}
-	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
-		t.Errorf("content-type = %q, want application/json", ct)
-	}
-}
-
-func TestWriteError_ReturnsJSONError(t *testing.T) {
-	rr := httptest.NewRecorder()
-	writeError(rr, http.StatusNotFound, "not found")
-	if rr.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", rr.Code)
-	}
-	var body map[string]string
-	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
-		t.Fatalf("decode error: %v", err)
-	}
-	if body["error"] != "not found" {
-		t.Errorf("error = %q, want %q", body["error"], "not found")
-	}
 }
 
 // ---------------------------------------------------------------------------

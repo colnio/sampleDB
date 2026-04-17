@@ -16,6 +16,11 @@ func JSON(w http.ResponseWriter, status int, v any) {
 	}
 }
 
+// Error writes a JSON error body {"error": msg} with the given HTTP status code.
+func Error(w http.ResponseWriter, status int, msg string) {
+	JSON(w, status, map[string]string{"error": msg})
+}
+
 // DecodeJSON reads and decodes a JSON body from r into dst.
 // It returns an error if the body is empty or malformed.
 func DecodeJSON(r *http.Request, dst any) error {

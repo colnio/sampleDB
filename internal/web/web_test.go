@@ -129,6 +129,26 @@ func TestDecodeJSON_EmptyBody(t *testing.T) {
 	}
 }
 
+func TestError_WritesStatusAndBody(t *testing.T) {
+	w := httptest.NewRecorder()
+	web.Error(w, http.StatusNotFound, "not found")
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("Error: got status %d, want 404", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.HasPrefix(ct, "application/json") {
+		t.Fatalf("Error: Content-Type %q does not start with application/json", ct)
+	}
+	var got map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("Error: could not decode body: %v", err)
+	}
+	if got["error"] != "not found" {
+		t.Fatalf("Error: body mismatch, got %v", got)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // paths.go — path segment helpers
 // ---------------------------------------------------------------------------
