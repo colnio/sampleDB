@@ -622,7 +622,8 @@ func (h *Handlers) apiUploadAttachments(w http.ResponseWriter, r *http.Request, 
 	const maxUploadBytes = 100 << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "unable to parse multipart form (max 100 MiB): "+err.Error())
+		log.Printf("samples api: parse multipart form: %v", err)
+		writeError(w, http.StatusBadRequest, "unable to parse request (max 100 MiB)")
 		return
 	}
 
@@ -656,7 +657,7 @@ func (h *Handlers) apiUploadAttachments(w http.ResponseWriter, r *http.Request, 
 		}
 		attID, dbErr := h.svc.AddAttachment(r.Context(), id, fp)
 		if dbErr != nil {
-			_ = os.Remove(h.resolveAppPath(fp))
+			_ = removeFile(h.resolveAppPath(fp))
 			errs = append(errs, uploadError{Filename: fh.Filename, Error: "could not store attachment record"})
 			continue
 		}

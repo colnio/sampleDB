@@ -125,7 +125,11 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	// REST API v1 — users / equipment (any authenticated user, matching original contract)
 	mux.HandleFunc("/api/v1/users", withAuth(adminHdlrs.APIUsers))
 	mux.HandleFunc("/api/v1/equipment", withAuth(adminHdlrs.APIEquipment))
-	mux.HandleFunc("/api/", withAuth(a.APINotFoundHandler))
+	apiNotFound := a.APINotFoundHandler
+	if apiNotFound == nil {
+		apiNotFound = http.NotFound
+	}
+	mux.HandleFunc("/api/", withAuth(apiNotFound))
 
 	// --- Profile domain routes (wired via profile.Handlers) ---
 	profileSvc := profile.NewService(a.DB)
