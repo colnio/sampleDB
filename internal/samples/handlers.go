@@ -422,6 +422,14 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 			}
 			ownerUserID = &id
 			ownerName = uname
+		} else {
+			// No owner_user_id submitted — preserve the existing owner rather
+			// than silently wiping it by passing nil to Update.
+			existing, fetchErr := h.svc.GetByID(r.Context(), sampleIDInt)
+			if fetchErr == nil {
+				ownerUserID = existing.OwnerUserID
+				ownerName = existing.Owner
+			}
 		}
 	} else {
 		uid := session.UserID

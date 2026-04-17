@@ -123,7 +123,8 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.renderer.Render(w, "booking", data); err != nil {
-		http.Error(w, fmt.Sprintf("Template execution error: %v", err), http.StatusInternalServerError)
+		log.Printf("booking: template render error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
 
