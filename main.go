@@ -4,12 +4,9 @@ import (
 	"context"
 	"html/template"
 	"log"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -33,49 +30,6 @@ func initLocation() *time.Location {
 		log.Fatalf("Failed to load local timezone: %v", err)
 	}
 	return loc
-}
-
-
-
-func securityHeaders(next http.Handler, enableHSTS bool) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Referrer-Policy", "no-referrer-when-downgrade")
-		if enableHSTS {
-			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		host := publicHost
-		if host == "" {
-			host = r.Host
-		}
-		if tlsPort != "" && tlsPort != "443" {
-			if strings.Contains(host, ":") {
-				if h, _, err := net.SplitHostPort(host); err == nil {
-					host = net.JoinHostPort(h, tlsPort)
-				}
-			} else {
-				host = net.JoinHostPort(host, tlsPort)
-			}
-		} else if strings.Contains(host, ":") {
-			if h, _, err := net.SplitHostPort(host); err == nil {
-				host = h
-			}
-		}
-		target := &url.URL{
-			Scheme:   "https",
-			Host:     host,
-			Path:     r.URL.Path,
-			RawQuery: r.URL.RawQuery,
-		}
-		http.Redirect(w, r, target.String(), http.StatusPermanentRedirect)
-	})
 }
 
 
@@ -141,7 +95,7 @@ func main() {
 		log.Fatalf("Error creating static directories: %v\n", err)
 	}
 
-	handler := securityHeaders(mux, cfg.UseTLS)
+	handler := app.SecurityHeaders(mux, cfg.UseTLS)
 	server := app.NewServer(cfg, handler)
 
 	if cfg.UseTLS {
@@ -149,7 +103,7 @@ func main() {
 			go func() {
 				redirectServer := &http.Server{
 					Addr:         cfg.RedirectAddr,
-					Handler:      redirectToHTTPS(cfg.PublicHost, cfg.TLSPort),
+					Handler:      app.RedirectToHTTPS(cfg.PublicHost, cfg.TLSPort),
 					ReadTimeout:  5 * time.Second,
 					WriteTimeout: 5 * time.Second,
 					IdleTimeout:  10 * time.Second,

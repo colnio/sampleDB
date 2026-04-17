@@ -72,13 +72,13 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Run `go build ./...` and `go vet ./...` — must be clean before Task 6
 
 ### Task 6: Migrate root tests into their correct packages
-- [ ] Move JSON/markdown root tests → `internal/web` (new or augmented test file)
-- [ ] Move auth-rejection tests → `internal/auth`
-- [ ] Move route/context tests → `internal/app`
-- [ ] Move renderer/template smoke tests → `internal/web`
-- [ ] Move migration/booking-constraint integration tests → `internal/dbschema`
-- [ ] Verify moved tests still compile and pass in their new locations
-- [ ] Run `go test ./internal/...` — must pass before Task 7
+- [x] Move JSON/markdown root tests → `internal/web` (new or augmented test file)
+- [x] Move auth-rejection tests → `internal/auth`
+- [x] Move route/context tests → `internal/app`
+- [x] Move renderer/template smoke tests → `internal/web`
+- [x] Move migration/booking-constraint integration tests → `internal/dbschema`
+- [x] Verify moved tests still compile and pass in their new locations
+- [x] Run `go test ./internal/...` — must pass before Task 7
 
 ### Task 7: Delete low-value root tests and orphan assets
 - [ ] Delete root test files: `admin_test.go`, `fabrication_steps_test.go`, `owner_test.go`, `sharing_test.go`, `gallery_test.go`
