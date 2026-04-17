@@ -4,7 +4,7 @@ SampleDB is a lightweight lab management portal written in Go. It combines a sea
 
 ## Features
 
-- **Authentication & Sessions** – user registration with admin approval, secure session cookies, and per-user password management.
+- **Authentication & Sessions** – user registration with admin approval, server-side persistent sessions (stored in PostgreSQL — survive restarts), and per-user password management.
 - **Sample Registry** – search samples by keywords, attach files, and track preparation notes.
 - **Wiki** – Markdown-based knowledge base with attachment support.
 - **Equipment Booking** – calendar-style reservations with per-user equipment permissions and conflict detection.
@@ -14,7 +14,7 @@ SampleDB is a lightweight lab management portal written in Go. It combines a sea
 ## Requirements
 
 - Go 1.21+
-- PostgreSQL 13+
+- PostgreSQL 13+ with the `btree_gist` extension installable by the database role (required for the booking overlap exclusion constraint; `CREATE EXTENSION IF NOT EXISTS btree_gist` runs automatically on startup — the role needs superuser or the extension must be pre-installed on managed Postgres).
 - (Optional) `certbot` or another ACME client if you plan to terminate TLS within the Go process.
 
 ## Installation
@@ -76,6 +76,7 @@ export UPLOADS_DIR="$APP_BASE_DIR/uploads"
 - On every startup, `internal/dbschema.Ensure` brings the schema up to date (tables, columns, and indexes) without dropping data. Keep the configured PostgreSQL role privileged enough to run `CREATE TABLE`/`ALTER TABLE`.
 - The runtime schema matches `DDL/init.sql`, so you can also pre-provision the database with `psql -f DDL/init.sql` if desired.
 - When no users exist, the service creates one default admin (`admin` / `admin`, approved and with admin rights). If users are already present, only schema adjustments are applied—no data changes are made.
+- Sessions are stored in the `sessions` table and survive server restarts. Deleting a user immediately revokes all their active sessions.
 
 ## Running locally
 
@@ -164,6 +165,10 @@ http(s)://<host>/api/v1
 | `POST` | `/wiki` | Create a wiki article |
 | `GET` | `/wiki/{id}` | Get article with content and attachments |
 | `PUT` | `/wiki/{id}` | Update a wiki article |
+| `GET` | `/samples/{id}/attachments` | List attachments for a sample |
+| `POST` | `/samples/{id}/attachments` | Upload one or more attachments to a sample |
+| `GET` | `/attachments/{id}` | Download an attachment |
+| `DELETE` | `/attachments/{id}` | Delete an attachment |
 | `GET` | `/users` | List approved users (for owner/person pickers) |
 | `GET` | `/equipment` | List equipment |
 
@@ -207,6 +212,8 @@ internal/
   samples/              -- Sample CRUD, attachments, fabrication steps, sharing
   web/                  -- Shared HTTP helpers: JSON, error rendering, path parsing
   wiki/                 -- Wiki article CRUD and attachment handlers
+  agents/               -- /agents and /agents/examples page handlers
+  integration/          -- End-to-end HTTP tests (build tag: integration)
 static/                 -- Public assets served at /static/
 templates/              -- HTML templates (base layout, admin, wiki, booking, etc.)
 uploads/                -- File uploads (created at runtime if missing)

@@ -90,8 +90,8 @@ func TestGetAllEquipment_EmptyResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAllEquipment: %v", err)
 	}
-	if equipment != nil {
-		t.Errorf("expected nil equipment, got %v", equipment)
+	if len(equipment) != 0 {
+		t.Errorf("expected empty equipment list, got %v", equipment)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)

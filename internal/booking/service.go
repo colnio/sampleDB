@@ -173,7 +173,7 @@ func (s *DBService) Create(ctx context.Context, p CreateParams) error {
 		}
 		return err
 	}
-	return errors.New("booking: no insert attempts made")
+	return nil // unreachable: loop always returns
 }
 
 // Delete removes a booking. Admins may delete any booking; non-admins must own it.

@@ -178,6 +178,7 @@ Create a new sample.
 | `keywords` | No | Space- or comma-separated keywords |
 | `owner` | No | Free-text owner name |
 | `sample_prep` | No | Markdown preparation notes |
+| `owner_user_id` | No | Admin only — assign sample to this user ID; overrides the `owner` text field |
 
 **Response 201**
 ```json
@@ -274,7 +275,8 @@ Add a fabrication step to a sample.
 | `step_date` | No | Date string YYYY-MM-DD |
 | `person_user_id` | No | ID of the user who performed the step |
 | `description` | No | Free-text step description |
-| `equipment_id` | No | ID of equipment used |
+| `equipment_id` | No | ID of equipment used (mutually exclusive with `equipment_text`) |
+| `equipment_text` | No | Free-text equipment description when no `equipment_id` applies |
 
 **Response 201** — the created step object (same shape as items in GET /steps).
 

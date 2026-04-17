@@ -497,7 +497,7 @@ func TestAPISteps_AddStep_ReturnsCreatedStep(t *testing.T) {
 	}
 }
 
-func TestAPISteps_UpdateStep_ReturnsNoContent(t *testing.T) {
+func TestAPISteps_UpdateStep_ReturnsUpdatedStep(t *testing.T) {
 	var captured samples.FabricationStep
 	h, _ := newSampleAPIHandlers(t, &sampleAPIServiceStub{
 		getStepByID: func(_ context.Context, stepID int) (samples.FabricationStep, error) {
@@ -518,11 +518,12 @@ func TestAPISteps_UpdateStep_ReturnsNoContent(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.APISteps(rr, req)
 
-	if rr.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want 204: %s", rr.Code, rr.Body.String())
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rr.Code, rr.Body.String())
 	}
-	if rr.Body.Len() != 0 {
-		t.Fatalf("expected empty body, got %q", rr.Body.String())
+	resp := decodeResponse[samples.APIFabricationStep](t, rr.Body)
+	if resp.ID != 9 || resp.SampleID != 42 {
+		t.Fatalf("unexpected response: %#v", resp)
 	}
 	if captured.StepDate == nil || captured.StepDate.Format("2006-01-02") != "2026-01-16" {
 		t.Fatalf("unexpected captured step: %#v", captured)
