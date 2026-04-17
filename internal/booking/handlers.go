@@ -160,6 +160,12 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	const maxBookingDuration = 30 * 24 * time.Hour
+	if endTime.Sub(startTime) > maxBookingDuration {
+		http.Redirect(w, r, "/booking?error=Booking+duration+cannot+exceed+30+days", http.StatusSeeOther)
+		return
+	}
+
 	purpose := strings.TrimSpace(r.FormValue("purpose"))
 	if purpose == "" {
 		http.Redirect(w, r, "/booking?error=Purpose+is+required", http.StatusSeeOther)

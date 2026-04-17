@@ -496,6 +496,8 @@ figure.attachment-preview {
 
 {{define "wiki_attachments_section"}}
 <div id="wiki-attachments-section">
+    {{with .Flash}}<div class="alert alert-success">{{.}}</div>{{end}}
+    {{with .Error}}<div class="alert alert-error">{{.}}</div>{{end}}
     {{if .Article.Attachments}}
     <div class="attachments-container">
         <h2>Attachments</h2>

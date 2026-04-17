@@ -540,30 +540,37 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var uploadErrs []string
+	var errMsgs []string
+	uploaded := 0
 	for _, fh := range fileHeaders {
 		f, openErr := fh.Open()
 		if openErr != nil {
-			uploadErrs = append(uploadErrs, fh.Filename)
+			errMsgs = append(errMsgs, fmt.Sprintf("could not open %s", fh.Filename))
 			continue
 		}
 		fp, saveErr := h.saveUploadedFile(f, fh.Filename)
 		f.Close()
 		if saveErr != nil {
 			log.Printf("wiki: error saving %s for article %s: %v", fh.Filename, articleID, saveErr)
-			uploadErrs = append(uploadErrs, fh.Filename)
+			errMsgs = append(errMsgs, fmt.Sprintf("could not save %s", fh.Filename))
 			continue
 		}
 		if dbErr := h.svc.AddAttachment(r.Context(), articleID, fp, sanitizeFilename(fh.Filename), session.UserID); dbErr != nil {
 			log.Printf("wiki: error storing attachment for article %s: %v", articleID, dbErr)
 			_ = os.Remove(h.resolveAppPath(fp))
-			uploadErrs = append(uploadErrs, fh.Filename)
+			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
 		}
+		uploaded++
 	}
 
-	if len(uploadErrs) > 0 {
-		log.Printf("wiki: failed to upload some files for article %s: %v", articleID, uploadErrs)
+	flash := ""
+	errMsg := ""
+	if uploaded > 0 {
+		flash = fmt.Sprintf("%d file(s) uploaded", uploaded)
+	}
+	if len(errMsgs) > 0 {
+		errMsg = strings.Join(errMsgs, "; ")
 	}
 
 	if isHTMXRequest(r) {
@@ -580,6 +587,8 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 		data := &WikiViewPageData{
 			BasePageData: BasePageData{Username: session.Username},
 			Article:      article,
+			Flash:        flash,
+			Error:        errMsg,
 		}
 		if err := h.renderer.RenderSection(w, "wiki_view", "wiki_attachments_section", data); err != nil {
 			http.Error(w, "Error rendering attachments", http.StatusInternalServerError)
@@ -592,6 +601,9 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 		if u, err := url.Parse(ref); err == nil && u.Path != "" && !strings.HasPrefix(u.Path, "//") {
 			redirect = u.Path
 		}
+	}
+	if errMsg != "" {
+		redirect += "?error=" + url.QueryEscape(errMsg)
 	}
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
