@@ -81,12 +81,12 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Run `go test ./internal/...` — must pass before Task 7
 
 ### Task 7: Delete low-value root tests and orphan assets
-- [ ] Delete root test files: `admin_test.go`, `fabrication_steps_test.go`, `owner_test.go`, `sharing_test.go`, `gallery_test.go`
-- [ ] Remove orphan tracked assets: `static/js/admin.js`, `static/js/sample-prep.js`, `static/images/ai_agent_examples/` (whole dir), `static/examples/mfia_plan_page.jpg`
-- [ ] Remove any `.DS_Store` files tracked by git (`git rm --cached`)
-- [ ] Remove empty `Users/` directory if tracked
-- [ ] Confirm repo root contains only `main.go` plus any remaining legitimate root tests (e.g. `main_test.go` if it tests startup)
-- [ ] Run `go test ./...` and `go vet ./...` — must pass before Task 8
+- [x] Delete root test files: `admin_test.go`, `fabrication_steps_test.go`, `owner_test.go`, `sharing_test.go`, `gallery_test.go`
+- [x] Remove orphan tracked assets: `static/js/admin.js`, `static/js/sample-prep.js`, `static/images/ai_agent_examples/` (whole dir), `static/examples/mfia_plan_page.jpg`
+- [x] Remove any `.DS_Store` files tracked by git (`git rm --cached`)
+- [x] Remove empty `Users/` directory if tracked
+- [x] Confirm repo root contains only `main.go` plus any remaining legitimate root tests (e.g. `main_test.go` if it tests startup)
+- [x] Run `go test ./...` and `go vet ./...` — must pass before Task 8
 
 ### Task 8: Verify acceptance criteria
 - [ ] Confirm no external HTTP routes changed: diff `internal/app/routes.go` route table against original
