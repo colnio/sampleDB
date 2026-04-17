@@ -89,12 +89,12 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Run `go test ./...` and `go vet ./...` — must pass before Task 8
 
 ### Task 8: Verify acceptance criteria
-- [ ] Confirm no external HTTP routes changed: diff `internal/app/routes.go` route table against original
-- [ ] Confirm no JSON wire-format changes: existing contract tests in `internal/samples` and `internal/wiki` still pass without modification
-- [ ] Run full test suite: `go test ./...`
-- [ ] Run `go vet ./...` — zero issues
-- [ ] Confirm repo root contains only `main.go` (and possibly `main_test.go`)
-- [ ] Confirm no `.DS_Store` or empty tracked directories remain
+- [x] Confirm no external HTTP routes changed: diff `internal/app/routes.go` route table against original
+- [x] Confirm no JSON wire-format changes: existing contract tests in `internal/samples` and `internal/wiki` still pass without modification
+- [x] Run full test suite: `go test ./...`
+- [x] Run `go vet ./...` — zero issues
+- [x] Confirm repo root contains only `main.go` (and possibly `main_test.go`)
+- [x] Confirm no `.DS_Store` or empty tracked directories remain
 
 ### Task 9: `internal/integration` — API tests against real Postgres
 - [ ] Create `internal/integration/` package with `//go:build integration` tag on all files
