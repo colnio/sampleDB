@@ -495,8 +495,10 @@ func ContextWithSession(ctx context.Context, s Session) context.Context {
 }
 
 func (m *Manager) newSession(ctx context.Context, username string, userID int) (Session, error) {
-	// Opportunistically remove expired sessions to prevent unbounded table growth.
-	if _, err := m.db.Exec(ctx, "DELETE FROM sessions WHERE expires_at < NOW()"); err != nil {
+	// Opportunistically remove expired sessions. Use a detached context so a
+	// client disconnect does not abort the housekeeping DELETE.
+	purgeCtx := context.WithoutCancel(ctx)
+	if _, err := m.db.Exec(purgeCtx, "DELETE FROM sessions WHERE expires_at < NOW()"); err != nil {
 		log.Printf("auth: purge expired sessions: %v", err)
 	}
 

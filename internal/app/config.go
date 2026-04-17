@@ -37,7 +37,7 @@ func LoadConfig() Config {
 		TLSKeyFile:    os.Getenv("TLS_KEY_FILE"),
 		PublicHost:    os.Getenv("PUBLIC_HOST"),
 		AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
-		AdminPassword: getEnv("ADMIN_PASSWORD", "admin"),
+		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 	}
 
 	cfg.UseTLS = cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""

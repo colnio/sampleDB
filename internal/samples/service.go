@@ -208,14 +208,20 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 		args = append(args, kw)
 	}
 
+	// Escape ILIKE metacharacters so literal % and _ are not treated as
+	// wildcards; use ESCAPE '\' in the query.
+	escapedTrimmed := strings.ReplaceAll(trimmed, `\`, `\\`)
+	escapedTrimmed = strings.ReplaceAll(escapedTrimmed, "%", `\%`)
+	escapedTrimmed = strings.ReplaceAll(escapedTrimmed, "_", `\_`)
+
 	nameIdx := len(args) + 1
-	args = append(args, "%"+trimmed+"%")
+	args = append(args, "%"+escapedTrimmed+"%")
 	ownerIdx := len(args) + 1
-	args = append(args, "%"+trimmed+"%")
+	args = append(args, "%"+escapedTrimmed+"%")
 
 	searchConds := []string{
-		fmt.Sprintf("s.sample_name ILIKE $%d", nameIdx),
-		fmt.Sprintf("s.sample_owner ILIKE $%d", ownerIdx),
+		fmt.Sprintf("s.sample_name ILIKE $%d ESCAPE '\\'", nameIdx),
+		fmt.Sprintf("s.sample_owner ILIKE $%d ESCAPE '\\'", ownerIdx),
 	}
 	searchConds = append(searchConds, whereClauses...)
 
