@@ -11,18 +11,6 @@ import (
 	"sampleDB/internal/wiki"
 )
 
-// Handlers groups the HTTP handler functions that have not yet been migrated
-// into their own domain packages.  Admin, samples, wiki, booking, and profile
-// handlers are wired directly in RegisterRoutes via their respective Handlers types.
-type Handlers struct {
-	// REST API v1 — not-found catch-all
-	APINotFound http.HandlerFunc
-
-	// Public (no auth required) — non-sample pages
-	AIAgents        http.HandlerFunc
-	AIAgentExamples http.HandlerFunc
-}
-
 // noCacheStatic wraps a static-file handler so every response carries a
 // Cache-Control header that disables raw browser caching but still allows
 // conditional requests (ETag / If-Modified-Since). This means CSS and JS
@@ -65,7 +53,6 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	withAuth := a.Auth.RequireAuth
 	adminMW := a.RequireAdmin
-	h := a.Handlers
 
 	// Static files — served with Cache-Control: no-cache so the browser always
 	// revalidates. Go's http.FileServer already supports If-Modified-Since /
@@ -99,6 +86,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/samples", withAuth(samplesHdlrs.APISamples))
 	mux.HandleFunc("/api/v1/samples/", withAuth(samplesHdlrs.APISamples))
 	mux.HandleFunc("/api/v1/steps/", withAuth(samplesHdlrs.APISteps))
+	mux.HandleFunc("/api/v1/attachments/", withAuth(samplesHdlrs.APIAttachments))
 	mux.HandleFunc("/s/", samplesHdlrs.SharedSample)
 
 	// --- Booking domain routes (wired via booking.Handlers) ---
@@ -137,7 +125,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	// REST API v1 — users / equipment (any authenticated user, matching original contract)
 	mux.HandleFunc("/api/v1/users", withAuth(adminHdlrs.APIUsers))
 	mux.HandleFunc("/api/v1/equipment", withAuth(adminHdlrs.APIEquipment))
-	mux.HandleFunc("/api/", withAuth(h.APINotFound))
+	mux.HandleFunc("/api/", withAuth(a.APINotFoundHandler))
 
 	// --- Profile domain routes (wired via profile.Handlers) ---
 	profileSvc := profile.NewService(a.DB)
@@ -147,7 +135,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/profile/tokens/", withAuth(profileHdlrs.ProfileTokenRevoke))
 
 	// Public routes (no auth required)
-	mux.HandleFunc("/agents", h.AIAgents)
-	mux.HandleFunc("/agents/examples", h.AIAgentExamples)
-	mux.HandleFunc("/agents/examples/", h.AIAgentExamples)
+	mux.HandleFunc("/agents", a.AIAgentsHandler)
+	mux.HandleFunc("/agents/examples", a.AIAgentExamplesHandler)
+	mux.HandleFunc("/agents/examples/", a.AIAgentExamplesHandler)
 }

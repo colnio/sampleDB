@@ -6,6 +6,7 @@ package app
 import (
 	"errors"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"sampleDB/internal/auth"
@@ -23,9 +24,12 @@ type App struct {
 	Logger   *slog.Logger
 	Clock    func() time.Time
 	Location *time.Location
-	// Handlers holds the HTTP handler functions registered by RegisterRoutes.
-	// Populate this field before calling RegisterRoutes.
-	Handlers Handlers
+
+	// Handler functions not yet migrated to their own packages.
+	// Will be wired by callers until Tasks 3-4 complete the migration.
+	APINotFoundHandler     http.HandlerFunc
+	AIAgentsHandler        http.HandlerFunc
+	AIAgentExamplesHandler http.HandlerFunc
 }
 
 // New constructs an App, validating that the required fields are provided.

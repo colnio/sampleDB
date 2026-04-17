@@ -46,11 +46,9 @@ func TestContextCancellationPropagated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("app.New: %v", err)
 	}
-	a.Handlers = app.Handlers{
-		APINotFound:     http.NotFound,
-		AIAgents:        http.NotFound,
-		AIAgentExamples: http.NotFound,
-	}
+	a.APINotFoundHandler = http.NotFound
+	a.AIAgentsHandler = http.NotFound
+	a.AIAgentExamplesHandler = http.NotFound
 
 	mux := http.NewServeMux()
 	a.RegisterRoutes(mux)

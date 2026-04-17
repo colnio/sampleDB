@@ -11,29 +11,33 @@ import (
 // Config holds all runtime configuration for the application.
 // Values are populated by LoadConfig from environment variables.
 type Config struct {
-	Addr         string
-	RedirectAddr string
-	DatabaseURL  string
-	TLSCertFile  string
-	TLSKeyFile   string
-	PublicHost   string
-	TLSPort      string
-	BaseDir      string
-	TemplatesDir string
-	StaticDir    string
-	UploadsDir   string
-	UseTLS       bool
+	Addr          string
+	RedirectAddr  string
+	DatabaseURL   string
+	TLSCertFile   string
+	TLSKeyFile    string
+	PublicHost    string
+	TLSPort       string
+	BaseDir       string
+	TemplatesDir  string
+	StaticDir     string
+	UploadsDir    string
+	UseTLS        bool
+	AdminUsername string
+	AdminPassword string
 }
 
 // LoadConfig reads environment variables and returns a fully populated Config.
 func LoadConfig() Config {
 	cfg := Config{
-		Addr:         getEnv("APP_ADDR", ":8010"),
-		RedirectAddr: os.Getenv("APP_HTTP_REDIRECT_ADDR"),
-		DatabaseURL:  getEnv("DATABASE_URL", "postgres://app:app@localhost:5432/sampledb"),
-		TLSCertFile:  os.Getenv("TLS_CERT_FILE"),
-		TLSKeyFile:   os.Getenv("TLS_KEY_FILE"),
-		PublicHost:   os.Getenv("PUBLIC_HOST"),
+		Addr:          getEnv("APP_ADDR", ":8010"),
+		RedirectAddr:  os.Getenv("APP_HTTP_REDIRECT_ADDR"),
+		DatabaseURL:   getEnv("DATABASE_URL", "postgres://app:app@localhost:5432/sampledb"),
+		TLSCertFile:   os.Getenv("TLS_CERT_FILE"),
+		TLSKeyFile:    os.Getenv("TLS_KEY_FILE"),
+		PublicHost:    os.Getenv("PUBLIC_HOST"),
+		AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
+		AdminPassword: getEnv("ADMIN_PASSWORD", "admin"),
 	}
 
 	cfg.UseTLS = cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""

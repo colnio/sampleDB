@@ -13,17 +13,9 @@ import (
 	"sampleDB/internal/web"
 )
 
-// stub is a no-op handler used to populate Handlers fields in route tests.
+// stub is a no-op handler used in route tests.
 var stub http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-}
-
-func allStubHandlers() app.Handlers {
-	return app.Handlers{
-		APINotFound:     stub,
-		AIAgents:        stub,
-		AIAgentExamples: stub,
-	}
 }
 
 func newTestApp(t *testing.T) *app.App {
@@ -46,7 +38,9 @@ func newTestApp(t *testing.T) *app.App {
 	if err != nil {
 		t.Fatalf("app.New: %v", err)
 	}
-	a.Handlers = allStubHandlers()
+	a.APINotFoundHandler = stub
+	a.AIAgentsHandler = stub
+	a.AIAgentExamplesHandler = stub
 	return a
 }
 
@@ -107,6 +101,7 @@ func TestRegisterRoutes_AllPatternsRegistered(t *testing.T) {
 		{"/api/v1/samples", "/api/v1/samples"},
 		{"/api/v1/samples/42", "/api/v1/samples/"},
 		{"/api/v1/steps/10", "/api/v1/steps/"},
+		{"/api/v1/attachments/7", "/api/v1/attachments/"},
 		{"/api/v1/wiki", "/api/v1/wiki"},
 		{"/api/v1/wiki/article", "/api/v1/wiki/"},
 		{"/api/v1/users", "/api/v1/users"},

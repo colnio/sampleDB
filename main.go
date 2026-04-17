@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"html/template"
 	"log"
@@ -16,11 +15,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"golang.org/x/crypto/bcrypt"
 
 	"sampleDB/internal/app"
 	"sampleDB/internal/auth"
-	"sampleDB/internal/dbiface"
 	"sampleDB/internal/dbschema"
 	"sampleDB/internal/web"
 )
@@ -97,34 +94,6 @@ func redirectToHTTPS(publicHost, tlsPort string) http.Handler {
 	})
 }
 
-// ensureDefaultAdmin seeds a single administrator account when the installation is brand new.
-// It leaves existing data untouched once any user records exist.
-func ensureDefaultAdmin(ctx context.Context, pool dbiface.Pool) (bool, error) {
-	var userCount int
-	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&userCount); err != nil {
-		return false, fmt.Errorf("count users: %w", err)
-	}
-
-	if userCount > 0 {
-		return false, nil
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
-	if err != nil {
-		return false, fmt.Errorf("hash default admin password: %w", err)
-	}
-
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO users (username, password_hash, is_approved, admin)
-		VALUES ($1, $2, true, true)
-		ON CONFLICT (username) DO NOTHING`,
-		"admin", string(hash)); err != nil {
-		return false, fmt.Errorf("insert default admin: %w", err)
-	}
-
-	return true, nil
-}
-
 
 var markdownImagePattern = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 
@@ -184,12 +153,12 @@ func main() {
 		log.Fatalf("Unable to ensure database schema: %v\n", err)
 	}
 
-	createdAdmin, err := ensureDefaultAdmin(ctx, pool)
+	createdAdmin, err := app.SeedDefaultAdmin(ctx, pool, cfg)
 	if err != nil {
 		log.Fatalf("Unable to bootstrap default admin user: %v\n", err)
 	}
 	if createdAdmin {
-		log.Println("Created default admin user 'admin' with password 'admin'. Please change this password after first login.")
+		log.Printf("Created default admin user %q. Please change this password after first login.\n", cfg.AdminUsername)
 	}
 
 	authMgr := auth.NewManager(pool)
@@ -223,42 +192,40 @@ func main() {
 	}
 	examplesDir := filepath.Join(examplesBase, "static", "examples")
 
-	theApp.Handlers = app.Handlers{
-		APINotFound: apiNotFoundHandler,
-		AIAgents: func(w http.ResponseWriter, r *http.Request) {
-			if err := aiAgentsTmpl.Execute(w, nil); err != nil {
-				http.Error(w, "Error rendering page", http.StatusInternalServerError)
-			}
-		},
-		AIAgentExamples: func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/agents/examples" && r.URL.Path != "/agents/examples/" {
-				http.Redirect(w, r, "/agents/examples", http.StatusTemporaryRedirect)
-				return
-			}
-			dataProcessingMD, err := os.ReadFile(filepath.Join(examplesDir, "data_processing.md"))
-			if err != nil {
-				http.Error(w, "Error loading example content", http.StatusInternalServerError)
-				return
-			}
-			scriptingMD, err := os.ReadFile(filepath.Join(examplesDir, "scrpiting_automation.md"))
-			if err != nil {
-				http.Error(w, "Error loading example content", http.StatusInternalServerError)
-				return
-			}
-			softwareMD, err := os.ReadFile(filepath.Join(examplesDir, "software_development.md"))
-			if err != nil {
-				http.Error(w, "Error loading example content", http.StatusInternalServerError)
-				return
-			}
-			pageData := AIAgentExamplesPageData{
-				DataProcessingHTML:      renderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
-				ScriptingAutomationHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(scriptingMD), "/static/examples")),
-				SoftwareDevelopmentHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(softwareMD), "/static/examples")),
-			}
-			if err := aiExamplesTmpl.Execute(w, pageData); err != nil {
-				http.Error(w, "Error rendering page", http.StatusInternalServerError)
-			}
-		},
+	theApp.APINotFoundHandler = apiNotFoundHandler
+	theApp.AIAgentsHandler = func(w http.ResponseWriter, r *http.Request) {
+		if err := aiAgentsTmpl.Execute(w, nil); err != nil {
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		}
+	}
+	theApp.AIAgentExamplesHandler = func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/agents/examples" && r.URL.Path != "/agents/examples/" {
+			http.Redirect(w, r, "/agents/examples", http.StatusTemporaryRedirect)
+			return
+		}
+		dataProcessingMD, err := os.ReadFile(filepath.Join(examplesDir, "data_processing.md"))
+		if err != nil {
+			http.Error(w, "Error loading example content", http.StatusInternalServerError)
+			return
+		}
+		scriptingMD, err := os.ReadFile(filepath.Join(examplesDir, "scrpiting_automation.md"))
+		if err != nil {
+			http.Error(w, "Error loading example content", http.StatusInternalServerError)
+			return
+		}
+		softwareMD, err := os.ReadFile(filepath.Join(examplesDir, "software_development.md"))
+		if err != nil {
+			http.Error(w, "Error loading example content", http.StatusInternalServerError)
+			return
+		}
+		pageData := AIAgentExamplesPageData{
+			DataProcessingHTML:      renderMarkdown(rewriteRelativeMarkdownImages(string(dataProcessingMD), "/static/examples")),
+			ScriptingAutomationHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(scriptingMD), "/static/examples")),
+			SoftwareDevelopmentHTML: renderMarkdown(rewriteRelativeMarkdownImages(string(softwareMD), "/static/examples")),
+		}
+		if err := aiExamplesTmpl.Execute(w, pageData); err != nil {
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		}
 	}
 
 	mux := http.NewServeMux()
@@ -274,19 +241,9 @@ func main() {
 	}
 
 	handler := securityHeaders(mux, cfg.UseTLS)
-	server := &http.Server{
-		Addr:         cfg.Addr,
-		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
+	server := app.NewServer(cfg, handler)
 
 	if cfg.UseTLS {
-		server.TLSConfig = &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		}
-
 		if cfg.RedirectAddr != "" {
 			go func() {
 				redirectServer := &http.Server{

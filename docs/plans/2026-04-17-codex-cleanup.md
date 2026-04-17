@@ -43,13 +43,13 @@ Reduce the repo root to a single thin `main.go` entry point by migrating all reu
 - [x] Run `go test ./internal/app/... ./...` — must pass before Task 2
 
 ### Task 2: Bootstrap server startup into `internal/app`
-- [ ] Create `internal/app/bootstrap.go` — export `SeedDefaultAdmin(ctx, db, cfg Config)` and `NewServer(cfg Config, db dbiface.Pool) *http.Server`
-- [ ] Move default-admin seeding logic from `main.go` into `SeedDefaultAdmin`
-- [ ] Move server construction (timeouts, addr) from `main.go` into `NewServer`
-- [ ] Shrink `main.go` to: load config → open DB pool → run migrations → seed admin → start server
-- [ ] Remove `App.Handlers` field from `internal/app/app.go`; verify route registration compiles without it
-- [ ] Write unit tests for `SeedDefaultAdmin` (idempotent, missing creds no-op) in `internal/app/bootstrap_test.go`
-- [ ] Run `go test ./internal/app/... ./...` — must pass before Task 3
+- [x] Create `internal/app/bootstrap.go` — export `SeedDefaultAdmin(ctx, db, cfg Config)` and `NewServer(cfg Config, db dbiface.Pool) *http.Server`
+- [x] Move default-admin seeding logic from `main.go` into `SeedDefaultAdmin`
+- [x] Move server construction (timeouts, addr) from `main.go` into `NewServer`
+- [x] Shrink `main.go` to: load config → open DB pool → run migrations → seed admin → start server
+- [x] Remove `App.Handlers` field from `internal/app/app.go`; verify route registration compiles without it
+- [x] Write unit tests for `SeedDefaultAdmin` (idempotent, missing creds no-op) in `internal/app/bootstrap_test.go`
+- [x] Run `go test ./internal/app/... ./...` — must pass before Task 3
 
 ### Task 3: Standardise `internal/web` helpers; remove root wrappers
 - [ ] Audit root `api.go` and `markdown.go` — list every exported symbol they expose
