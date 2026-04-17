@@ -288,8 +288,12 @@ func (s *DBService) DeleteEquipment(ctx context.Context, equipmentID int) error 
 	if _, err = tx.Exec(ctx, "DELETE FROM user_equipment_permissions WHERE equipment_id = $1", equipmentID); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "DELETE FROM equipment WHERE equipment_id = $1", equipmentID); err != nil {
+	tag, err := tx.Exec(ctx, "DELETE FROM equipment WHERE equipment_id = $1", equipmentID)
+	if err != nil {
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return web.ErrNotFound
 	}
 	return tx.Commit(ctx)
 }

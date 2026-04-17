@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -18,6 +19,10 @@ import (
 func SeedDefaultAdmin(ctx context.Context, db dbiface.Pool, cfg Config) (bool, error) {
 	if cfg.AdminUsername == "" || cfg.AdminPassword == "" {
 		return false, nil
+	}
+
+	if cfg.AdminPassword == "admin" {
+		log.Printf("WARNING: ADMIN_PASSWORD is set to the insecure default 'admin'. Set ADMIN_PASSWORD to a strong password before exposing this service.")
 	}
 
 	var count int

@@ -296,7 +296,7 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 			return
 		}
 
-		if len(username) > 50 {
+		if utf8.RuneCountInString(username) > 50 {
 			http.Redirect(w, r, "/register?error=Username+must+be+50+characters+or+fewer", http.StatusSeeOther)
 			return
 		}

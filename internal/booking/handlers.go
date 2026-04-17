@@ -171,6 +171,10 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/booking?error=Purpose+is+required", http.StatusSeeOther)
 		return
 	}
+	if len(purpose) > 500 {
+		http.Redirect(w, r, "/booking?error=Purpose+must+be+500+characters+or+fewer", http.StatusSeeOther)
+		return
+	}
 
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
 	if err != nil {

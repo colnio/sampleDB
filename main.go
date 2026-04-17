@@ -18,11 +18,6 @@ import (
 	"sampleDB/internal/web"
 )
 
-// theApp holds all application-wide dependencies (DB pool, auth manager,
-// template renderer, logger, timezone, and config). Initialized once in main
-// and passed to all domain handler packages via their constructors.
-var theApp *app.App
-
 // initLocation loads the local timezone and returns it.
 func initLocation() *time.Location {
 	loc, err := time.LoadLocation("Local")
@@ -31,7 +26,6 @@ func initLocation() *time.Location {
 	}
 	return loc
 }
-
 
 func main() {
 	loc := initLocation()
@@ -67,7 +61,7 @@ func main() {
 		log.Fatalf("Unable to initialize template renderer: %v\n", err)
 	}
 
-	theApp, err = app.New(cfg, pool, authMgr, renderer, nil, nil, loc)
+	theApp, err := app.New(cfg, pool, authMgr, renderer, nil, nil, loc)
 	if err != nil {
 		log.Fatalf("Unable to initialize application: %v\n", err)
 	}
