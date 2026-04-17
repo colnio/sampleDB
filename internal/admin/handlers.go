@@ -117,6 +117,12 @@ func (h *Handlers) SetAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
 	session := auth.MustSessionFromContext(r.Context())
 
 	userID, err := strconv.Atoi(r.FormValue("user_id"))
@@ -265,6 +271,12 @@ func (h *Handlers) AddEquipment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
 		http.Redirect(w, r, "/admin?error=Equipment+name+is+required", http.StatusSeeOther)
@@ -307,6 +319,12 @@ func (h *Handlers) DeleteEquipment(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) AddGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
 		return
 	}
 

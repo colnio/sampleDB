@@ -88,8 +88,6 @@ PyQt choices that work well:
 
 ![alt text](mfia_control_panel.jpg)
 
-![alt text](mfia_plan_page.jpg)
-
 
 ---
 
