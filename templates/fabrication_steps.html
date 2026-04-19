@@ -1,8 +1,8 @@
 {{define "fabrication_steps_panel"}}
-<section id="fabrication-steps-panel" class="card fabrication-steps">
-    <header class="fabrication-steps__header">
-        <h2>Fabrication Steps</h2>
-    </header>
+<section id="fabrication-steps-panel" class="card fabrication-steps" style="padding:18px 22px;">
+    <div class="flex-between" style="margin-bottom:8px;">
+        <div class="eyebrow" style="margin:0;">Fabrication Steps</div>
+    </div>
 
     {{with .Flash}}
     <div class="alert alert-success">{{.}}</div>
@@ -12,10 +12,10 @@
     {{end}}
 
     {{if .Steps}}
-    <ol class="step-list">
+    <ol class="fab-timeline step-list">
         {{range .Steps}}
         {{$step := .}}
-        <li id="step-{{.ID}}" class="step-item{{if eq $.EditingStep .ID}} step-item--editing{{end}}">
+        <li id="step-{{.ID}}" class="fab-step step-item{{if eq $.EditingStep .ID}} fab-step--editing step-item--editing{{end}}">
             {{if eq $.EditingStep .ID}}
             <form method="POST" action="/steps/{{.ID}}/edit"
                   class="stacked-form step-edit-form"
@@ -23,19 +23,17 @@
                   hx-target="#fabrication-steps-panel"
                   hx-select="#fabrication-steps-panel"
                   hx-swap="outerHTML">
-                <div class="form-row">
+                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group">
                         <label for="edit-step-date-{{.ID}}">Date</label>
-                        <input id="edit-step-date-{{.ID}}" type="date" name="step_date"
-                               value="{{formatDate $step.StepDate}}">
+                        <input id="edit-step-date-{{.ID}}" type="date" name="step_date" value="{{formatDate $step.StepDate}}">
                     </div>
                     <div class="form-group">
                         <label for="edit-step-order-{{.ID}}">Order</label>
-                        <input id="edit-step-order-{{.ID}}" type="number" name="step_order"
-                               value="{{$step.StepOrder}}" min="1">
+                        <input id="edit-step-order-{{.ID}}" type="number" name="step_order" value="{{$step.StepOrder}}" min="1">
                     </div>
                 </div>
-                <div class="form-row">
+                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group">
                         <label for="edit-step-person-{{.ID}}">Person</label>
                         <select id="edit-step-person-{{.ID}}" name="person_user_id">
@@ -47,9 +45,7 @@
                     </div>
                     <div class="form-group">
                         <label for="edit-step-equip-{{.ID}}">Equipment</label>
-                        <input id="edit-step-equip-{{.ID}}" type="text" name="equipment_text"
-                               value="{{if $step.EquipmentText}}{{$step.EquipmentText}}{{else if $step.EquipmentName}}{{$step.EquipmentName}}{{end}}"
-                               placeholder="e.g. SEM, TEM, custom rig…">
+                        <input id="edit-step-equip-{{.ID}}" type="text" name="equipment_text" value="{{if $step.EquipmentText}}{{$step.EquipmentText}}{{else if $step.EquipmentName}}{{$step.EquipmentName}}{{end}}" placeholder="e.g. SEM, TEM, custom rig…">
                     </div>
                 </div>
                 <div class="form-group">
@@ -58,8 +54,7 @@
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="button button--primary button--small">Save</button>
-                    <button type="button"
-                            class="button button--ghost button--small"
+                    <button type="button" class="button button--ghost button--small"
                             hx-get="/samples/{{$.Sample.ID}}/steps"
                             hx-target="#fabrication-steps-panel"
                             hx-select="#fabrication-steps-panel"
@@ -67,21 +62,27 @@
                 </div>
             </form>
             {{else}}
-            <div class="step-meta">
-                {{if .StepDate}}<span class="step-date">{{formatDate .StepDate}}</span>{{end}}
-                {{if .PersonUsername}}<span class="step-person">{{.PersonUsername}}</span>{{end}}
-                {{if .EquipmentText}}<span class="step-equipment">{{.EquipmentText}}</span>{{else if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
+            <div class="fab-step__num">{{printf "%02d" .StepOrder}}</div>
+            <div class="fab-step__body">
+                <div class="fab-step__title">
+                    {{if .Description}}{{.Description | printf "%.120s"}}{{else}}Step {{.StepOrder}}{{end}}
+                </div>
+                <div class="fab-step__meta">
+                    {{if .StepDate}}<span class="fab-step__meta-item mono">{{formatDate .StepDate}}</span>{{end}}
+                    {{if .PersonUsername}}<span class="fab-step__meta-item">{{.PersonUsername}}</span>{{end}}
+                    {{if .EquipmentText}}<span class="fab-step__meta-item">{{.EquipmentText}}</span>{{else if .EquipmentName}}<span class="fab-step__meta-item">{{.EquipmentName}}</span>{{end}}
+                </div>
+                {{if and .Description (gt (len .Description) 120)}}
+                <p class="fab-step__description">{{.Description}}</p>
+                {{end}}
             </div>
-            {{if .Description}}<p class="step-description">{{.Description}}</p>{{end}}
-            <div class="step-actions">
+            <div class="fab-step__actions">
                 <button class="button button--ghost button--small"
                         hx-get="/steps/{{.ID}}/edit"
                         hx-target="#fabrication-steps-panel"
                         hx-select="#fabrication-steps-panel"
                         hx-swap="outerHTML">Edit</button>
-                <form method="POST"
-                      action="/steps/{{.ID}}/delete"
-                      class="inline-form"
+                <form method="POST" action="/steps/{{.ID}}/delete" class="inline-form"
                       hx-post="/steps/{{.ID}}/delete"
                       hx-target="#fabrication-steps-panel"
                       hx-select="#fabrication-steps-panel"

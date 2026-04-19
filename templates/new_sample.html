@@ -1,20 +1,24 @@
 {{define "title"}}New Sample · Sample Tracker{{end}}
 
 {{define "content"}}
-<a href="/" class="back-link back-link--quiet">← Back to samples</a>
+<a href="/" class="back-link-quiet">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Back to samples
+</a>
 
-<section class="sample-detail">
-    <header class="sample-detail__header">
-        <div>
-            <h1>Add New Sample</h1>
-            <p class="sample-detail__created">Fill in the details below, then add fabrication steps on the next page.</p>
-        </div>
-    </header>
+<div class="page-topbar">
+    <div class="page-topbar__left">
+        <h1>New Sample</h1>
+        <div class="page-topbar__crumbs">Step 1 of 2 · Details → Fabrication steps</div>
+    </div>
+</div>
 
-    <section class="form-container card">
-        <header>
-            <h2>Sample Details</h2>
-        </header>
+<section class="sample-detail" style="max-width:860px;">
+    <section class="form-container card" style="padding:24px;">
+        <h3 style="margin:0 0 4px;font-size:15px;color:var(--color-primary);">Sample Details</h3>
+        <p class="muted" style="font-size:13px;margin:0 0 20px;">Fill in the basics. You'll add fabrication steps after saving.</p>
         <form action="/samples/new" method="POST" class="stacked-form">
             <div class="form-group">
                 <label for="sample-name">Sample Name</label>

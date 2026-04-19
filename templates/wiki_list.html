@@ -1,36 +1,38 @@
 {{define "title"}}Wiki Articles{{end}}
 
 {{define "content"}}
-<div class="wiki-container">
-    <div class="wiki-header">
-        <h1 class="heading-with-icon">
-            <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                <rect x="4.5" y="5" width="8" height="14" rx="1.75" ry="1.75" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
-                <path d="M12.5 5.75H17a1.75 1.75 0 011.75 1.75v11.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                <path d="M7.25 9h3.25m-3.25 3h2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-            </svg>
-            <span>Wiki Articles</span>
-        </h1>
-        <a href="/wiki/new" class="button button--primary">Create New Article</a>
+<div class="page-topbar">
+    <div class="page-topbar__left">
+        <h1>Wiki</h1>
+        <div class="page-topbar__crumbs">Protocols, equipment guides, and lab conventions</div>
     </div>
-
-    {{if .Articles}}
-        <div class="wiki-articles">
-            {{range .Articles}}
-                <article class="card article-tile">
-                    <h2><a href="/wiki/view/{{.Title}}">{{.Title}}</a></h2>
-                    <div class="article-meta">
-                        Created: {{.CreatedAt.Format "Jan 02, 2006 15:04"}}
-                    </div>
-                </article>
-            {{end}}
-        </div>
-    {{else}}
-        <div class="no-articles">
-            <p>No articles yet. Be the first to create one!</p>
-        </div>
-    {{end}}
+    <div class="page-topbar__actions">
+        <a href="/wiki/new" class="button button--primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>New Article</span>
+        </a>
+    </div>
 </div>
+
+{{if .Articles}}
+    <div class="samples-grid">
+        {{range .Articles}}
+            <article class="card tile article-tile" style="padding:18px 22px;cursor:pointer;">
+                <a href="/wiki/view/{{.Title}}" style="text-decoration:none;color:inherit;display:block;">
+                    <h3 style="margin:0 0 6px;font-size:16px;color:var(--color-primary);">{{.Title}}</h3>
+                    <div class="mono muted" style="font-size:12px;">{{.CreatedAt.Format "Jan 02, 2006"}}</div>
+                </a>
+            </article>
+        {{end}}
+    </div>
+{{else}}
+    <div class="empty-state card" style="text-align:center;padding:32px;">
+        <p>No articles yet.</p>
+        <p class="empty-state__hint">Create the first one to start documenting.</p>
+    </div>
+{{end}}
 {{end}}
 
 {{template "base" .}}
