@@ -1,9 +1,7 @@
 {{define "title"}}{{.Article.Title}} - Wiki{{end}}
 
 {{define "additional_styles"}}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
-<link rel="stylesheet" href="/static/css/gallery.css">
 {{end}}
 
 {{define "content"}}
@@ -465,7 +463,7 @@ figure.attachment-preview {
                 <button type="submit" class="button button--primary button--small">Save</button>
                 <button type="button"
                         class="button button--secondary button--small"
-                        hx-get="/wiki/{{.Article.Title}}"
+                        hx-get="/wiki/view/{{.Article.Title}}"
                         hx-target="#article-content-panel"
                         hx-select="#article-content-panel"
                         hx-swap="outerHTML">Cancel</button>

@@ -2,48 +2,91 @@
 
 
 {{define "content"}}
-<a href="/" class="back-link back-link--quiet">← Back to samples</a>
+<a href="/" class="back-link-quiet">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Back to samples
+</a>
 
-<section class="sample-detail">
-    <header class="sample-detail__header">
-        <div>
-            <h1>{{.Sample.Name}}</h1>
-            <p class="sample-detail__created">Created {{.Sample.CreatedAt.Format "2006-01-02"}}</p>
-            <p class="sample-detail__meta">
-                <span><strong>Owner:</strong> {{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unknown{{end}}</span>
-                <span><strong>Keywords:</strong> {{if .Sample.Keywords}}{{.Sample.Keywords}}{{else}}—{{end}}</span>
-            </p>
+<div class="page-topbar">
+    <div class="page-topbar__left">
+        <div class="flex-center gap-sm" style="margin-bottom:6px;">
+            <span class="mono muted" style="font-size:12px;">SMP-{{printf "%03d" .Sample.ID}}</span>
+            {{if .ShareURL}}<span class="status-chip status-chip--progress"><span class="status-chip__dot"></span>Shared</span>{{else}}<span class="status-chip status-chip--active"><span class="status-chip__dot"></span>Active</span>{{end}}
         </div>
-    </header>
+        <h1>{{.Sample.Name}}</h1>
+        <div class="page-topbar__crumbs">
+            Created {{.Sample.CreatedAt.Format "Jan 2, 2006"}} · Owner <strong>{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unassigned{{end}}</strong> · {{len .Sample.Attachments}} file{{if ne (len .Sample.Attachments) 1}}s{{end}} · {{len .Steps}} step{{if ne (len .Steps) 1}}s{{end}}
+        </div>
+    </div>
+</div>
 
-    {{if .Sample.Description}}
-    <section class="sample-detail__description" aria-label="Sample description">
-        <p>{{.Sample.Description}}</p>
-    </section>
-    {{end}}
+<section class="sample-detail" style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
+    <div class="stack-md">
+        {{if .Sample.Description}}
+        <div class="card" style="padding:18px 22px;">
+            <div class="eyebrow">Description</div>
+            <p style="margin:0;line-height:1.7;white-space:pre-wrap;">{{.Sample.Description}}</p>
+            {{if .Sample.Keywords}}
+            <div class="chip-row" style="margin-top:14px;">
+                {{range split .Sample.Keywords ","}}{{with trim .}}<span class="chip">{{.}}</span>{{end}}{{end}}
+            </div>
+            {{end}}
+        </div>
+        {{end}}
 
-    <details class="panel-details" open>
-        <summary>Attachments</summary>
-        {{template "sample_attachments" .}}
-    </details>
+        <details class="panel-details" open>
+            <summary>Attachments</summary>
+            {{template "sample_attachments" .}}
+        </details>
 
-    <details class="panel-details" open>
-        <summary>Fabrication Steps</summary>
-        {{template "fabrication_steps_panel" .}}
-    </details>
+        <details class="panel-details" open>
+            <summary>Fabrication Steps</summary>
+            {{template "fabrication_steps_panel" .}}
+        </details>
 
-    <details class="panel-details">
-        <summary>Share Link</summary>
-        {{template "sample_share_panel" .}}
-    </details>
+        <details class="panel-details" open>
+            <summary>Share Link</summary>
+            {{template "sample_share_panel" .}}
+        </details>
 
-    <details class="panel-details">
-        <summary>Edit Sample Details</summary>
-        {{template "sample_edit_form" .}}
-    </details>
+        <details class="panel-details" open>
+            <summary>Edit Sample Details</summary>
+            {{template "sample_edit_form" .}}
+        </details>
+    </div>
 
-    <a href="/" class="back-link">← Back to samples</a>
+    <aside class="stack-md">
+        <div class="card" style="padding:18px 22px;">
+            <div class="eyebrow">Details</div>
+            <div class="kv-list">
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Owner</span>
+                    <span class="kv-list__value">{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}—{{end}}</span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Created</span>
+                    <span class="kv-list__value mono">{{.Sample.CreatedAt.Format "2006-01-02"}}</span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Files</span>
+                    <span class="kv-list__value">{{len .Sample.Attachments}}</span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Fabrication steps</span>
+                    <span class="kv-list__value">{{len .Steps}}</span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Sharing</span>
+                    <span class="kv-list__value">{{if .ShareURL}}{{if eq .Sample.ShareVisibility "public"}}Public{{else}}Authenticated{{end}}{{else}}Private{{end}}</span>
+                </div>
+            </div>
+        </div>
+    </aside>
 </section>
+
+<a href="/" class="back-link">← Back to samples</a>
 {{end}}
 
 {{define "sample_attachments"}}

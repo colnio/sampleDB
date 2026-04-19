@@ -58,9 +58,6 @@
             <div class="timeline-row">
                 <div class="timeline-equipment">
                     <div class="equipment-title">{{$equipment.Name}}</div>
-                    <!-- <div class="equipment-meta">
-                        <a class="equipment-link" href="#" aria-disabled="true">Rules</a>
-                    </div> -->
                 </div>
                 {{if index $.HasPermission $equipment.ID}}
                 <div class="timeline-lane" data-equipment="{{$equipment.ID}}">

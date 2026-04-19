@@ -1,4 +1,4 @@
-{{define "title"}}wiki{{end}}{{define "additional_styles"}}
+{{define "title"}}{{if .Article}}Edit: {{.Article.Title}} · Sample Tracker{{else}}New Article · Sample Tracker{{end}}{{end}}{{define "additional_styles"}}
 <link rel="stylesheet" href="/static/css/easymde.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 {{end}}

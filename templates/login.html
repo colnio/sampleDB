@@ -124,6 +124,13 @@ html[data-theme="light"] .auth-theme-toggle__icon--moon {
     color: var(--color-primary-active);
 }
 
+.auth-note {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
 .auth-body {
     background: var(--surface-subtle);
     min-height: 100vh;
@@ -215,9 +222,11 @@ html[data-theme="light"] .auth-theme-toggle__icon--moon {
 
     <div class="auth-toggle">
         {{if .IsRegister}}
+        <p class="auth-note">New accounts are approval-based — an admin will activate your account after you submit this form.</p>
         Already have an account? <a href="/login">Sign in</a>
         {{else}}
         Need an account? <a href="/register">Request access</a>
+        <p class="auth-note">Registration is approval-based — an admin will activate your account before you can sign in.</p>
         {{end}}
     </div>
 </div>

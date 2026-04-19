@@ -20,35 +20,36 @@
     })();
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css" integrity="sha512-Ya9H+OPj8NgcQk34nCrbehaA0atbzGdZCI2uCbqVRELgnlrh8vQ2INMnkadVMSniC54HChLIh5htabVuKJww8g==" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="/static/css/easymde.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="/static/css/style.css?v=2">
+    <link rel="stylesheet" href="/static/css/design.css?v=1">
     <link rel="stylesheet" href="/static/css/gallery.css">
     <script src="/static/js/htmx.min.js"></script>
-    <script src="/static/js/easymde.min.js"></script>
     {{block "additional_styles" .}}{{end}}
 </head>
 <body hx-boost="true" hx-target="#page-root" hx-select="#page-root" hx-swap="innerHTML" hx-indicator="#page-indicator">
-    {{template "header" .}}
-    <main id="page-root" class="content" role="main">
-        {{template "content" .}}
-    </main>
+    <button type="button" class="sidebar__mobile-toggle" id="sidebar-toggle" aria-label="Toggle navigation" aria-controls="app-sidebar" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M4 6h16a1 1 0 010 2H4a1 1 0 110-2zm0 5h16a1 1 0 010 2H4a1 1 0 110-2zm0 5h16a1 1 0 010 2H4a1 1 0 110-2z"/>
+        </svg>
+    </button>
+    <div class="sidebar-scrim" id="sidebar-scrim" aria-hidden="true"></div>
+    <div class="app-shell">
+        {{template "header" .}}
+        <main id="page-root" class="app-main" role="main">
+            {{template "content" .}}
+        </main>
+    </div>
     <div id="page-indicator" class="htmx-indicator" role="status" aria-live="polite">
         <span class="spinner" aria-hidden="true"></span>
         <span class="sr-only">Loading</span>
     </div>
     <script>
-    // Boosted navigations (hx-boost) should feel like full page loads: jump
-    // back to the top after each swap so the user never starts the new page
-    // mid-scroll. Browser-initiated back/forward restores its own scroll
-    // position, so we only reset after push-state navigations.
     (function () {
         document.body.addEventListener('htmx:afterSwap', function (evt) {
             var req = evt && evt.detail && evt.detail.requestConfig;
             if (req && req.boosted && !req.historyRestore) {
                 window.scrollTo(0, 0);
             } else if (!req) {
-                // Fallback: any top-level boosted swap that targets page-root
                 var tgt = evt && evt.detail && evt.detail.target;
                 if (tgt && tgt.id === 'page-root') window.scrollTo(0, 0);
             }

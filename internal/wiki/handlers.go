@@ -597,10 +597,17 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirect := "/wiki"
+	redirect := ""
 	if ref := r.Header.Get("Referer"); ref != "" {
 		if u, err := url.Parse(ref); err == nil && u.Path != "" && !strings.HasPrefix(u.Path, "//") {
 			redirect = u.Path
+		}
+	}
+	if redirect == "" {
+		if articleTitle, titErr := h.svc.GetArticleTitle(r.Context(), articleID); titErr == nil && articleTitle != "" {
+			redirect = "/wiki/view/" + url.PathEscape(articleTitle)
+		} else {
+			redirect = "/wiki"
 		}
 	}
 	if errMsg != "" {

@@ -10,7 +10,7 @@
         try {
             const storedTheme = localStorage.getItem('color-theme');
             const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const initialTheme = storedTheme || (prefersDark ? 'dark' : 'dark');
+            const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
             document.documentElement.setAttribute('data-theme', initialTheme);
             document.documentElement.style.colorScheme = initialTheme === 'dark' ? 'dark' : 'light';
         } catch (err) {
@@ -73,7 +73,7 @@
             if (storedTheme) {
                 applyTheme(storedTheme, false);
             } else {
-                const fallback = 'dark';
+                const fallback = 'light';
                 const prefers = prefersDark && prefersDark.matches ? 'dark' : fallback;
                 applyTheme(prefers, false);
             }
