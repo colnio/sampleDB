@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -127,6 +129,64 @@ func TestWiki_List_FiltersByTag_HTMLPage(t *testing.T) {
 	}
 	if !strings.Contains(body, "filter-chip--tag") {
 		t.Errorf("expected tag filter chips in rendered HTML")
+	}
+}
+
+func TestWiki_ViewPage_RendersTOC(t *testing.T) {
+	// Seed an article with h2/h3 markdown headings and check that the rendered
+	// /wiki/view/<title> HTML contains TOC anchors matching the heading ids.
+	title := "inttest-toc-" + randomHex(4)
+	content := "## Overview\n\nLead paragraph.\n\n### Details\n\nMore.\n\n## Wrap Up\n\nDone.\n"
+
+	var id int
+	if err := pool.QueryRow(bgCtx,
+		`INSERT INTO articles (title, content, created_by, last_modified_by)
+		 VALUES ($1, $2, $3, $3) RETURNING article_id`,
+		title, content, testUser.id).Scan(&id); err != nil {
+		t.Fatalf("seed toc article: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(bgCtx, "DELETE FROM articles WHERE article_id = $1", id)
+	})
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/wiki/view/"+url.PathEscape(title), nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+apiToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /wiki/view: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", resp.StatusCode, mustReadBody(t, resp))
+	}
+	body := mustReadBody(t, resp)
+
+	if !strings.Contains(body, "On this page") {
+		t.Errorf("expected 'On this page' TOC heading in rendered page; body did not contain it")
+	}
+	if !strings.Contains(body, `class="back-link back-link--top"`) {
+		t.Errorf("expected 'Back to Wiki' link above article title")
+	}
+
+	// Extract all TOC anchors from the rendered page and confirm that each
+	// referenced id also appears on an <h2>/<h3> in the article body.
+	linkRE := regexp.MustCompile(`class="article-toc__link"[^>]*\s+href="#([^"]+)"|href="#([^"]+)"[^>]*class="article-toc__link"`)
+	matches := linkRE.FindAllStringSubmatch(body, -1)
+	if len(matches) == 0 {
+		t.Fatalf("expected TOC links in rendered page; body:\n%s", body)
+	}
+	for _, m := range matches {
+		anchor := m[1]
+		if anchor == "" {
+			anchor = m[2]
+		}
+		idAttr := `id="` + anchor + `"`
+		if !strings.Contains(body, idAttr) {
+			t.Errorf("TOC anchor %q has no matching heading id in rendered body", anchor)
+		}
 	}
 }
 

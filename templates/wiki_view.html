@@ -6,6 +6,7 @@
 
 {{define "content"}}
 <div class="wiki-article">
+    <a href="/wiki" class="back-link back-link--top">← Back to Wiki</a>
     <div class="article-header">
         <span class="section-label">
             <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -45,13 +46,31 @@
         {{end}}
     </div>
 
-    {{template "article_content_panel" .}}
+    <div class="article-layout">
+        <div class="article-layout__main">
+            {{template "article_content_panel" .}}
 
-    {{template "wiki_attachments_section" .}}
+            {{template "wiki_attachments_section" .}}
+        </div>
+        {{if .TOC}}
+        <aside class="article-toc" aria-label="On this page">
+            <div class="article-toc__card card">
+                <h2 class="article-toc__title">On this page</h2>
+                <nav class="article-toc__nav">
+                    <ul class="article-toc__list">
+                        {{range .TOC}}
+                        <li class="article-toc__item article-toc__item--h{{.Level}}">
+                            <a href="#{{.Anchor}}" class="article-toc__link">{{.Title}}</a>
+                        </li>
+                        {{end}}
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+        {{end}}
+    </div>
 
 </div>
-
-<a href="/wiki" class="back-link">← Back to Wiki</a>
 
 <!-- Syntax highlighting -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
@@ -65,9 +84,94 @@
 
 <style>
 .wiki-article {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: var(--space-xl) var(--space-lg);
+}
+
+.back-link--top {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-md);
+}
+
+.back-link--top:hover {
+    color: var(--color-primary);
+}
+
+.article-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: var(--space-xl);
+    align-items: start;
+}
+
+.article-layout__main {
+    min-width: 0;
+}
+
+.article-toc {
+    position: sticky;
+    top: var(--space-lg);
+}
+
+.article-toc__card {
+    padding: var(--space-md);
+}
+
+.article-toc__title {
+    margin: 0 0 var(--space-sm);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.article-toc__nav {
+    font-size: var(--font-size-sm);
+}
+
+.article-toc__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.article-toc__item--h3 {
+    padding-left: var(--space-md);
+}
+
+.article-toc__link {
+    display: block;
+    padding: 4px 0;
+    color: var(--text-default);
+    text-decoration: none;
+    line-height: 1.35;
+    border-left: 2px solid transparent;
+    padding-left: var(--space-sm);
+    margin-left: calc(-1 * var(--space-sm));
+}
+
+.article-toc__link:hover {
+    color: var(--color-primary);
+    border-left-color: var(--color-primary);
+}
+
+@media (max-width: 960px) {
+    .article-layout {
+        grid-template-columns: 1fr;
+    }
+    .article-toc {
+        position: static;
+    }
 }
 
 .article-header {

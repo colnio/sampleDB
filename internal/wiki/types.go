@@ -62,6 +62,7 @@ type WikiViewPageData struct {
 	IsPartial      bool
 	Flash          string
 	Error          string
+	TOC            []TOCEntry
 }
 
 // WikiEditPageData is the template data for the new/edit article form.

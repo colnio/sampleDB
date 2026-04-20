@@ -304,6 +304,7 @@ func (h *Handlers) viewArticle(w http.ResponseWriter, r *http.Request, title str
 		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
 		Article:        article,
 		EditingContent: false,
+		TOC:            BuildTOC(article.Content.HTML),
 	}
 
 	if err := h.renderer.Render(w, "wiki_view", data); err != nil {
@@ -336,6 +337,7 @@ func (h *Handlers) renderContentPanel(w http.ResponseWriter, r *http.Request, se
 		IsPartial:      true,
 		Flash:          flash,
 		Error:          errMsg,
+		TOC:            BuildTOC(article.Content.HTML),
 	}
 
 	if err := h.renderer.RenderSection(w, "wiki_view", "article_content_panel", data); err != nil {

@@ -146,12 +146,12 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 7: Wiki view — "On this page" TOC sidebar
-- [ ] in `internal/wiki/handlers.go` parse the article's markdown headings (h2/h3) to build a TOC slice `[{Anchor, Title, Level}]`; inject `id` attributes into the rendered HTML so anchor links work
-- [ ] update `templates/wiki_view.html` to render the TOC as a right-column card matching screenshot #7; include "Back to Wiki" link above the article title
-- [ ] ensure the existing edit/cancel/delete/attachment flows still function (preserve behaviour around QA BUG-4 fix — which already landed)
-- [ ] write unit tests for the TOC extractor (edge cases: no headings, nested headings, duplicate titles)
-- [ ] write integration test hitting `/wiki/view/<title>` and asserting TOC anchors match rendered h2 ids
-- [ ] run `go test ./...` — must pass before next task
+- [x] in `internal/wiki/handlers.go` parse the article's markdown headings (h2/h3) to build a TOC slice `[{Anchor, Title, Level}]`; inject `id` attributes into the rendered HTML so anchor links work
+- [x] update `templates/wiki_view.html` to render the TOC as a right-column card matching screenshot #7; include "Back to Wiki" link above the article title
+- [x] ensure the existing edit/cancel/delete/attachment flows still function (preserve behaviour around QA BUG-4 fix — which already landed)
+- [x] write unit tests for the TOC extractor (edge cases: no headings, nested headings, duplicate titles)
+- [x] write integration test hitting `/wiki/view/<title>` and asserting TOC anchors match rendered h2 ids
+- [x] run `go test ./...` — must pass before next task
 
 ### Task 8: Equipment booking — verify screenshot match, minor polish
 - [ ] compare `templates/booking.html` rendered output against screenshot #8 (timeline per-equipment rows, date navigation, Available-now chip, Book Slot button)
