@@ -152,6 +152,7 @@ func (h *Handlers) apiListSamples(w http.ResponseWriter, r *http.Request) {
 	p := APIListParams{
 		Q:      r.URL.Query().Get("q"),
 		Owner:  r.URL.Query().Get("owner"),
+		Status: r.URL.Query().Get("status"),
 		From:   r.URL.Query().Get("from"),
 		To:     r.URL.Query().Get("to"),
 		Limit:  limit,

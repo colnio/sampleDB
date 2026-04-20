@@ -116,15 +116,15 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 4: Samples list — status chips, owner/status filters, Grid/Table toggle
-- [ ] extend `samples` list query in `internal/samples/` to include `status` column and allow filtering by `status` (`?status=active|in_progress|archived|all`) and by owner (`?owner=<username>|all`)
-- [ ] update template `main.html` toolbar: add "All owners" / "All status" chip-filters (dropdown or segmented control matching screenshot #3), "Grid | Table" toggle in top-right of samples panel
-- [ ] render status chip on each `sample-card` using `status-chip status-chip--{{.Status}}` (CSS classes already in `design.css` or add now — verify)
-- [ ] add Table view rendering inside `samples_panel` template — rows with columns: ID, Name, Owner, Status, Steps, Files, Created. Selected via `?view=table` query param; toggle button pushes URL via HTMX
-- [ ] add "New Sample" page support for setting initial status on create (admin override only; default `active`)
-- [ ] add "Edit sample" support for changing status (inline control or existing edit panel)
-- [ ] write unit tests for list-query filter combinations (`status=active`, `owner=foo`, `view=table`)
-- [ ] write integration tests for the new query params and the table-view render
-- [ ] run `go test ./...` — must pass before next task
+- [x] extend `samples` list query in `internal/samples/` to include `status` column and allow filtering by `status` (`?status=active|in_progress|archived|all`) and by owner (`?owner=<username>|all`)
+- [x] update template `main.html` toolbar: add "All owners" / "All status" chip-filters (dropdown or segmented control matching screenshot #3), "Grid | Table" toggle in top-right of samples panel
+- [x] render status chip on each `sample-card` using `status-chip status-chip--{{.Status}}` (CSS classes already in `design.css` or add now — verify)
+- [x] add Table view rendering inside `samples_panel` template — rows with columns: ID, Name, Owner, Status, Steps, Files, Created. Selected via `?view=table` query param; toggle button pushes URL via HTMX
+- [x] add "New Sample" page support for setting initial status on create (admin override only; default `active`)
+- [x] add "Edit sample" support for changing status (inline control or existing edit panel)
+- [x] write unit tests for list-query filter combinations (`status=active`, `owner=foo`, `view=table`)
+- [x] write integration tests for the new query params and the table-view render
+- [x] run `go test ./...` — must pass before next task
 
 ### Task 5: Sample detail — Activity panel, Details/Danger-Zone polish, layout per screenshots
 - [ ] update `templates/sample_detail.html` to match screenshot #4/#5 — left column: Description card, Fabrication Steps, Attachments grid; right column: Details card (Owner, Status chip, Created, Last edit, Steps count, Files count), Activity card (last 6 entries from `activity.ForTarget("sample", id, 6)`), Danger Zone card

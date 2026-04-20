@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"sampleDB/internal/dbiface"
 	"sampleDB/internal/web"
@@ -24,8 +25,8 @@ import (
 // substitute a mock in tests.
 type Service interface {
 	// Sample list / search
-	ListAll(ctx context.Context, dateFrom, dateTo string) ([]Sample, error)
-	Search(ctx context.Context, query, dateFrom, dateTo string) ([]Sample, error)
+	ListAll(ctx context.Context, f ListFilters) ([]Sample, error)
+	Search(ctx context.Context, query string, f ListFilters) ([]Sample, error)
 
 	// Single sample operations
 	GetByID(ctx context.Context, id int) (Sample, error)
@@ -83,6 +84,16 @@ type Service interface {
 	SampleExistsByID(ctx context.Context, id int) (bool, error)
 }
 
+// ListFilters holds optional query filters for ListAll / Search. Zero-valued
+// fields are treated as "no filter" so existing call-sites that don't need
+// the new filters can pass ListFilters{}.
+type ListFilters struct {
+	DateFrom string
+	DateTo   string
+	Status   string // "", "active", "in_progress", "archived"
+	Owner    string // "" (all) or a specific username
+}
+
 // CreateParams holds the fields for creating a new sample.
 type CreateParams struct {
 	Name        string
@@ -90,6 +101,7 @@ type CreateParams struct {
 	Keywords    string
 	Owner       string
 	OwnerUserID *int
+	Status      string // "" defers to DB default ('active')
 }
 
 // UpdateParams holds the fields for updating an existing sample.
@@ -99,6 +111,7 @@ type UpdateParams struct {
 	Keywords    string
 	Owner       string
 	OwnerUserID *int
+	Status      string // "" leaves status unchanged
 }
 
 // DBService is the concrete Service implementation backed by a PostgreSQL pool.
@@ -138,9 +151,10 @@ func hydrateAttachments(atts []Attachment) {
 
 // ------------------------------------------------------------------ ListAll --
 
-func (s *DBService) ListAll(ctx context.Context, dateFrom, dateTo string) ([]Sample, error) {
+func (s *DBService) ListAll(ctx context.Context, f ListFilters) ([]Sample, error) {
 	q := `SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at,
+		       COALESCE(s.status, 'active'),
 		       first_img.attachment_id
 		  FROM samples s
 		  LEFT JOIN users u ON s.owner_user_id = u.user_id
@@ -153,13 +167,22 @@ func (s *DBService) ListAll(ctx context.Context, dateFrom, dateTo string) ([]Sam
 	var args []interface{}
 	var whereClauses []string
 
-	if dateFrom != "" {
+	if f.DateFrom != "" {
 		whereClauses = append(whereClauses, fmt.Sprintf("s.created_at >= $%d", len(args)+1))
-		args = append(args, dateFrom)
+		args = append(args, f.DateFrom)
 	}
-	if dateTo != "" {
+	if f.DateTo != "" {
 		whereClauses = append(whereClauses, fmt.Sprintf("s.created_at < $%d::date + interval '1 day'", len(args)+1))
-		args = append(args, dateTo)
+		args = append(args, f.DateTo)
+	}
+	if f.Status != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("s.status = $%d", len(args)+1))
+		args = append(args, f.Status)
+	}
+	if f.Owner != "" {
+		whereClauses = append(whereClauses,
+			fmt.Sprintf("(u.username = $%[1]d OR s.sample_owner = $%[1]d)", len(args)+1))
+		args = append(args, f.Owner)
 	}
 	if len(whereClauses) > 0 {
 		q += " WHERE " + strings.Join(whereClauses, " AND ")
@@ -177,7 +200,7 @@ func (s *DBService) ListAll(ctx context.Context, dateFrom, dateTo string) ([]Sam
 		var smpl Sample
 		if err := rows.Scan(&smpl.ID, &smpl.Name, &smpl.Description, &smpl.Keywords,
 			&smpl.Owner, &smpl.OwnerUserID, &smpl.OwnerUsername, &smpl.SamplePrep,
-			&smpl.CreatedAt, &smpl.FirstImageID); err != nil {
+			&smpl.CreatedAt, &smpl.Status, &smpl.FirstImageID); err != nil {
 			return nil, err
 		}
 		out = append(out, smpl)
@@ -196,7 +219,7 @@ func escapeLike(s string) string {
 
 // ------------------------------------------------------------------ Search --
 
-func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) ([]Sample, error) {
+func (s *DBService) Search(ctx context.Context, query string, f ListFilters) ([]Sample, error) {
 	trimmed := strings.TrimSpace(query)
 	rawKeywords := strings.FieldsFunc(trimmed, func(r rune) bool {
 		return r == ' ' || r == ',' || r == ';'
@@ -232,6 +255,7 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 
 	q := fmt.Sprintf(`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at,
+		       COALESCE(s.status, 'active'),
 		       first_img.attachment_id
 		  FROM samples s
 		  LEFT JOIN users u ON s.owner_user_id = u.user_id
@@ -243,13 +267,21 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 		  ) first_img ON true
 		 WHERE (%s)`, strings.Join(searchConds, " OR "))
 
-	if dateFrom != "" {
-		args = append(args, dateFrom)
+	if f.DateFrom != "" {
+		args = append(args, f.DateFrom)
 		q += fmt.Sprintf(" AND s.created_at >= $%d", len(args))
 	}
-	if dateTo != "" {
-		args = append(args, dateTo)
+	if f.DateTo != "" {
+		args = append(args, f.DateTo)
 		q += fmt.Sprintf(" AND s.created_at < $%d::date + interval '1 day'", len(args))
+	}
+	if f.Status != "" {
+		args = append(args, f.Status)
+		q += fmt.Sprintf(" AND s.status = $%d", len(args))
+	}
+	if f.Owner != "" {
+		args = append(args, f.Owner)
+		q += fmt.Sprintf(" AND (u.username = $%[1]d OR s.sample_owner = $%[1]d)", len(args))
 	}
 	q += " ORDER BY s.sample_name ASC"
 
@@ -264,7 +296,7 @@ func (s *DBService) Search(ctx context.Context, query, dateFrom, dateTo string) 
 		var smpl Sample
 		if err := rows.Scan(&smpl.ID, &smpl.Name, &smpl.Description, &smpl.Keywords,
 			&smpl.Owner, &smpl.OwnerUserID, &smpl.OwnerUsername, &smpl.SamplePrep,
-			&smpl.CreatedAt, &smpl.FirstImageID); err != nil {
+			&smpl.CreatedAt, &smpl.Status, &smpl.FirstImageID); err != nil {
 			return nil, err
 		}
 		out = append(out, smpl)
@@ -280,14 +312,15 @@ func (s *DBService) GetByID(ctx context.Context, id int) (Sample, error) {
 		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		        COALESCE(s.sample_owner, ''), s.owner_user_id, u.username,
 		        COALESCE(s.sample_prep, ''), s.created_at,
-		        s.share_token, COALESCE(s.share_visibility, 'private')
+		        s.share_token, COALESCE(s.share_visibility, 'private'),
+		        COALESCE(s.status, 'active')
 		   FROM samples s
 		   LEFT JOIN users u ON s.owner_user_id = u.user_id
 		  WHERE s.sample_id=$1`, id).Scan(
 		&smpl.ID, &smpl.Name, &smpl.Description, &smpl.Keywords, &smpl.Owner,
 		&smpl.OwnerUserID, &smpl.OwnerUsername,
 		&smpl.SamplePrep, &smpl.CreatedAt,
-		&smpl.ShareToken, &smpl.ShareVisibility)
+		&smpl.ShareToken, &smpl.ShareVisibility, &smpl.Status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return smpl, web.ErrNotFound
@@ -306,23 +339,39 @@ func (s *DBService) GetByID(ctx context.Context, id int) (Sample, error) {
 // ------------------------------------------------------------------ Create --
 
 func (s *DBService) Create(ctx context.Context, p CreateParams) (int, error) {
+	status := p.Status
+	if status == "" {
+		status = "active"
+	}
 	var id int
 	err := s.db.QueryRow(ctx,
-		`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id)
-		 VALUES ($1, $2, $3, $4, $5)
+		`INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, owner_user_id, status)
+		 VALUES ($1, $2, $3, $4, $5, $6)
 		 RETURNING sample_id`,
-		p.Name, p.Description, p.Keywords, p.Owner, p.OwnerUserID).Scan(&id)
+		p.Name, p.Description, p.Keywords, p.Owner, p.OwnerUserID, status).Scan(&id)
 	return id, err
 }
 
 // ------------------------------------------------------------------ Update --
 
 func (s *DBService) Update(ctx context.Context, id int, p UpdateParams) error {
-	tag, err := s.db.Exec(ctx,
-		`UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3,
-		        sample_owner=$4, owner_user_id=$5
-		  WHERE sample_id=$6`,
-		p.Name, p.Description, p.Keywords, p.Owner, p.OwnerUserID, id)
+	var (
+		tag pgconn.CommandTag
+		err error
+	)
+	if p.Status == "" {
+		tag, err = s.db.Exec(ctx,
+			`UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3,
+			        sample_owner=$4, owner_user_id=$5
+			  WHERE sample_id=$6`,
+			p.Name, p.Description, p.Keywords, p.Owner, p.OwnerUserID, id)
+	} else {
+		tag, err = s.db.Exec(ctx,
+			`UPDATE samples SET sample_name=$1, sample_description=$2, sample_keywords=$3,
+			        sample_owner=$4, owner_user_id=$5, status=$6
+			  WHERE sample_id=$7`,
+			p.Name, p.Description, p.Keywords, p.Owner, p.OwnerUserID, p.Status, id)
+	}
 	if err != nil {
 		return err
 	}
@@ -472,14 +521,15 @@ func (s *DBService) GetByShareToken(ctx context.Context, token string) (Sample, 
 		`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description,''), COALESCE(s.sample_keywords,''),
 		        COALESCE(s.sample_owner,''), s.owner_user_id, u.username,
 		        COALESCE(s.sample_prep,''), s.created_at,
-		        s.share_token, COALESCE(s.share_visibility,'private')
+		        s.share_token, COALESCE(s.share_visibility,'private'),
+		        COALESCE(s.status, 'active')
 		   FROM samples s
 		   LEFT JOIN users u ON s.owner_user_id = u.user_id
 		  WHERE s.share_token = $1`, token).Scan(
 		&smpl.ID, &smpl.Name, &smpl.Description, &smpl.Keywords,
 		&smpl.Owner, &smpl.OwnerUserID, &smpl.OwnerUsername,
 		&smpl.SamplePrep, &smpl.CreatedAt,
-		&smpl.ShareToken, &smpl.ShareVisibility)
+		&smpl.ShareToken, &smpl.ShareVisibility, &smpl.Status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return smpl, web.ErrNotFound
@@ -775,6 +825,7 @@ func (s *DBService) AttachmentFilePath(ctx context.Context, attachmentID int) (s
 type APIListParams struct {
 	Q      string
 	Owner  string
+	Status string
 	From   string
 	To     string
 	Limit  int
@@ -798,6 +849,7 @@ type APISampleItem struct {
 	Owner           string    `json:"owner"`
 	OwnerUserID     *int      `json:"owner_user_id,omitempty"`
 	OwnerUsername   *string   `json:"owner_username,omitempty"`
+	Status          string    `json:"status"`
 	AttachmentCount int       `json:"attachment_count"`
 	CreatedAt       time.Time `json:"created_at"`
 }
@@ -811,6 +863,7 @@ type APISampleDetail struct {
 	Owner           string               `json:"owner"`
 	OwnerUserID     *int                 `json:"owner_user_id,omitempty"`
 	OwnerUsername   *string              `json:"owner_username,omitempty"`
+	Status          string               `json:"status"`
 	SamplePrep      string               `json:"sample_prep"`
 	AttachmentCount int                  `json:"attachment_count"`
 	CreatedAt       time.Time            `json:"created_at"`
@@ -892,6 +945,11 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 		conditions = append(conditions, fmt.Sprintf(`(s.sample_owner ILIKE $%[1]d ESCAPE '\' OR u.username ILIKE $%[1]d ESCAPE '\')`, idx))
 		args = append(args, "%"+escapeLike(p.Owner)+"%")
 	}
+	if p.Status != "" {
+		idx := len(args) + 1
+		conditions = append(conditions, fmt.Sprintf("s.status = $%d", idx))
+		args = append(args, p.Status)
+	}
 	if p.From != "" {
 		if _, err := time.Parse("2006-01-02", p.From); err != nil {
 			return APIListResult{}, fmt.Errorf("invalid from date: use YYYY-MM-DD: %w", web.ErrValidation)
@@ -935,6 +993,7 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 		       COALESCE(s.sample_owner, ''),
 		       s.owner_user_id,
 		       u.username,
+		       COALESCE(s.status, 'active'),
 		       COUNT(a.attachment_id) AS attachment_count,
 		       s.created_at
 		  FROM samples s
@@ -956,7 +1015,7 @@ func (s *DBService) APIListSamples(ctx context.Context, p APIListParams) (APILis
 		var item APISampleItem
 		if err := rows.Scan(
 			&item.ID, &item.Name, &item.Description, &item.Keywords, &item.Owner,
-			&item.OwnerUserID, &item.OwnerUsername,
+			&item.OwnerUserID, &item.OwnerUsername, &item.Status,
 			&item.AttachmentCount, &item.CreatedAt,
 		); err != nil {
 			return APIListResult{}, err
@@ -988,13 +1047,14 @@ func (s *DBService) APIGetSample(ctx context.Context, id int) (APISampleDetail, 
 		       COALESCE(s.sample_owner, ''),
 		       s.owner_user_id,
 		       u.username,
+		       COALESCE(s.status, 'active'),
 		       COALESCE(s.sample_prep, ''),
 		       s.created_at
 		  FROM samples s
 		  LEFT JOIN users u ON s.owner_user_id = u.user_id
 		 WHERE s.sample_id = $1`, id).Scan(
 		&detail.ID, &detail.Name, &detail.Description, &detail.Keywords, &detail.Owner,
-		&detail.OwnerUserID, &detail.OwnerUsername,
+		&detail.OwnerUserID, &detail.OwnerUsername, &detail.Status,
 		&samplePrep, &detail.CreatedAt,
 	)
 	if err != nil {
@@ -1032,17 +1092,18 @@ func (s *DBService) APICreateSample(ctx context.Context, name, description, keyw
 	var id int
 	var createdAt time.Time
 	var ownerUsername *string
+	var status string
 	err := s.db.QueryRow(ctx, `
 		WITH ins AS (
 			INSERT INTO samples (sample_name, sample_description, sample_keywords, sample_owner, sample_prep, owner_user_id)
 			VALUES ($1, $2, $3, $4, $5, $6)
-			RETURNING sample_id, owner_user_id, created_at
+			RETURNING sample_id, owner_user_id, created_at, status
 		)
-		SELECT ins.sample_id, ins.created_at, u.username
+		SELECT ins.sample_id, ins.created_at, COALESCE(ins.status, 'active'), u.username
 		  FROM ins
 		  LEFT JOIN users u ON u.user_id = ins.owner_user_id`,
 		name, description, keywords, owner, samplePrep, ownerUserID,
-	).Scan(&id, &createdAt, &ownerUsername)
+	).Scan(&id, &createdAt, &status, &ownerUsername)
 	if err != nil {
 		return APISampleItem{}, err
 	}
@@ -1054,6 +1115,7 @@ func (s *DBService) APICreateSample(ctx context.Context, name, description, keyw
 		Owner:         owner,
 		OwnerUserID:   ownerUserID,
 		OwnerUsername: ownerUsername,
+		Status:        status,
 		CreatedAt:     createdAt,
 	}, nil
 }

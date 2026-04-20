@@ -289,15 +289,28 @@ func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("query"))
 	dateFrom := r.URL.Query().Get("date_from")
 	dateTo := r.URL.Query().Get("date_to")
+	statusFilter := normalizeStatusFilter(r.URL.Query().Get("status"))
+	ownerFilter := normalizeOwnerFilter(r.URL.Query().Get("owner"))
+	view := r.URL.Query().Get("view")
+	if view != "table" {
+		view = "grid"
+	}
+
+	filters := ListFilters{
+		DateFrom: dateFrom,
+		DateTo:   dateTo,
+		Status:   statusFilter,
+		Owner:    ownerFilter,
+	}
 
 	var (
 		samples []Sample
 		err     error
 	)
 	if query != "" {
-		samples, err = h.svc.Search(r.Context(), query, dateFrom, dateTo)
+		samples, err = h.svc.Search(r.Context(), query, filters)
 	} else {
-		samples, err = h.svc.ListAll(r.Context(), dateFrom, dateTo)
+		samples, err = h.svc.ListAll(r.Context(), filters)
 	}
 	if err != nil {
 		http.Error(w, "Error retrieving samples", http.StatusInternalServerError)
@@ -306,12 +319,21 @@ func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 
 	isAdmin, _ := h.svc.IsAdmin(r.Context(), session.UserID)
 
+	// Users list powers the "All owners" dropdown in the toolbar.
+	users, _ := h.svc.GetApprovedUsers(r.Context())
+
 	data := MainPageData{
 		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
 		Samples:      samples,
 		Query:        query,
 		DateFrom:     dateFrom,
 		DateTo:       dateTo,
+		StatusFilter: statusFilter,
+		OwnerFilter:  ownerFilter,
+		View:         view,
+		Users:        users,
+		GridQuery:    buildSamplesQuery(query, dateFrom, dateTo, statusFilter, ownerFilter, "grid"),
+		TableQuery:   buildSamplesQuery(query, dateFrom, dateTo, statusFilter, ownerFilter, "table"),
 	}
 
 	if isHTMXRequest(r) && r.Header.Get("HX-Target") == "samples-panel" {
@@ -324,6 +346,63 @@ func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 	if err := h.renderer.Render(w, "main", data); err != nil {
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
+}
+
+// normalizeStatusFilter coerces the raw ?status= query param into a canonical
+// value. "all" and unknown strings collapse to "" (no filter) so the DB layer
+// never sees an invalid status string.
+func normalizeStatusFilter(s string) string {
+	switch s {
+	case "active", "in_progress", "archived":
+		return s
+	}
+	return ""
+}
+
+// normalizeOwnerFilter strips whitespace and treats "all" as empty (no filter).
+func normalizeOwnerFilter(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "all" {
+		return ""
+	}
+	return s
+}
+
+// normalizeStatusInput coerces a status submitted from a form into a canonical
+// value. Empty and unknown values default to "active" on create / leave
+// existing status unchanged on edit.
+func normalizeStatusInput(s string) string {
+	switch s {
+	case "active", "in_progress", "archived":
+		return s
+	}
+	return ""
+}
+
+// buildSamplesQuery produces the query string used by the Grid/Table view
+// toggle so that every other filter is preserved when switching view modes.
+// The returned string has no leading "?".
+func buildSamplesQuery(query, dateFrom, dateTo, statusFilter, ownerFilter, view string) string {
+	v := url.Values{}
+	if query != "" {
+		v.Set("query", query)
+	}
+	if dateFrom != "" {
+		v.Set("date_from", dateFrom)
+	}
+	if dateTo != "" {
+		v.Set("date_to", dateTo)
+	}
+	if statusFilter != "" {
+		v.Set("status", statusFilter)
+	}
+	if ownerFilter != "" {
+		v.Set("owner", ownerFilter)
+	}
+	if view != "" {
+		v.Set("view", view)
+	}
+	return v.Encode()
 }
 
 // NewSample handles GET /samples/new (render form) and POST /samples/new (create).
@@ -382,12 +461,19 @@ func (h *Handlers) NewSample(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Only admins may override the initial status; non-admins always get 'active'.
+		status := ""
+		if isAdmin {
+			status = normalizeStatusInput(r.FormValue("status"))
+		}
+
 		newID, err := h.svc.Create(r.Context(), CreateParams{
 			Name:        name,
 			Description: description,
 			Keywords:    keywords,
 			Owner:       ownerName,
 			OwnerUserID: ownerUserID,
+			Status:      status,
 		})
 		if err != nil {
 			log.Printf("samples.NewSample: insert error: %v", err)
@@ -472,12 +558,15 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		ownerName, _ = h.svc.GetUsernameByID(r.Context(), session.UserID)
 	}
 
+	status := normalizeStatusInput(r.FormValue("status"))
+
 	if err := h.svc.Update(r.Context(), sampleIDInt, UpdateParams{
 		Name:        name,
 		Description: description,
 		Keywords:    keywords,
 		Owner:       ownerName,
 		OwnerUserID: ownerUserID,
+		Status:      status,
 	}); err != nil {
 		if isHTMXRequest(r) {
 			h.renderSampleEditSection(w, r, session, sampleID, "", "Failed to update the sample.")

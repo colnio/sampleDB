@@ -160,8 +160,8 @@ func TestGetByID_WithOwnerUserID(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{
 			"sample_id", "sample_name", "sample_description", "sample_keywords",
 			"sample_owner", "owner_user_id", "username", "sample_prep", "created_at",
-			"share_token", "share_visibility",
-		}).AddRow(42, "Test Sample", "desc", "kw", "alice", &ownerID, &username, "", now, nil, "private"))
+			"share_token", "share_visibility", "status",
+		}).AddRow(42, "Test Sample", "desc", "kw", "alice", &ownerID, &username, "", now, nil, "private", "active"))
 
 	mock.ExpectQuery(`SELECT attachment_id, source_id`).
 		WithArgs(42).
@@ -199,7 +199,7 @@ func TestGetByID_NotFound(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{
 			"sample_id", "sample_name", "sample_description", "sample_keywords",
 			"sample_owner", "owner_user_id", "username", "sample_prep", "created_at",
-			"share_token", "share_visibility",
+			"share_token", "share_visibility", "status",
 		}))
 
 	_, err = svc.GetByID(context.Background(), 999)
@@ -235,7 +235,7 @@ func TestService_ListAll_Integration(t *testing.T) {
 	_, cleanup := createTestSample(t, pool)
 	defer cleanup()
 
-	items, err := svc.ListAll(context.Background(), "", "")
+	items, err := svc.ListAll(context.Background(), samples.ListFilters{})
 	if err != nil {
 		t.Fatalf("ListAll: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestService_Search_Integration(t *testing.T) {
 	}
 	defer pool.Exec(context.Background(), "DELETE FROM samples WHERE sample_id = $1", id)
 
-	results, err := svc.Search(context.Background(), name[:10], "", "")
+	results, err := svc.Search(context.Background(), name[:10], samples.ListFilters{})
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}

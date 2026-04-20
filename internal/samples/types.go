@@ -23,6 +23,7 @@ type Sample struct {
 	ShareToken      *string
 	ShareVisibility string // 'private', 'public', 'authenticated'
 	FirstImageID    *int
+	Status          string // 'active', 'in_progress', 'archived'
 }
 
 // Attachment represents a file attached to a sample.
@@ -73,10 +74,18 @@ type BasePageData struct {
 // MainPageData is the template data for the main sample list page.
 type MainPageData struct {
 	BasePageData
-	Samples  []Sample
-	Query    string
-	DateFrom string
-	DateTo   string
+	Samples      []Sample
+	Query        string
+	DateFrom     string
+	DateTo       string
+	StatusFilter string // "", "active", "in_progress", "archived" (empty = all)
+	OwnerFilter  string // "" (all) or a username
+	View         string // "grid" (default) or "table"
+	Users        []User // approved users for owner dropdown
+	// Pre-built query strings (encoded, no leading "?") used by the Grid/Table
+	// toggle links so they preserve every other active filter.
+	GridQuery  string
+	TableQuery string
 }
 
 // NewSamplePageData is the template data for the new-sample form.
@@ -84,6 +93,11 @@ type NewSamplePageData struct {
 	BasePageData
 	Users []User
 }
+
+// Statuses is the ordered set of sample statuses used for filter chips and
+// select controls. Keeping it here makes the vocabulary authoritative and
+// easy to render in templates.
+var Statuses = []string{"active", "in_progress", "archived"}
 
 // SampleDetailPageData is the template data for the sample detail page.
 type SampleDetailPageData struct {

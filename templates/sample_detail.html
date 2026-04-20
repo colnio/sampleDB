@@ -13,7 +13,8 @@
     <div class="page-topbar__left">
         <div class="flex-center gap-sm" style="margin-bottom:6px;">
             <span class="mono muted" style="font-size:12px;">SMP-{{printf "%03d" .Sample.ID}}</span>
-            {{if .ShareURL}}<span class="status-chip status-chip--progress"><span class="status-chip__dot"></span>Shared</span>{{else}}<span class="status-chip status-chip--active"><span class="status-chip__dot"></span>Active</span>{{end}}
+            <span class="status-chip status-chip--{{statusChipClass .Sample.Status}}"><span class="status-chip__dot"></span>{{statusLabel .Sample.Status}}</span>
+            {{if .ShareURL}}<span class="status-chip status-chip--progress"><span class="status-chip__dot"></span>Shared</span>{{end}}
         </div>
         <h1>{{.Sample.Name}}</h1>
         <div class="page-topbar__crumbs">
@@ -236,6 +237,14 @@
             {{if and (not .Sample.OwnerUserID) .Sample.Owner}}
             <p class="form-hint">Legacy owner text: {{.Sample.Owner}}</p>
             {{end}}
+        </div>
+        <div class="form-group">
+            <label for="sample-status">Status</label>
+            <select id="sample-status" name="status">
+                <option value="active" {{if eq .Sample.Status "active"}}selected{{end}}>Active</option>
+                <option value="in_progress" {{if eq .Sample.Status "in_progress"}}selected{{end}}>In Progress</option>
+                <option value="archived" {{if eq .Sample.Status "archived"}}selected{{end}}>Archived</option>
+            </select>
         </div>
         <div class="form-actions">
             <button type="submit" class="button button--primary button--block">Save Changes</button>

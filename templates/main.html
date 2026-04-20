@@ -4,7 +4,7 @@
 <div class="page-topbar">
     <div class="page-topbar__left">
         <h1>Samples</h1>
-        <div class="page-topbar__crumbs">{{len .Samples}} sample{{if ne (len .Samples) 1}}s{{end}}{{if .Query}} matching "{{.Query}}"{{end}}{{if or .DateFrom .DateTo}} · filtered by date{{end}}</div>
+        <div class="page-topbar__crumbs">{{len .Samples}} sample{{if ne (len .Samples) 1}}s{{end}}{{if .Query}} matching "{{.Query}}"{{end}}{{if .StatusFilter}} · {{statusLabel .StatusFilter}}{{end}}{{if .OwnerFilter}} · owned by {{.OwnerFilter}}{{end}}{{if or .DateFrom .DateTo}} · filtered by date{{end}}</div>
     </div>
     <div class="page-topbar__actions">
         <a href="/samples/new" class="button button--primary">
@@ -23,7 +23,7 @@
       hx-get="/samples"
       hx-target="#samples-panel"
       hx-select="#samples-panel"
-      hx-trigger="submit, keyup changed delay:300ms from:#samples-query, change from:input[type='date']"
+      hx-trigger="submit, keyup changed delay:300ms from:#samples-query, change from:input[type='date'], change from:#status-filter, change from:#owner-filter"
       hx-indicator="#samples-search-indicator"
       hx-push-url="true">
     <label class="toolbar__search">
@@ -32,6 +32,24 @@
             <path d="M20 20l-4-4" stroke-linecap="round"/>
         </svg>
         <input id="samples-query" type="search" name="query" value="{{.Query}}" placeholder="Search samples, keywords, owners…" autocomplete="off">
+    </label>
+    <label class="filter-chip" for="status-filter">
+        <span>Status</span>
+        <select id="status-filter" name="status" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;">
+            <option value="all" {{if eq .StatusFilter ""}}selected{{end}}>All</option>
+            <option value="active" {{if eq .StatusFilter "active"}}selected{{end}}>Active</option>
+            <option value="in_progress" {{if eq .StatusFilter "in_progress"}}selected{{end}}>In Progress</option>
+            <option value="archived" {{if eq .StatusFilter "archived"}}selected{{end}}>Archived</option>
+        </select>
+    </label>
+    <label class="filter-chip" for="owner-filter">
+        <span>Owner</span>
+        <select id="owner-filter" name="owner" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;">
+            <option value="all" {{if eq .OwnerFilter ""}}selected{{end}}>All</option>
+            {{range .Users}}
+            <option value="{{.Username}}" {{if eq $.OwnerFilter .Username}}selected{{end}}>{{.Username}}</option>
+            {{end}}
+        </select>
     </label>
     <label class="filter-chip" for="date-from">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -45,6 +63,27 @@
         <span>To</span>
         <input id="date-to" type="date" name="date_to" value="{{.DateTo}}" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;width:115px;">
     </label>
+    <div class="seg" role="tablist" aria-label="View mode" style="margin-left:auto;">
+        <a href="/samples?{{.GridQuery}}"
+           class="{{if ne .View "table"}}is-active{{end}}"
+           hx-get="/samples?{{.GridQuery}}"
+           hx-target="#samples-panel"
+           hx-select="#samples-panel"
+           hx-push-url="true"
+           role="tab"
+           aria-selected="{{if ne .View "table"}}true{{else}}false{{end}}"
+           data-view="grid">Grid</a>
+        <a href="/samples?{{.TableQuery}}"
+           class="{{if eq .View "table"}}is-active{{end}}"
+           hx-get="/samples?{{.TableQuery}}"
+           hx-target="#samples-panel"
+           hx-select="#samples-panel"
+           hx-push-url="true"
+           role="tab"
+           aria-selected="{{if eq .View "table"}}true{{else}}false{{end}}"
+           data-view="table">Table</a>
+    </div>
+    <input type="hidden" name="view" value="{{.View}}">
     <button type="submit" class="button button--secondary button--small">Search</button>
     <div id="samples-search-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
         <span class="spinner"></span>
@@ -57,6 +96,34 @@
 {{define "samples_panel"}}
 <section id="samples-panel" class="samples-panel" aria-live="polite">
     {{if .Samples}}
+        {{if eq .View "table"}}
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="samples-table" style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="background:var(--surface-muted);text-align:left;">
+                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">ID</th>
+                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Name</th>
+                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Owner</th>
+                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Status</th>
+                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Files</th>
+                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Samples}}
+                    <tr style="border-top:1px solid var(--border-subtle);">
+                        <td class="mono" style="padding:10px 14px;font-size:12.5px;color:var(--text-muted);">SMP-{{printf "%03d" .ID}}</td>
+                        <td style="padding:10px 14px;"><a href="/samples/{{.ID}}" style="color:var(--text-strong);font-weight:500;">{{.Name}}</a></td>
+                        <td style="padding:10px 14px;">{{if .OwnerUsername}}{{.OwnerUsername}}{{else if .Owner}}{{.Owner}}{{else}}Unassigned{{end}}</td>
+                        <td style="padding:10px 14px;"><span class="status-chip status-chip--{{statusChipClass .Status}}"><span class="status-chip__dot"></span>{{statusLabel .Status}}</span></td>
+                        <td style="padding:10px 14px;">{{if .FirstImageID}}&ge;1{{else}}0{{end}}</td>
+                        <td class="mono" style="padding:10px 14px;font-size:12.5px;color:var(--text-muted);">{{.CreatedAt.Format "2006-01-02"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
         <div class="samples-grid">
             {{range .Samples}}
             <article class="card tile sample-card">
@@ -66,7 +133,10 @@
                     {{end}}
                 </a>
                 <div class="sample-card__body">
-                    <div class="sample-card__id">SMP-{{printf "%03d" .ID}}</div>
+                    <div class="sample-card__id-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <div class="sample-card__id">SMP-{{printf "%03d" .ID}}</div>
+                        <span class="status-chip status-chip--{{statusChipClass .Status}}"><span class="status-chip__dot"></span>{{statusLabel .Status}}</span>
+                    </div>
                     <h3 class="sample-card__name"><a href="/samples/{{.ID}}">{{.Name}}</a></h3>
                     <p class="sample-card__desc">{{if .Description}}{{.Description}}{{else}}No description{{end}}</p>
                     {{if .Keywords}}
@@ -82,10 +152,11 @@
             </article>
             {{end}}
         </div>
+        {{end}}
     {{else}}
         <div class="empty-state card" style="text-align:center;padding:32px;">
-            <p>No samples found{{if .Query}} for "{{.Query}}"{{end}}{{if or .DateFrom .DateTo}}{{if .Query}} with{{else}} for{{end}} the selected date range{{end}}.</p>
-            <p class="empty-state__hint">Try a different keyword{{if or .DateFrom .DateTo}} or date range{{end}} or add a new sample.</p>
+            <p>No samples found{{if .Query}} for "{{.Query}}"{{end}}{{if .StatusFilter}} with status "{{statusLabel .StatusFilter}}"{{end}}{{if .OwnerFilter}} for owner "{{.OwnerFilter}}"{{end}}{{if or .DateFrom .DateTo}}{{if or .Query .StatusFilter .OwnerFilter}} and{{else}} for{{end}} the selected date range{{end}}.</p>
+            <p class="empty-state__hint">Try a different keyword or filter or add a new sample.</p>
         </div>
     {{end}}
 </section>

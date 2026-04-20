@@ -114,6 +114,92 @@ func TestSamples_List(t *testing.T) {
 	}
 }
 
+func TestSamples_List_IncludesStatus(t *testing.T) {
+	// Insert a sample with a non-default status so the response must surface it.
+	var id int
+	if err := pool.QueryRow(bgCtx,
+		`INSERT INTO samples (sample_name, status) VALUES ($1, 'archived') RETURNING sample_id`,
+		"inttest-status-"+randomHex(4)).Scan(&id); err != nil {
+		t.Fatalf("seed sample: %v", err)
+	}
+	t.Cleanup(func() { pool.Exec(bgCtx, "DELETE FROM samples WHERE sample_id = $1", id) })
+
+	resp := apiDo(t, http.MethodGet, "/api/v1/samples?limit=1000", nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", resp.StatusCode, mustReadBody(t, resp))
+	}
+	var env struct {
+		Items []samples.APISampleItem `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	var found bool
+	for _, it := range env.Items {
+		if it.ID == id {
+			found = true
+			if it.Status != "archived" {
+				t.Errorf("status = %q, want archived", it.Status)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("seeded sample %d not found in list response", id)
+	}
+}
+
+func TestSamples_API_StatusFilter(t *testing.T) {
+	// Seed an active and an archived sample; the ?status=archived API filter
+	// must surface only the archived one.
+	var activeID, archivedID int
+	activeName := "inttest-apiactive-" + randomHex(4)
+	archivedName := "inttest-apiarchived-" + randomHex(4)
+	if err := pool.QueryRow(bgCtx,
+		`INSERT INTO samples (sample_name, status) VALUES ($1, 'active') RETURNING sample_id`,
+		activeName).Scan(&activeID); err != nil {
+		t.Fatalf("seed active: %v", err)
+	}
+	if err := pool.QueryRow(bgCtx,
+		`INSERT INTO samples (sample_name, status) VALUES ($1, 'archived') RETURNING sample_id`,
+		archivedName).Scan(&archivedID); err != nil {
+		t.Fatalf("seed archived: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(bgCtx, "DELETE FROM samples WHERE sample_id IN ($1, $2)", activeID, archivedID)
+	})
+
+	// Note: the HTML /samples?status= handler is covered by unit tests — this
+	// exercises the equivalent API path so we can verify the SQL status filter
+	// really does what the handler layer claims it does.
+	resp := apiDo(t, http.MethodGet, "/api/v1/samples?limit=1000&status=archived", nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", resp.StatusCode, mustReadBody(t, resp))
+	}
+	var env struct {
+		Items []samples.APISampleItem `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	var sawArchived, sawActive bool
+	for _, it := range env.Items {
+		if it.ID == archivedID {
+			sawArchived = true
+		}
+		if it.ID == activeID {
+			sawActive = true
+		}
+	}
+	if !sawArchived {
+		t.Errorf("archived sample %d not returned when status=archived", archivedID)
+	}
+	if sawActive {
+		t.Errorf("active sample %d leaked through when status=archived", activeID)
+	}
+}
+
 func TestSamples_Unauthenticated(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/samples", nil)
 	resp, err := http.DefaultClient.Do(req)
