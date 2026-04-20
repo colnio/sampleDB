@@ -38,21 +38,21 @@
         {{end}}
 
         <details class="panel-details" open>
-            <summary>Attachments</summary>
-            {{template "sample_attachments" .}}
-        </details>
-
-        <details class="panel-details" open>
             <summary>Fabrication Steps</summary>
             {{template "fabrication_steps_panel" .}}
         </details>
 
         <details class="panel-details" open>
+            <summary>Attachments</summary>
+            {{template "sample_attachments" .}}
+        </details>
+
+        <details class="panel-details">
             <summary>Share Link</summary>
             {{template "sample_share_panel" .}}
         </details>
 
-        <details class="panel-details" open>
+        <details class="panel-details">
             <summary>Edit Sample Details</summary>
             {{template "sample_edit_form" .}}
         </details>
@@ -67,16 +67,22 @@
                     <span class="kv-list__value">{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}—{{end}}</span>
                 </div>
                 <div class="kv-list__row">
+                    <span class="kv-list__key">Status</span>
+                    <span class="kv-list__value">
+                        <span class="status-chip status-chip--{{statusChipClass .Sample.Status}}"><span class="status-chip__dot"></span>{{statusLabel .Sample.Status}}</span>
+                    </span>
+                </div>
+                <div class="kv-list__row">
                     <span class="kv-list__key">Created</span>
                     <span class="kv-list__value mono">{{.Sample.CreatedAt.Format "2006-01-02"}}</span>
                 </div>
                 <div class="kv-list__row">
-                    <span class="kv-list__key">Files</span>
-                    <span class="kv-list__value">{{len .Sample.Attachments}}</span>
+                    <span class="kv-list__key">Steps</span>
+                    <span class="kv-list__value">{{len .Steps}}</span>
                 </div>
                 <div class="kv-list__row">
-                    <span class="kv-list__key">Fabrication steps</span>
-                    <span class="kv-list__value">{{len .Steps}}</span>
+                    <span class="kv-list__key">Files</span>
+                    <span class="kv-list__value">{{len .Sample.Attachments}}</span>
                 </div>
                 <div class="kv-list__row">
                     <span class="kv-list__key">Sharing</span>
@@ -84,6 +90,45 @@
                 </div>
             </div>
         </div>
+
+        <div class="card" id="sample-activity-panel" style="padding:18px 22px;">
+            <div class="panel-head">
+                <h2 style="font-size:14px;margin:0;">Activity</h2>
+            </div>
+            {{if .Activity}}
+            <ul class="stack-sm" style="list-style:none;padding:0;margin:10px 0 0;">
+                {{range .Activity}}
+                <li class="flex gap-sm" style="align-items:flex-start;">
+                    <span class="status-chip__dot" aria-hidden="true" style="margin-top:7px;background:var(--color-primary);"></span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;color:var(--text-strong);">
+                            <strong>{{.ActorUsername}}</strong>
+                            {{activityVerb .Verb}}
+                            {{if .TargetLabel}}{{.TargetLabel}}{{else}}{{.TargetType}}{{end}}
+                        </div>
+                        <div class="recent-item__meta" style="margin-top:2px;">{{.CreatedAt.Format "Jan 02, 15:04"}}</div>
+                    </div>
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p class="muted" style="margin:10px 0 0;">No activity yet.</p>
+            {{end}}
+        </div>
+
+        {{if .IsAdmin}}
+        <div class="card" id="sample-danger-zone" style="padding:18px 22px;border-color:var(--danger-border, #5a2424);">
+            <div class="eyebrow" style="color:var(--danger-text, #f87171);">Danger Zone</div>
+            <p class="muted" style="margin:8px 0 14px;font-size:13px;">Permanently delete this sample, its fabrication steps, and every attachment. This cannot be undone.</p>
+            <form action="/samples/{{.Sample.ID}}/delete"
+                  method="POST"
+                  class="inline-form"
+                  hx-boost="false"
+                  onsubmit="return confirm('Permanently delete sample \u201C{{.Sample.Name}}\u201D and all its attachments? This cannot be undone.');">
+                <button type="submit" class="button button--destructive button--small">Delete sample</button>
+            </form>
+        </div>
+        {{end}}
     </aside>
 </section>
 

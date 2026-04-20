@@ -5,6 +5,8 @@ package samples
 import (
 	"html/template"
 	"time"
+
+	"sampleDB/internal/activity"
 )
 
 // Sample represents a sample record in the database.
@@ -109,8 +111,9 @@ type SampleDetailPageData struct {
 	Users       []User
 	Steps       []FabricationStep
 	Equipment   []Equipment
-	EditingStep int    // step_id currently in inline-edit mode (0 = none)
-	ShareURL    string // full URL for the share link, empty when not shared
+	EditingStep int              // step_id currently in inline-edit mode (0 = none)
+	ShareURL    string           // full URL for the share link, empty when not shared
+	Activity    []activity.Entry // recent activity for this sample (newest first)
 }
 
 // SharedSamplePageData is the template data for the public shared sample view.

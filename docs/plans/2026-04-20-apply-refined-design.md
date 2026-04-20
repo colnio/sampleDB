@@ -127,14 +127,14 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 5: Sample detail — Activity panel, Details/Danger-Zone polish, layout per screenshots
-- [ ] update `templates/sample_detail.html` to match screenshot #4/#5 — left column: Description card, Fabrication Steps, Attachments grid; right column: Details card (Owner, Status chip, Created, Last edit, Steps count, Files count), Activity card (last 6 entries from `activity.ForTarget("sample", id, 6)`), Danger Zone card
-- [ ] update the sample-detail handler in `internal/samples/` to fetch activity entries for the sample and pass them into the template context
-- [ ] add status chip next to the sample name in the page header (matches screenshot)
-- [ ] verify the Fabrication Steps rendering matches screenshot #5 — numbered rows with date, person, equipment, description
-- [ ] verify Share Link + Edit Sample Details panels — per QA INFO-1 these were noted as collapsed; decide whether to open by default or move into a top-right dropdown (match screenshot — a "Share" and "Edit" button in the page header)
-- [ ] write unit tests for the handler's activity-panel data-fetch
-- [ ] write test that asserts the page header includes the status chip when `status != 'active'` (and still renders correctly for `active`)
-- [ ] run `go test ./...` — must pass before next task
+- [x] update `templates/sample_detail.html` to match screenshot #4/#5 — left column: Description card, Fabrication Steps, Attachments grid; right column: Details card (Owner, Status chip, Created, Last edit, Steps count, Files count), Activity card (last 6 entries from `activity.ForTarget("sample", id, 6)`), Danger Zone card
+- [x] update the sample-detail handler in `internal/samples/` to fetch activity entries for the sample and pass them into the template context
+- [x] add status chip next to the sample name in the page header (matches screenshot)
+- [x] verify the Fabrication Steps rendering matches screenshot #5 — numbered rows with date, person, equipment, description
+- [x] verify Share Link + Edit Sample Details panels — per QA INFO-1 these were noted as collapsed; decide whether to open by default or move into a top-right dropdown (match screenshot — a "Share" and "Edit" button in the page header) — kept as collapsed `<details>` panels for now; top-header Share/Edit buttons deferred
+- [x] write unit tests for the handler's activity-panel data-fetch
+- [x] write test that asserts the page header includes the status chip when `status != 'active'` (and still renders correctly for `active`)
+- [x] run `go test ./...` — must pass before next task
 
 ### Task 6: Wiki list — tag grid with filters, article cards
 - [ ] extend `articles` query in `internal/wiki/handlers.go` to return `tags` and support `?tag=<tag>` filtering

@@ -225,6 +225,18 @@ func (h *Handlers) loadSampleDetailData(ctx context.Context, session auth.Sessio
 
 	isAdmin, _ := h.svc.IsAdmin(ctx, session.UserID)
 
+	// Activity is best-effort: a nil logger or a query error yields an empty
+	// slice so the page still renders.
+	var activityEntries []activity.Entry
+	if h.Activity != nil {
+		entries, err := h.Activity.ForTarget(ctx, "sample", sampleID, 6)
+		if err != nil {
+			log.Printf("samples.loadSampleDetailData: activity.ForTarget(%d): %v", sampleID, err)
+		} else {
+			activityEntries = entries
+		}
+	}
+
 	return SampleDetailPageData{
 		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
 		Sample:       sample,
@@ -232,6 +244,7 @@ func (h *Handlers) loadSampleDetailData(ctx context.Context, session auth.Sessio
 		Equipment:    equipment,
 		Steps:        steps,
 		ShareURL:     shareURL,
+		Activity:     activityEntries,
 	}, nil
 }
 
