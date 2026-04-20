@@ -1,0 +1,125 @@
+{{define "title"}}Dashboard · Sample Tracker{{end}}
+
+{{define "content"}}
+<div class="page-topbar">
+    <div class="page-topbar__left">
+        <h1>Welcome back, {{.Username}}</h1>
+        <div class="page-topbar__crumbs">{{.Now.Format "Monday · January 2, 2006"}}</div>
+    </div>
+    <div class="page-topbar__actions">
+        <a href="/samples/new" class="button button--primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>New Sample</span>
+        </a>
+    </div>
+</div>
+
+<section class="stats-grid" aria-label="Workspace statistics">
+    <div class="stat-card">
+        <div class="stat-card__label">Total samples</div>
+        <div class="stat-card__value">{{.KPIs.TotalSamples}}</div>
+        <div class="stat-card__delta muted">In the catalog</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card__label">Active bookings</div>
+        <div class="stat-card__value">{{.KPIs.ActiveBookings}}</div>
+        <div class="stat-card__delta muted">Running right now</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card__label">Wiki articles</div>
+        <div class="stat-card__value">{{.KPIs.WikiArticles}}</div>
+        <div class="stat-card__delta muted">Published</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card__label">Pending approvals</div>
+        <div class="stat-card__value">{{.KPIs.PendingApprovals}}</div>
+        <div class="stat-card__delta {{if gt .KPIs.PendingApprovals 0}}down{{end}}">
+            {{if gt .KPIs.PendingApprovals 0}}Require action{{else}}All clear{{end}}
+        </div>
+    </div>
+</section>
+
+<div class="dashboard-grid">
+    <article class="card">
+        <div class="panel-head">
+            <h2>Recent samples</h2>
+            <a href="/samples" class="panel-head__link">View all &rarr;</a>
+        </div>
+        {{if .RecentSamples}}
+        <div class="recent-list">
+            {{range .RecentSamples}}
+            <a class="recent-item" href="/samples/{{.ID}}">
+                <div class="recent-item__thumb">
+                    {{if .FirstImageID}}
+                    <img src="/attachment/{{.FirstImageID}}" alt="" loading="lazy">
+                    {{end}}
+                </div>
+                <div class="recent-item__body">
+                    <div class="recent-item__name">{{.Name}}</div>
+                    <div class="recent-item__meta">SMP-{{printf "%03d" .ID}} · {{.DisplayOwner}}</div>
+                </div>
+                <span class="status-chip status-chip--{{statusChipClass .Status}}">
+                    <span class="status-chip__dot" aria-hidden="true"></span>
+                    {{statusLabel .Status}}
+                </span>
+                <span class="recent-item__time">{{.CreatedAt.Format "Jan 02"}}</span>
+            </a>
+            {{end}}
+        </div>
+        {{else}}
+        <p class="muted" style="margin:0;">No samples yet. <a href="/samples/new">Create the first one.</a></p>
+        {{end}}
+    </article>
+
+    <article class="card">
+        <div class="panel-head">
+            <h2>Activity</h2>
+        </div>
+        {{if .Activity}}
+        <ul class="stack-sm" style="list-style:none;padding:0;margin:0;">
+            {{range .Activity}}
+            <li class="flex gap-sm" style="align-items:flex-start;">
+                <span class="status-chip__dot" aria-hidden="true" style="margin-top:7px;background:var(--color-primary);"></span>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;color:var(--text-strong);">
+                        <strong>{{.ActorUsername}}</strong>
+                        {{activityVerb .Verb}}
+                        {{if .TargetLabel}}{{.TargetLabel}}{{else}}{{.TargetType}}{{end}}
+                    </div>
+                    <div class="recent-item__meta" style="margin-top:2px;">{{.CreatedAt.Format "Jan 02, 15:04"}}</div>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+        {{else}}
+        <p class="muted" style="margin:0;">No activity yet.</p>
+        {{end}}
+    </article>
+</div>
+
+<article class="card" style="margin-top:18px;">
+    <div class="panel-head">
+        <h2>Today's bookings</h2>
+        <a href="/booking" class="panel-head__link">Open schedule &rarr;</a>
+    </div>
+    {{if .TodayBookings}}
+    <ul class="stack-sm" style="list-style:none;padding:0;margin:0;">
+        {{range .TodayBookings}}
+        <li class="flex gap-sm" style="align-items:center;padding:8px 0;border-bottom:1px solid var(--border-subtle);">
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;color:var(--text-strong);font-size:13.5px;">{{.EquipmentName}}</div>
+                <div class="recent-item__meta">{{.Username}}{{if .Purpose}} · {{.Purpose}}{{end}}</div>
+            </div>
+            <span class="mono muted" style="font-size:12.5px;">{{.StartTime.Format "15:04"}} – {{.EndTime.Format "15:04"}}</span>
+        </li>
+        {{end}}
+    </ul>
+    {{else}}
+    <p class="muted" style="margin:0;">No bookings scheduled for today.</p>
+    {{end}}
+</article>
+{{end}}
+
+{{template "base" .}}

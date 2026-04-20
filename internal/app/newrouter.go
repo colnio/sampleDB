@@ -1,6 +1,7 @@
 package app
 
 import (
+	"html/template"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -25,9 +26,14 @@ func NewRouter(cfg Config, db dbiface.Pool) http.Handler {
 		loc = time.UTC
 	}
 
-	// web.Renderer zero value is valid — no templates loaded means HTML pages
-	// will fail, but API-only callers are unaffected.
-	theApp, _ := New(cfg, db, authMgr, &web.Renderer{}, nil, nil, loc)
+	// Try to load real templates so HTML pages render in integration tests
+	// and alternative entry points. Falls back to the empty Renderer if the
+	// template directory is unreachable — API-only callers are unaffected.
+	renderer, rerr := web.NewRenderer(cfg.TemplatesDir, template.FuncMap{"markdown": web.RenderMarkdown}, loc)
+	if rerr != nil || renderer == nil {
+		renderer = &web.Renderer{}
+	}
+	theApp, _ := New(cfg, db, authMgr, renderer, nil, nil, loc)
 
 	// agents.Handlers nil receiver returns 503 safely.
 	if agentsHdlrs, err := agents.New(cfg.TemplatesDir, filepath.Join(cfg.StaticDir, "examples")); err == nil {

@@ -102,18 +102,18 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 3: Dashboard page (new `/dashboard` route, KPIs, Recent samples, Activity feed, Today's bookings)
-- [ ] add `GET /dashboard` route in `internal/app/routes.go`; wire a new handler in `internal/samples/` (or a new `internal/dashboard/` package if it stays small) that aggregates KPI counts, recent samples, activity entries, and today's bookings
-- [ ] KPI queries: total samples (count), active bookings today (count from bookings where current_timestamp BETWEEN start_time AND end_time), wiki articles (count), pending approvals (count of users where is_approved=false AND deleted=false)
-- [ ] Recent samples: `SELECT ... ORDER BY created_at DESC LIMIT 5` with status + first-image join (reuse query helper from samples list)
-- [ ] Activity entries: `activity.Recent(ctx, 7)`
-- [ ] Today's bookings: `SELECT equipment.name, bookings.* WHERE start_time::date = current_date` ordered by start_time
-- [ ] create `templates/dashboard.html` matching screenshot #1/#2 — page-topbar with "Welcome back, {{.Username}}" + date, 4-KPI card grid, Recent samples list (left), Activity feed (right), Today's bookings timeline (bottom, reuse booking.html timeline CSS)
-- [ ] update `templates/header.html` sidebar — add "Dashboard" link at top of Workspace group (already shown in screenshots)
-- [ ] decide landing page: keep `/` = samples list (current behaviour) OR make `/` redirect to `/dashboard`. Per screenshots, Dashboard is the primary landing — redirect `/` to `/dashboard` for authenticated users; keep samples list at `/samples`
-- [ ] update all `/` references in templates and integration tests to `/samples`
-- [ ] write unit tests for dashboard handler (mocked DB, assert counts computed from mock rows)
-- [ ] write integration test hitting `/dashboard` with a seeded user + samples + booking + activity entry
-- [ ] run `go test ./...` — must pass before next task
+- [x] add `GET /dashboard` route in `internal/app/routes.go`; wire a new handler in `internal/samples/` (or a new `internal/dashboard/` package if it stays small) that aggregates KPI counts, recent samples, activity entries, and today's bookings
+- [x] KPI queries: total samples (count), active bookings today (count from bookings where current_timestamp BETWEEN start_time AND end_time), wiki articles (count), pending approvals (count of users where is_approved=false AND deleted=false)
+- [x] Recent samples: `SELECT ... ORDER BY created_at DESC LIMIT 5` with status + first-image join (reuse query helper from samples list)
+- [x] Activity entries: `activity.Recent(ctx, 7)`
+- [x] Today's bookings: `SELECT equipment.name, bookings.* WHERE start_time::date = current_date` ordered by start_time
+- [x] create `templates/dashboard.html` matching screenshot #1/#2 — page-topbar with "Welcome back, {{.Username}}" + date, 4-KPI card grid, Recent samples list (left), Activity feed (right), Today's bookings timeline (bottom, reuse booking.html timeline CSS)
+- [x] update `templates/header.html` sidebar — add "Dashboard" link at top of Workspace group (already shown in screenshots)
+- [x] decide landing page: keep `/` = samples list (current behaviour) OR make `/` redirect to `/dashboard`. Per screenshots, Dashboard is the primary landing — redirect `/` to `/dashboard` for authenticated users; keep samples list at `/samples`
+- [x] update all `/` references in templates and integration tests to `/samples`
+- [x] write unit tests for dashboard handler (mocked DB, assert counts computed from mock rows)
+- [x] write integration test hitting `/dashboard` with a seeded user + samples + booking + activity entry
+- [x] run `go test ./...` — must pass before next task
 
 ### Task 4: Samples list — status chips, owner/status filters, Grid/Table toggle
 - [ ] extend `samples` list query in `internal/samples/` to include `status` column and allow filtering by `status` (`?status=active|in_progress|archived|all`) and by owner (`?owner=<username>|all`)

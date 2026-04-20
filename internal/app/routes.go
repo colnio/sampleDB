@@ -6,6 +6,7 @@ import (
 	"sampleDB/internal/admin"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/booking"
+	"sampleDB/internal/dashboard"
 	"sampleDB/internal/profile"
 	"sampleDB/internal/samples"
 	"sampleDB/internal/wiki"
@@ -41,7 +42,7 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if !isAdmin {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 			return
 		}
 
@@ -78,7 +79,16 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 		UseTLS:     a.Config.UseTLS,
 	})
 	samplesHdlrs.Activity = a.Activity
-	mux.HandleFunc("/", withAuth(samplesHdlrs.MainPage))
+	// "/" is a catch-all in net/http.ServeMux — restrict it to the literal
+	// root so unknown paths return 404 instead of silently redirecting.
+	mux.HandleFunc("/", withAuth(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	}))
+	mux.HandleFunc("/samples", withAuth(samplesHdlrs.MainPage))
 	mux.HandleFunc("/samples/new", withAuth(samplesHdlrs.NewSample))
 	mux.HandleFunc("/samples/edit/", withAuth(samplesHdlrs.EditSample))
 	mux.HandleFunc("/samples/", withAuth(samplesHdlrs.HandleSample))
@@ -89,6 +99,14 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/steps/", withAuth(samplesHdlrs.APISteps))
 	mux.HandleFunc("/api/v1/attachments/", withAuth(samplesHdlrs.APIAttachments))
 	mux.HandleFunc("/s/", samplesHdlrs.SharedSample)
+
+	// --- Dashboard landing page ---
+	dashSvc := dashboard.NewService(a.DB)
+	dashHdlrs := dashboard.NewHandlers(dashSvc, a.Renderer, sampleSvc, a.Activity, a.Location)
+	if a.Clock != nil {
+		dashHdlrs.Now = a.Clock
+	}
+	mux.HandleFunc("/dashboard", withAuth(dashHdlrs.DashboardPage))
 
 	// --- Booking domain routes (wired via booking.Handlers) ---
 	bookingSvc := booking.NewService(a.DB, a.Location)

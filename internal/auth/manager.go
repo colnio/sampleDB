@@ -266,7 +266,7 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			len(next) >= 1 && next[0] == '/' && (len(next) == 1 || next[1] != '/') {
 			http.Redirect(w, r, next, http.StatusSeeOther)
 		} else {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		}
 	}
 }

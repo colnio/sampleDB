@@ -1,6 +1,6 @@
 {{define "header"}}
 <aside class="sidebar" id="app-sidebar" aria-label="Primary navigation">
-    <a href="/" class="sidebar__brand">
+    <a href="/dashboard" class="sidebar__brand">
         <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M9 3h6v5.5l4 9.5a2 2 0 01-1.83 2.75H6.83A2 2 0 015 17.95l4-9.45V3z"
                   fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
@@ -20,7 +20,16 @@
 
     <div class="sidebar__group">
         <div class="sidebar__group-title">Workspace</div>
-        <a href="/" class="sidebar__item" data-nav="samples">
+        <a href="/dashboard" class="sidebar__item" data-nav="dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
+                <rect x="3.5" y="3.5" width="8" height="8" rx="1.5"/>
+                <rect x="12.5" y="3.5" width="8" height="5" rx="1.5"/>
+                <rect x="3.5" y="12.5" width="8" height="8" rx="1.5"/>
+                <rect x="12.5" y="9.5" width="8" height="11" rx="1.5"/>
+            </svg>
+            <span>Dashboard</span>
+        </a>
+        <a href="/samples" class="sidebar__item" data-nav="samples">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
                 <rect x="3.5" y="5" width="17" height="14" rx="2.5"/>
                 <path d="M3.5 9.5h17" stroke-linecap="round"/>
@@ -130,7 +139,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const scrim = document.getElementById('sidebar-scrim');
 
     function matchNavKey(path) {
-        if (path === '/' || path === '' || path.indexOf('/samples') === 0) return 'samples';
+        if (path === '/' || path === '' || path.indexOf('/dashboard') === 0) return 'dashboard';
+        if (path.indexOf('/samples') === 0) return 'samples';
         if (path.indexOf('/wiki') === 0) return 'wiki';
         if (path.indexOf('/booking') === 0) return 'booking';
         if (path.indexOf('/agents') === 0) return 'agents';

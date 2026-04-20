@@ -48,8 +48,8 @@ func TestLoginHandlerSuccess(t *testing.T) {
 		t.Fatalf("expected redirect, got status %d", rr.Code)
 	}
 
-	if loc := rr.Header().Get("Location"); loc != "/" {
-		t.Fatalf("expected redirect to '/', got %q", loc)
+	if loc := rr.Header().Get("Location"); loc != "/dashboard" {
+		t.Fatalf("expected redirect to '/dashboard', got %q", loc)
 	}
 
 	if len(rr.Result().Cookies()) == 0 {

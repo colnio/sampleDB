@@ -98,6 +98,7 @@ func NewRenderer(templatesDir string, extraFuncs template.FuncMap, loc *time.Loc
 		{"wiki_view", mainFM, []string{"wiki_view.html"}},
 		{"wiki_edit", mainFM, []string{"wiki_edit.html"}},
 		{"booking", bookingFM, []string{"booking.html"}},
+		{"dashboard", mainFM, []string{"dashboard.html"}},
 	}
 
 	r := &Renderer{}
@@ -137,12 +138,79 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 			}
 			return t.Format("2006-01-02")
 		},
-		"add": func(a, b int) int { return a + b },
+		"add":             func(a, b int) int { return a + b },
+		"statusChipClass": statusChipClass,
+		"statusLabel":     statusLabel,
+		"activityVerb":    activityVerb,
 	}
 	for k, v := range extraFuncs {
 		fm[k] = v
 	}
 	return fm
+}
+
+// statusChipClass maps a raw status string to the CSS modifier used by the
+// status-chip component. Unknown values fall back to "archived" so a stray
+// status never breaks the layout.
+func statusChipClass(status string) string {
+	switch status {
+	case "active":
+		return "active"
+	case "in_progress":
+		return "progress"
+	case "archived":
+		return "archived"
+	default:
+		return "archived"
+	}
+}
+
+// statusLabel returns the human-readable label displayed inside a status chip.
+func statusLabel(status string) string {
+	switch status {
+	case "active":
+		return "Active"
+	case "in_progress":
+		return "In Progress"
+	case "archived":
+		return "Archived"
+	default:
+		// Capitalize the first letter so templates never show an empty chip.
+		if status == "" {
+			return "Unknown"
+		}
+		return strings.ToUpper(status[:1]) + status[1:]
+	}
+}
+
+// activityVerb expands the stored verb into a short phrase for the feed.
+// Keeping this in the template layer means the canonical vocabulary in
+// activity.Verb stays terse while the feed renders as prose.
+func activityVerb(verb string) string {
+	switch verb {
+	case "created":
+		return "created"
+	case "updated":
+		return "edited"
+	case "deleted":
+		return "deleted"
+	case "booked":
+		return "booked"
+	case "uploaded":
+		return "uploaded"
+	case "published":
+		return "published"
+	case "added_step":
+		return "added step to"
+	case "edited_step":
+		return "edited step in"
+	case "granted":
+		return "granted access to"
+	case "revoked":
+		return "revoked access to"
+	default:
+		return verb
+	}
 }
 
 // buildBookingFuncMap returns the template.FuncMap used by the booking group.

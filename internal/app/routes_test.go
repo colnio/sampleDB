@@ -64,8 +64,10 @@ func TestRegisterRoutes_AllPatternsRegistered(t *testing.T) {
 		{"/login", "/login"},
 		{"/register", "/register"},
 		{"/logout", "/logout"},
-		// samples
+		// landing + samples
 		{"/", "/"},
+		{"/dashboard", "/dashboard"},
+		{"/samples", "/samples"},
 		{"/samples/new", "/samples/new"},
 		{"/samples/edit/42", "/samples/edit/"},
 		{"/samples/123", "/samples/"},
