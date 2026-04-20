@@ -283,6 +283,7 @@
             <p class="form-hint">Legacy owner text: {{.Sample.Owner}}</p>
             {{end}}
         </div>
+        {{if .IsAdmin}}
         <div class="form-group">
             <label for="sample-status">Status</label>
             <select id="sample-status" name="status">
@@ -291,6 +292,7 @@
                 <option value="archived" {{if eq .Sample.Status "archived"}}selected{{end}}>Archived</option>
             </select>
         </div>
+        {{end}}
         <div class="form-actions">
             <button type="submit" class="button button--primary button--block">Save Changes</button>
             <div id="sample-edit-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">

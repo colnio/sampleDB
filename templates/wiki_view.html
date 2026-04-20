@@ -1,9 +1,5 @@
 {{define "title"}}{{.Article.Title}} - Wiki{{end}}
 
-{{define "additional_styles"}}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
-{{end}}
-
 {{define "content"}}
 <div class="wiki-article">
     <a href="/wiki" class="back-link back-link--top">← Back to Wiki</a>
@@ -72,13 +68,12 @@
 
 </div>
 
-<!-- Syntax highlighting -->
+<!-- Syntax highlighting — loaded inside content so HTMX swap picks it up -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
+    document.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
     });
 </script>
 

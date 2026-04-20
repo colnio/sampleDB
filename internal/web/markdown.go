@@ -36,7 +36,6 @@ func RenderMarkdown(md string) template.HTML {
 		Flags: html.CommonFlags |
 			html.HrefTargetBlank |
 			html.LazyLoadImages |
-			html.TOC |
 			html.UseXHTML |
 			html.FootnoteReturnLinks |
 			html.SkipHTML |

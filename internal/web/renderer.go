@@ -289,5 +289,6 @@ func buildBookingFuncMap(loc *time.Location) template.FuncMap {
 		"addDays": func(t time.Time, days int) time.Time {
 			return t.AddDate(0, 0, days)
 		},
+		"firstInitial": firstInitial,
 	}
 }

@@ -98,7 +98,7 @@
 
     <div class="sidebar__footer">
         {{if .Username}}
-        <div class="sidebar__avatar" aria-hidden="true">{{printf "%.1s" .Username}}</div>
+        <div class="sidebar__avatar" aria-hidden="true">{{firstInitial .Username}}</div>
         <div class="sidebar__userinfo">
             <div class="sidebar__username">{{.Username}}</div>
             <div class="sidebar__role">{{if .IsAdmin}}Admin{{else}}Member{{end}}</div>

@@ -61,6 +61,7 @@ func buildRenderer(t *testing.T) *web.Renderer {
 		"add":             func(a, b int) int { return a + b },
 		"ownerSelected":   func(*int, int) bool { return false },
 		"markdown":        func(s string) template.HTML { return template.HTML(s) },
+		"firstInitial":    func(s string) string { return s },
 	}).ParseFiles("../../templates/base.html", "../../templates/header.html", "../../templates/dashboard.html")
 	if err != nil {
 		t.Fatalf("parse templates: %v", err)
