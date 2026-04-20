@@ -61,9 +61,9 @@ func TestGetAllEquipment_ReturnsTwoRows(t *testing.T) {
 	svc, mock := newSvc(t)
 
 	mock.ExpectQuery(`SELECT equipment_id, name`).
-		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location"}).
-			AddRow(1, "SEM", "Scanning electron microscope", "Lab A").
-			AddRow(2, "AFM", "Atomic force microscope", "Lab B"))
+		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location", "status"}).
+			AddRow(1, "SEM", "Scanning electron microscope", "Lab A", "online").
+			AddRow(2, "AFM", "Atomic force microscope", "Lab B", "maintenance"))
 
 	equipment, err := svc.GetAllEquipment(context.Background())
 	if err != nil {
@@ -84,7 +84,7 @@ func TestGetAllEquipment_EmptyResult(t *testing.T) {
 	svc, mock := newSvc(t)
 
 	mock.ExpectQuery(`SELECT equipment_id, name`).
-		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location"}))
+		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location", "status"}))
 
 	equipment, err := svc.GetAllEquipment(context.Background())
 	if err != nil {

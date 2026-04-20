@@ -16,17 +16,21 @@
 
     <div class="booking-toolbar">
         <div class="toolbar-section">
-            <a href="/booking?date={{formatDateISO (addDays .SelectedDate -1)}}" class="nav-chip">&laquo; Prev Day</a>
+            <a href="/booking?date={{formatDateISO (addDays .SelectedDate -1)}}" class="nav-chip">&laquo; Prev</a>
         </div>
         <div class="toolbar-section toolbar-section--search">
-            <span class="toolbar-label">Search</span>
             <form class="toolbar-search" action="/booking" method="GET" autocomplete="off">
                 <input type="date" name="date" value="{{formatDateISO .SelectedDate}}" aria-label="Select date" autocomplete="off">
-                <button class="button button--primary" type="submit">Find</button>
+                <button class="button button--primary" type="submit">Go</button>
             </form>
         </div>
         <div class="toolbar-section">
-            <a href="/booking?date={{formatDateISO (addDays .SelectedDate 1)}}" class="nav-chip">Next Day &raquo;</a>
+            <a href="/booking?date={{formatDateISO (addDays .SelectedDate 1)}}" class="nav-chip">Next &raquo;</a>
+        </div>
+        <div class="toolbar-section toolbar-section--actions">
+            <button type="button" class="button button--primary booking-book-slot" onclick="openQuickBooking()">
+                <span aria-hidden="true">+</span> Book Slot
+            </button>
         </div>
     </div>
 
@@ -57,7 +61,11 @@
             {{$equipment := .}}
             <div class="timeline-row">
                 <div class="timeline-equipment">
-                    <div class="equipment-title">{{$equipment.Name}}</div>
+                    <div class="equipment-title">
+                        <span class="equipment-status-dot equipment-status-dot--{{$equipment.Status}}" aria-hidden="true"></span>
+                        <span>{{$equipment.Name}}</span>
+                    </div>
+                    <div class="equipment-status-label">{{$equipment.Status}}</div>
                 </div>
                 {{if index $.HasPermission $equipment.ID}}
                 <div class="timeline-lane" data-equipment="{{$equipment.ID}}">
@@ -337,6 +345,44 @@
 .equipment-title {
     font-weight: 700;
     color: var(--text-strong);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+.equipment-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-success, #22c55e);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+    flex: none;
+}
+
+.equipment-status-dot--offline {
+    background: var(--color-destructive, #ef4444);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+
+.equipment-status-dot--maintenance {
+    background: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
+}
+
+.equipment-status-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.booking-book-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
 }
 
 .equipment-link {

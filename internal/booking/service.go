@@ -45,7 +45,8 @@ func NewService(db dbiface.Pool, loc *time.Location) *DBService {
 // GetAllEquipment returns all equipment ordered by name.
 func (s *DBService) GetAllEquipment(ctx context.Context) ([]Equipment, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT equipment_id, name, coalesce(description, 'N/A'), coalesce(location, 'N/A')
+		`SELECT equipment_id, name, coalesce(description, 'N/A'), coalesce(location, 'N/A'),
+                coalesce(status, 'online')
          FROM equipment
          ORDER BY name`)
 	if err != nil {
@@ -56,7 +57,7 @@ func (s *DBService) GetAllEquipment(ctx context.Context) ([]Equipment, error) {
 	var equipment []Equipment
 	for rows.Next() {
 		var eq Equipment
-		if err := rows.Scan(&eq.ID, &eq.Name, &eq.Description, &eq.Location); err != nil {
+		if err := rows.Scan(&eq.ID, &eq.Name, &eq.Description, &eq.Location, &eq.Status); err != nil {
 			return nil, err
 		}
 		equipment = append(equipment, eq)

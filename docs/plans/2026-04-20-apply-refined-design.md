@@ -154,12 +154,12 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 8: Equipment booking — verify screenshot match, minor polish
-- [ ] compare `templates/booking.html` rendered output against screenshot #8 (timeline per-equipment rows, date navigation, Available-now chip, Book Slot button)
-- [ ] fix any visual gaps (equipment status dot `● online` next to equipment name, `Book Slot` button style, date-picker layout)
-- [ ] remove the commented-out "Rules" link stub per QA UX-4 (already remediated? verify in `templates/booking.html`)
-- [ ] if booking data-fetch needs augmentation (e.g. include equipment.status), extend handler + tests accordingly
-- [ ] write unit test asserting equipment status is included in the render context
-- [ ] run `go test ./...` — must pass before next task
+- [x] compare `templates/booking.html` rendered output against screenshot #8 (timeline per-equipment rows, date navigation, Available-now chip, Book Slot button)
+- [x] fix any visual gaps (equipment status dot `● online` next to equipment name, `Book Slot` button style, date-picker layout)
+- [x] remove the commented-out "Rules" link stub per QA UX-4 (already remediated in prior commits — verified no "Rules" link remains in `templates/booking.html`)
+- [x] if booking data-fetch needs augmentation (e.g. include equipment.status), extend handler + tests accordingly — extended `Equipment.Status`, updated `GetAllEquipment` query to read `equipment.status`, and threaded it through to the template
+- [x] write unit test asserting equipment status is included in the render context — added `internal/booking/render_test.go` with a handler render test asserting `equipment-status-dot--{online,maintenance,offline}` classes and "Book Slot" button appear in the rendered HTML
+- [x] run `go test ./...` — must pass before next task
 
 ### Task 9: API Tokens page — verify screenshot match, minor polish
 - [ ] compare `templates/profile_tokens.html` against screenshot #9 (two-column: Generate form left, Existing tokens table right + Usage example card below)
