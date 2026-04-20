@@ -1,0 +1,2538 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>SampleDB — Redesign</title>
+  <style>/* ===========================================================
+   SampleDB Redesign — Shared app shell + direction skins
+   =========================================================== */
+/* =============================================================
+   SampleDB Design System — Colors & Type
+   Lifted from colnio/sampleDB static/css/style.css
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    /* ---------- Type ---------- */
+    --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --font-family-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+    --font-size-xs: 0.75rem;    /* 12px */
+    --font-size-sm: 0.875rem;   /* 14px */
+    --font-size-base: 1rem;     /* 16px */
+    --font-size-lg: 1.125rem;   /* 18px */
+    --font-size-xl: 1.25rem;    /* 20px */
+    --font-size-2xl: 1.5rem;    /* 24px */
+    --font-size-3xl: 1.875rem;  /* 30px */
+
+    --line-height-tight: 1.2;
+    --line-height-heading: 1.3;
+    --line-height-body: 1.65;
+
+    /* ---------- Spacing ---------- */
+    --space-xs: 0.25rem;   /* 4  */
+    --space-sm: 0.5rem;    /* 8  */
+    --space-md: 1rem;      /* 16 */
+    --space-lg: 1.5rem;    /* 24 */
+    --space-xl: 2rem;      /* 32 */
+    --space-2xl: 3rem;     /* 48 */
+
+    /* ---------- Radius ---------- */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-pill: 9999px;
+
+    /* ---------- Elevation ---------- */
+    --card-shadow: 0 6px 20px rgba(17, 24, 39, 0.1);
+    --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 30px rgba(15, 23, 42, 0.18);
+
+    /* ---------- Surfaces ---------- */
+    --surface-default: #ffffff;
+    --surface-subtle:  #f8fafc;
+    --surface-muted:   #f1f5f9;
+
+    /* ---------- Neutrals (slate ramp) ---------- */
+    --neutral-950: #0b1120;
+    --neutral-900: #111827;
+    --neutral-800: #1f2937;
+    --neutral-700: #334155;
+    --neutral-600: #475569;
+    --neutral-500: #64748b;
+    --neutral-400: #94a3b8;
+    --neutral-200: #e2e8f0;
+    --neutral-100: #f1f5f9;
+    --neutral-50:  #f8fafc;
+
+    /* ---------- Accent (flask blue) ---------- */
+    --accent-100: #e8f1ff;
+    --accent-200: #cfe0ff;
+    --accent-400: #5992ff;
+    --accent-500: #2563eb;  /* primary */
+    --accent-600: #1d4ed8;
+    --accent-700: #1e40af;
+
+    /* ---------- Borders ---------- */
+    --border-subtle: rgba(15, 23, 42, 0.1);
+    --border-strong: rgba(15, 23, 42, 0.18);
+
+    /* ---------- Semantic text ---------- */
+    --text-strong: var(--neutral-900);
+    --text-muted:  var(--neutral-600);
+    --text-on-accent: #ffffff;
+
+    /* ---------- Semantic colors ---------- */
+    --color-primary:         var(--accent-500);
+    --color-primary-hover:   var(--accent-600);
+    --color-primary-active:  var(--accent-700);
+    --color-secondary-bg:    var(--accent-100);
+    --color-secondary-border: var(--accent-200);
+    --color-secondary-hover-bg: var(--accent-200);
+    --color-secondary-hover-border: var(--accent-400);
+    --color-secondary-text:  var(--accent-700);
+
+    --color-destructive:        #b91c1c;
+    --color-destructive-hover:  #991b1b;
+    --color-destructive-active: #7f1d1d;
+    --color-destructive-bg:     #fef2f2;
+    --color-destructive-border: #fecaca;
+
+    --color-success:        #047857;
+    --color-success-bg:     #ecfdf5;
+    --color-success-border: #bbf7d0;
+
+    --color-button-on-dark:         #ffffff;
+    --color-button-disabled-bg:     #e5e7eb;
+    --color-button-disabled-border: #d1d5db;
+    --color-button-disabled-text:   #9ca3af;
+    --color-button-focus:           rgba(37, 99, 235, 0.35);
+
+    --theme-color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    --theme-color-scheme: dark;
+    --surface-default: #161b22;
+    --surface-subtle:  #0d1117;
+    --surface-muted:   #151b23;
+
+    --neutral-950: #f0f6fc;
+    --neutral-900: #c9d1d9;
+    --neutral-800: #aab6c3;
+    --neutral-700: #9198a1;
+    --neutral-600: #7d8590;
+    --neutral-500: #6e7681;
+    --neutral-400: #484f58;
+    --neutral-200: #30363d;
+    --neutral-100: #21262d;
+    --neutral-50:  #151b23;
+
+    --accent-100: #0c2d6b;
+    --accent-200: #1158c7;
+    --accent-400: #1f6feb;
+    --accent-500: #4493f8;
+    --accent-600: #58a6ff;
+    --accent-700: #79c0ff;
+
+    --card-shadow: 0 8px 24px rgba(1, 4, 9, 0.65);
+    --border-subtle: #30363d;
+    --border-strong: #484f58;
+    --text-strong: #f0f6fc;
+    --text-muted:  #9198a1;
+
+    --color-primary:        #4493f8;
+    --color-primary-hover:  #58a6ff;
+    --color-primary-active: #1f6feb;
+
+    --color-destructive:        #f0883e;
+    --color-destructive-hover:  #ffa657;
+    --color-destructive-active: #bd561d;
+}
+
+/* =============================================================
+   Semantic element styling
+   ============================================================= */
+body {
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-body);
+    color: var(--text-strong);
+    background: var(--surface-subtle);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family-base);
+    line-height: var(--line-height-heading);
+    font-weight: 700;
+    margin: 0 0 var(--space-sm);
+    color: var(--text-strong);
+}
+h1, h2 { color: var(--color-primary); }
+h1 { font-size: var(--font-size-3xl); margin-bottom: var(--space-lg); }
+h2 { font-size: var(--font-size-2xl); }
+h3 { font-size: var(--font-size-xl); }
+h4 { font-size: var(--font-size-lg); }
+h5 { font-size: var(--font-size-base); }
+h6 {
+    font-size: var(--font-size-sm);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+p { margin: 0 0 var(--space-md); }
+code, pre {
+    font-family: var(--font-family-mono);
+    font-size: 0.9em;
+}
+code {
+    padding: 0.2em 0.4em;
+    background: rgba(27, 31, 35, 0.05);
+    border-radius: var(--radius-sm);
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-body);
+  color: var(--text-strong);
+  background: var(--surface-subtle);
+  min-height: 100vh;
+}
+
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { color: var(--color-primary-hover); }
+
+button { font-family: inherit; }
+
+/* ---------- Top-level direction switcher ---------- */
+.direction-bar {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px;
+  background: rgba(13, 17, 23, 0.92);
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  font-size: 13px;
+}
+.direction-bar__label { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.7; font-size: 11px; }
+.direction-bar__segs { display: inline-flex; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 3px; }
+.direction-bar__seg { padding: 6px 14px; border-radius: 999px; background: transparent; border: none; color: rgba(255,255,255,0.7); font-weight: 600; font-size: 12px; cursor: pointer; letter-spacing: 0.02em; }
+.direction-bar__seg.active { background: #fff; color: #0d1117; }
+.direction-bar__screens { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.direction-bar__screens button {
+  padding: 5px 11px; border-radius: 6px; background: transparent; border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.8); font-size: 11.5px; font-weight: 500; cursor: pointer;
+}
+.direction-bar__screens button.active { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.25); }
+.direction-bar__theme {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; cursor: pointer;
+  font-size: 12px; font-weight: 600;
+}
+
+/* stage */
+.stage { min-height: calc(100vh - 50px); }
+.stage[data-dir="A"] { background: var(--surface-subtle); }
+.stage[data-dir="B"] { background: var(--surface-subtle); }
+.stage[data-dir="C"] { background: var(--surface-subtle); }
+
+/* ---------- Shared small tokens ---------- */
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 5px;
+  border: 1px solid var(--border-subtle); border-bottom-width: 2px;
+  border-radius: 5px; background: var(--surface-default);
+  font-family: var(--font-family-mono); font-size: 11px; color: var(--text-muted);
+}
+
+.status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.status-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-chip--active { background: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success-border); }
+.status-chip--progress { background: rgba(37,99,235,0.08); color: var(--color-primary); border-color: rgba(37,99,235,0.2); }
+.status-chip--archived { background: var(--surface-muted); color: var(--text-muted); border-color: var(--border-subtle); }
+.status-chip--pending { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+:root[data-theme="dark"] .status-chip--pending { background: rgba(251,191,36,0.12); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+
+/* ---------- Utilities ---------- */
+.u-flex { display: flex; }
+.u-between { display:flex; align-items:center; justify-content:space-between; }
+.u-center { display:flex; align-items:center; }
+.u-gap-sm { gap: 8px; }
+.u-gap-md { gap: 16px; }
+.u-gap-lg { gap: 24px; }
+.u-muted { color: var(--text-muted); }
+.u-mono { font-family: var(--font-family-mono); }
+.u-small { font-size: 13px; }
+.u-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+
+/* ===========================================================
+   DIRECTION A — Refined (keeps blue + 3px top bar, app shell)
+   =========================================================== */
+.dirA {
+  --a-sidebar-w: 240px;
+}
+.dirA .app-shell { display: grid; grid-template-columns: var(--a-sidebar-w) 1fr; min-height: calc(100vh - 50px); }
+.dirA .sidebar {
+  background: var(--surface-default);
+  border-right: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  padding: 20px 14px;
+  gap: 4px;
+}
+.dirA .sidebar__brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 18px; font-weight: 800; font-size: 17px; color: var(--color-primary); }
+.dirA .sidebar__brand svg { width: 26px; height: 26px; }
+.dirA .nav-group { margin-top: 16px; }
+.dirA .nav-group__title { padding: 8px 10px; font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.dirA .nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 8px;
+  color: var(--neutral-700); font-size: 14px; font-weight: 500;
+  border: none; background: transparent; width: 100%; text-align: left; cursor: pointer;
+}
+.dirA .nav-link svg { width: 18px; height: 18px; stroke: currentColor; flex: none; }
+.dirA .nav-link:hover { background: rgba(37,99,235,0.08); color: var(--color-primary); }
+.dirA .nav-link.active { background: rgba(37,99,235,0.12); color: var(--color-primary); font-weight: 600; box-shadow: inset 3px 0 0 var(--color-primary); }
+.dirA .nav-link .count { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-muted); padding: 1px 7px; border-radius: 999px; }
+.dirA .sidebar__footer { margin-top: auto; padding: 10px; border-top: 1px solid var(--border-subtle); display:flex; align-items:center; gap: 10px; }
+.dirA .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--color-secondary-bg); color: var(--color-secondary-text); display:flex; align-items:center; justify-content:center; font-weight: 700; font-size: 13px; }
+
+.dirA .main { padding: 28px 40px 80px; max-width: 1400px; }
+.dirA .topbar { display:flex; align-items:center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.dirA .topbar__left h1 { font-size: 24px; color: var(--text-strong); margin: 0 0 4px; }
+.dirA .topbar__left .crumbs { font-size: 12.5px; color: var(--text-muted); }
+.dirA .topbar__actions { display: flex; gap: 10px; align-items: center; }
+
+.dirA .card {
+  background: var(--surface-default);
+  border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+.dirA .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 16px; border-radius: 8px; font-weight: 600; font-size: 13.5px;
+  border: 1px solid transparent; cursor: pointer; min-height: 38px;
+  transition: transform 0.1s, background 0.15s, border-color 0.15s;
+}
+.dirA .btn:active { transform: translateY(1px); }
+.dirA .btn svg { width: 16px; height: 16px; flex: none; }
+.dirA .btn--primary { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.dirA .btn--primary:hover { background: var(--color-primary-hover); }
+.dirA .btn--secondary { background: var(--color-secondary-bg); color: var(--color-secondary-text); border-color: var(--color-secondary-border); }
+.dirA .btn--ghost { background: transparent; color: var(--text-strong); border-color: var(--border-subtle); }
+.dirA .btn--ghost:hover { background: var(--surface-muted); }
+.dirA .btn--danger { background: transparent; color: var(--color-destructive); border-color: var(--color-destructive-border); }
+.dirA .btn--sm { padding: 6px 12px; min-height: 30px; font-size: 12.5px; }
+.dirA .btn--icon { width: 38px; padding: 0; }
+
+.dirA .toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px; background: var(--surface-default); border: 1px solid var(--border-subtle);
+  border-radius: 12px; margin-bottom: 20px;
+}
+.dirA .search {
+  flex: 1; min-width: 240px; display:flex; align-items:center; gap:8px;
+  padding: 0 12px; background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle); border-radius: 8px; min-height: 38px;
+}
+.dirA .search input { background: transparent; border: none; outline: none; flex: 1; font-size: 14px; color: var(--text-strong); min-height: auto; padding: 0; }
+.dirA .search svg { color: var(--text-muted); width: 16px; height: 16px; }
+
+.dirA .filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--surface-subtle); border: 1px dashed var(--border-subtle);
+  font-size: 12.5px; font-weight: 500; color: var(--text-muted); cursor: pointer;
+}
+.dirA .filter-chip.active { background: var(--color-secondary-bg); color: var(--color-secondary-text); border: 1px solid var(--color-secondary-border); }
+
+.dirA .seg {
+  display: inline-flex; padding: 3px; border-radius: 8px; background: var(--surface-muted); border: 1px solid var(--border-subtle);
+}
+.dirA .seg button { padding: 5px 12px; border-radius: 6px; background: transparent; border: none; font-size: 12.5px; color: var(--text-muted); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.dirA .seg button svg { width: 14px; height: 14px; }
+.dirA .seg button.active { background: var(--surface-default); color: var(--text-strong); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+.dirA .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.dirA .stat-card { padding: 16px 18px; background: var(--surface-default); border: 1px solid var(--border-subtle); border-top: 3px solid var(--color-primary); border-radius: 12px; }
+.dirA .stat-card__label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.dirA .stat-card__value { font-size: 28px; font-weight: 800; color: var(--text-strong); margin: 4px 0 2px; letter-spacing: -0.02em; }
+.dirA .stat-card__delta { font-size: 12px; color: var(--color-success); font-weight: 600; }
+.dirA .stat-card__delta.down { color: var(--color-destructive); }
+
+.dirA .samples-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+.dirA .sample-card { overflow: hidden; padding: 0; display:flex; flex-direction:column; cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; }
+.dirA .sample-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(17,24,39,0.12); }
+.dirA .sample-card__thumb { height: 140px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); position: relative; overflow: hidden; }
+.dirA .sample-card__thumb .status { position: absolute; top: 10px; right: 10px; z-index: 2; background: rgba(13,17,23,0.8); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+.dirA .sample-card__body { padding: 14px 16px 16px; display:flex; flex-direction:column; gap: 6px; flex: 1; }
+.dirA .sample-card__id { font-family: var(--font-family-mono); font-size: 11.5px; color: var(--text-muted); letter-spacing: 0.04em; }
+.dirA .sample-card__title { font-size: 16px; font-weight: 700; color: var(--text-strong); margin: 0; }
+.dirA .sample-card__desc { font-size: 13px; color: var(--text-muted); margin: 2px 0 6px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dirA .sample-card__meta { display:flex; gap: 12px; font-size: 12px; color: var(--text-muted); margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+
+.dirA .data-table { width: 100%; background: var(--surface-default); border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden; border-collapse: collapse; }
+.dirA .data-table th { text-align: left; padding: 11px 16px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); }
+.dirA .data-table td { padding: 12px 16px; font-size: 13.5px; border-bottom: 1px solid var(--border-subtle); color: var(--text-strong); vertical-align: middle; }
+.dirA .data-table tr:last-child td { border-bottom: none; }
+.dirA .data-table tr:hover td { background: var(--surface-subtle); }
+.dirA .data-table .sample-id { font-family: var(--font-family-mono); font-size: 12.5px; color: var(--color-primary); font-weight: 600; }
+
+.dirA .form-card { padding: 24px; }
+.dirA .field { margin-bottom: 16px; }
+.dirA .field label { display:block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-strong); }
+.dirA .field input, .dirA .field textarea, .dirA .field select {
+  width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border-subtle);
+  background: var(--surface-default); color: var(--text-strong); font-size: 14px; font-family: inherit;
+  min-height: 38px;
+}
+.dirA .field input:focus, .dirA .field textarea:focus, .dirA .field select:focus {
+  outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+.dirA .field textarea { min-height: 80px; resize: vertical; }
+.dirA .field-help { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.dirA .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* Activity */
+.dirA .activity-item { display:flex; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+.dirA .activity-item:hover { background: var(--surface-subtle); }
+.dirA .activity-item .time { color: var(--text-muted); font-size: 12px; margin-left: auto; white-space: nowrap; font-family: var(--font-family-mono); }
+.dirA .activity-item .dot-col { flex: none; width: 8px; display:flex; justify-content: center; padding-top: 6px; position: relative; }
+.dirA .activity-item .dot-col::before { content: ''; position: absolute; top: 0; left: 50%; bottom: -10px; width: 1px; background: var(--border-subtle); }
+.dirA .activity-item:last-child .dot-col::before { display: none; }
+.dirA .activity-item .dot-col::after { content: ''; position: absolute; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); }
+
+/* fabrication timeline — A */
+.dirA .fab-timeline { position: relative; padding-left: 6px; }
+.dirA .fab-step { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 14px 0; border-bottom: 1px dashed var(--border-subtle); position: relative; }
+.dirA .fab-step:last-child { border-bottom: none; }
+.dirA .fab-step__num {
+  width: 36px; height: 36px; border-radius: 10px; background: var(--color-secondary-bg); color: var(--color-secondary-text);
+  font-weight: 700; display:flex; align-items:center; justify-content:center; font-family: var(--font-family-mono); font-size: 14px;
+}
+.dirA .fab-step__title { font-weight: 600; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap: 8px; }
+.dirA .fab-step__meta { font-size: 12px; color: var(--text-muted); display:flex; gap: 14px; flex-wrap: wrap; }
+.dirA .fab-step__actions { opacity: 0; transition: opacity 0.15s; display:flex; gap: 6px; margin-top: 6px; }
+.dirA .fab-step:hover .fab-step__actions { opacity: 1; }
+.dirA .fab-step__grab { cursor: grab; color: var(--text-muted); align-self: center; width: 14px; opacity: 0; }
+.dirA .fab-step:hover .fab-step__grab { opacity: 0.6; }
+
+/* booking */
+.dirA .timeline-wrap { background: var(--surface-default); border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden; }
+.dirA .timeline-wrap__scroll { overflow-x: auto; }
+.dirA .tline {
+  --equipment-col: 180px;
+  --hour-w: 80px;
+  --lane-w: calc(var(--hour-w) * 12);
+  min-width: calc(var(--equipment-col) + var(--lane-w));
+}
+.dirA .tline-head { display:flex; position: sticky; top: 0; z-index: 2; }
+.dirA .tline-head__left { width: var(--equipment-col); min-width: var(--equipment-col); padding: 14px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); }
+.dirA .tline-hours { display: grid; grid-template-columns: repeat(12, var(--hour-w)); background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); border-left: 1px solid var(--border-subtle); }
+.dirA .tline-hour { padding: 14px 8px; font-size: 12px; font-weight: 600; color: var(--text-muted); border-right: 1px solid var(--border-subtle); }
+.dirA .tline-row { display:flex; }
+.dirA .tline-row__left { width: var(--equipment-col); min-width: var(--equipment-col); padding: 14px; font-size: 13px; font-weight: 600; color: var(--text-strong); border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); display:flex; align-items:center; gap:8px; }
+.dirA .tline-row__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); }
+.dirA .tline-lane { position: relative; width: var(--lane-w); min-width: var(--lane-w); height: 64px; border-bottom: 1px solid var(--border-subtle); border-left: 1px solid var(--border-subtle); background: var(--surface-default); }
+.dirA .tline-lane .slots { position:absolute; inset: 0; display: grid; grid-template-columns: repeat(12, var(--hour-w)); }
+.dirA .tline-lane .slot { border-right: 1px dashed var(--border-subtle); }
+.dirA .tline-lane .slot:hover { background: rgba(37,99,235,0.06); }
+.dirA .tline-block { position: absolute; top: 8px; height: 48px; border-radius: 8px; background: var(--color-primary); color: #fff; padding: 6px 12px; display:flex; flex-direction: column; justify-content:center; font-size: 12px; font-weight: 600; box-shadow: 0 6px 14px rgba(37,99,235,0.35); overflow: hidden; }
+.dirA .tline-block--own { background: linear-gradient(135deg, #14532d, #16a34a); box-shadow: 0 6px 14px rgba(22,163,74,0.35); }
+.dirA .tline-block small { font-size: 10.5px; opacity: 0.85; font-weight: 500; }
+.dirA .tline-lane.locked { background: repeating-linear-gradient(-45deg, var(--surface-subtle) 0 10px, var(--surface-muted) 10px 20px); }
+
+/* ===========================================================
+   DIRECTION B — Linear-inspired (dense, monospace, subtle)
+   =========================================================== */
+.dirB {
+  --b-sidebar-w: 220px;
+  --b-accent: #6366f1;
+  --b-accent-soft: rgba(99,102,241,0.12);
+  --b-border: var(--border-subtle);
+  font-family: 'Inter', var(--font-family-base);
+  letter-spacing: -0.005em;
+}
+.dirB .app-shell { display: grid; grid-template-columns: var(--b-sidebar-w) 1fr; min-height: calc(100vh - 50px); background: var(--surface-default); }
+.dirB .sidebar { background: var(--surface-subtle); border-right: 1px solid var(--b-border); display: flex; flex-direction: column; padding: 14px 8px; }
+.dirB .sidebar__brand {
+  display:flex; align-items:center; gap: 8px; padding: 8px 10px 12px;
+  font-weight: 700; font-size: 14px; color: var(--text-strong);
+  border-bottom: 1px solid var(--b-border); margin-bottom: 10px;
+}
+.dirB .sidebar__brand .mark { width: 22px; height: 22px; background: var(--b-accent); color: #fff; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size: 12px; font-weight: 800; }
+.dirB .cmdk {
+  display:flex; align-items:center; justify-content: space-between; gap: 8px;
+  padding: 6px 10px; margin: 0 2px 10px; border-radius: 6px; border: 1px solid var(--b-border);
+  font-size: 12.5px; color: var(--text-muted); background: var(--surface-default); cursor: pointer;
+}
+.dirB .cmdk:hover { color: var(--text-strong); border-color: var(--border-strong); }
+.dirB .nav-group { margin-top: 4px; }
+.dirB .nav-group__title { padding: 8px 12px 4px; font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.dirB .nav-link {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px;
+  color: var(--text-muted); font-size: 13px; font-weight: 500; border: none; background: transparent; width: 100%; text-align: left; cursor: pointer;
+}
+.dirB .nav-link svg { width: 15px; height: 15px; stroke: currentColor; flex: none; }
+.dirB .nav-link:hover { background: var(--surface-muted); color: var(--text-strong); }
+.dirB .nav-link.active { background: var(--surface-default); color: var(--text-strong); box-shadow: 0 0 0 1px var(--b-border), 0 1px 2px rgba(0,0,0,.04); font-weight: 600; }
+.dirB .nav-link .count { margin-left: auto; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.dirB .sidebar__footer { margin-top: auto; padding: 8px 10px; display:flex; align-items:center; gap: 8px; font-size: 12.5px; border-top: 1px solid var(--b-border); }
+.dirB .avatar { width: 22px; height: 22px; border-radius: 6px; background: var(--b-accent); color: #fff; display:flex; align-items:center; justify-content:center; font-weight: 700; font-size: 11px; }
+
+.dirB .main { overflow: hidden; }
+.dirB .topbar {
+  display:flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 20px; border-bottom: 1px solid var(--b-border);
+  background: var(--surface-default);
+}
+.dirB .topbar h1 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-strong); }
+.dirB .topbar .crumbs { font-size: 13px; color: var(--text-muted); display:flex; gap: 6px; align-items: center; }
+.dirB .topbar .crumbs .sep { opacity: 0.4; }
+.dirB .topbar__actions { display:flex; align-items:center; gap: 8px; }
+
+.dirB .sub-toolbar {
+  display:flex; align-items:center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--b-border);
+  background: var(--surface-default); flex-wrap: wrap;
+}
+.dirB .content { padding: 20px; overflow: auto; max-height: calc(100vh - 50px - 48px - 48px); }
+
+.dirB .btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 6px; font-weight: 500; font-size: 12.5px;
+  border: 1px solid var(--b-border); cursor: pointer; background: var(--surface-default); color: var(--text-strong);
+  min-height: 28px;
+}
+.dirB .btn:hover { background: var(--surface-muted); }
+.dirB .btn--primary { background: var(--b-accent); border-color: var(--b-accent); color: #fff; }
+.dirB .btn--primary:hover { background: #4f46e5; }
+.dirB .btn--ghost { border-color: transparent; background: transparent; }
+.dirB .btn--ghost:hover { background: var(--surface-muted); }
+.dirB .btn--sm { padding: 3px 8px; min-height: 24px; font-size: 11.5px; }
+.dirB .btn--icon { width: 28px; padding: 0; justify-content: center; }
+.dirB .btn svg { width: 13px; height: 13px; }
+
+.dirB .filter-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 6px;
+  background: var(--surface-default); border: 1px dashed var(--b-border); font-size: 12px; color: var(--text-muted); cursor: pointer;
+}
+.dirB .filter-chip.active { background: var(--b-accent-soft); color: var(--b-accent); border: 1px solid rgba(99,102,241,0.25); }
+
+.dirB .search {
+  display:flex; align-items:center; gap:6px; padding: 0 10px;
+  background: var(--surface-muted); border: 1px solid var(--b-border); border-radius: 6px;
+  min-height: 28px; min-width: 240px;
+}
+.dirB .search input { background: transparent; border: none; outline: none; flex: 1; font-size: 13px; color: var(--text-strong); padding: 0; }
+.dirB .search svg { color: var(--text-muted); width: 13px; height: 13px; }
+
+.dirB .seg { display: inline-flex; border: 1px solid var(--b-border); border-radius: 6px; overflow: hidden; background: var(--surface-default); }
+.dirB .seg button { padding: 4px 10px; background: transparent; border: none; font-size: 12px; color: var(--text-muted); cursor: pointer; font-weight: 500; display:inline-flex; align-items:center; gap:5px; }
+.dirB .seg button svg { width: 13px; height: 13px; }
+.dirB .seg button + button { border-left: 1px solid var(--b-border); }
+.dirB .seg button.active { background: var(--surface-muted); color: var(--text-strong); }
+
+.dirB .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-bottom: 20px; border: 1px solid var(--b-border); border-radius: 8px; overflow: hidden; background: var(--surface-default); }
+.dirB .stat-card { padding: 14px 16px; border-right: 1px solid var(--b-border); }
+.dirB .stat-card:last-child { border-right: none; }
+.dirB .stat-card__label { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; display:flex; align-items:center; gap: 6px; }
+.dirB .stat-card__value { font-size: 22px; font-weight: 700; color: var(--text-strong); margin: 2px 0; font-family: 'Inter', sans-serif; letter-spacing: -0.02em; }
+.dirB .stat-card__delta { font-size: 11.5px; color: var(--color-success); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+
+/* Dense table */
+.dirB .data-table {
+  width: 100%; border-collapse: collapse; border: 1px solid var(--b-border); border-radius: 8px; overflow: hidden;
+  background: var(--surface-default);
+}
+.dirB .data-table th { text-align: left; padding: 7px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--b-border); background: var(--surface-subtle); }
+.dirB .data-table td { padding: 8px 14px; font-size: 13px; border-bottom: 1px solid var(--b-border); color: var(--text-strong); }
+.dirB .data-table tr:last-child td { border-bottom: none; }
+.dirB .data-table tr:hover td { background: var(--surface-subtle); }
+.dirB .data-table .id { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); }
+.dirB .data-table .name { font-weight: 600; color: var(--text-strong); }
+
+.dirB .samples-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.dirB .sample-card {
+  background: var(--surface-default); border: 1px solid var(--b-border); border-radius: 8px;
+  padding: 14px; cursor: pointer; display:flex; flex-direction: column; gap: 8px; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dirB .sample-card:hover { border-color: var(--border-strong); box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
+.dirB .sample-card__head { display:flex; align-items:center; justify-content: space-between; }
+.dirB .sample-card__id { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-muted); }
+.dirB .sample-card__title { font-size: 14px; font-weight: 600; color: var(--text-strong); margin: 0; }
+.dirB .sample-card__desc { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dirB .sample-card__meta { display:flex; gap: 10px; font-size: 11.5px; color: var(--text-muted); margin-top: 4px; align-items:center; }
+
+.dirB .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.dirB .kan-col { background: var(--surface-subtle); border: 1px solid var(--b-border); border-radius: 8px; padding: 10px; }
+.dirB .kan-col__title { font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display:flex; align-items:center; gap: 6px; }
+.dirB .kan-item { background: var(--surface-default); border: 1px solid var(--b-border); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; font-size: 12.5px; }
+.dirB .kan-item .id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); }
+.dirB .kan-item .title { font-weight: 600; color: var(--text-strong); margin: 2px 0 4px; }
+
+.dirB .field label { display:block; font-size: 12px; font-weight: 500; margin-bottom: 4px; color: var(--text-muted); }
+.dirB .field input, .dirB .field textarea, .dirB .field select {
+  width: 100%; padding: 6px 10px; border: 1px solid var(--b-border); border-radius: 6px;
+  background: var(--surface-default); color: var(--text-strong); font-size: 13px; font-family: inherit;
+  min-height: 32px;
+}
+.dirB .field input:focus, .dirB .field textarea:focus, .dirB .field select:focus { outline: none; border-color: var(--b-accent); box-shadow: 0 0 0 3px var(--b-accent-soft); }
+.dirB .field textarea { min-height: 90px; resize: vertical; }
+
+.dirB .fab-step {
+  display: grid; grid-template-columns: 28px 28px 1fr auto; gap: 10px; align-items: center;
+  padding: 8px 12px; border-radius: 6px; border: 1px solid transparent;
+  font-size: 13px;
+}
+.dirB .fab-step:hover { border-color: var(--b-border); background: var(--surface-subtle); }
+.dirB .fab-step__grab { color: var(--text-muted); cursor: grab; opacity: 0; width: 12px; font-size: 14px; line-height: 1; }
+.dirB .fab-step:hover .fab-step__grab { opacity: 1; }
+.dirB .fab-step__num {
+  width: 24px; height: 24px; background: var(--surface-muted); border: 1px solid var(--b-border);
+  border-radius: 6px; display:flex; align-items:center; justify-content:center;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-muted);
+}
+.dirB .fab-step__title { font-weight: 500; color: var(--text-strong); }
+.dirB .fab-step__meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+.dirB .activity-item { display:flex; gap: 10px; padding: 6px 10px; border-radius: 6px; font-size: 12.5px; align-items:center; }
+.dirB .activity-item:hover { background: var(--surface-subtle); }
+.dirB .activity-item .who { font-weight: 600; color: var(--text-strong); }
+.dirB .activity-item .time { color: var(--text-muted); font-size: 11.5px; margin-left: auto; font-family: 'JetBrains Mono', monospace; }
+
+/* booking — dirB */
+.dirB .timeline-wrap { background: var(--surface-default); border: 1px solid var(--b-border); border-radius: 8px; overflow: hidden; }
+.dirB .timeline-wrap__scroll { overflow-x: auto; }
+.dirB .tline { --equipment-col: 160px; --hour-w: 72px; --lane-w: calc(var(--hour-w) * 12); min-width: calc(var(--equipment-col) + var(--lane-w)); }
+.dirB .tline-head { display:flex; background: var(--surface-subtle); border-bottom: 1px solid var(--b-border); }
+.dirB .tline-head__left { width: var(--equipment-col); padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.dirB .tline-hours { display:grid; grid-template-columns: repeat(12, var(--hour-w)); border-left: 1px solid var(--b-border); }
+.dirB .tline-hour { padding: 10px 8px; font-size: 11.5px; color: var(--text-muted); border-right: 1px solid var(--b-border); font-family: 'JetBrains Mono', monospace; }
+.dirB .tline-row { display:flex; }
+.dirB .tline-row__left { width: var(--equipment-col); padding: 10px 14px; font-size: 12.5px; color: var(--text-strong); border-right: 1px solid var(--b-border); border-bottom: 1px solid var(--b-border); font-weight: 500; display:flex; align-items:center; gap: 8px; }
+.dirB .tline-lane { position: relative; width: var(--lane-w); height: 48px; border-bottom: 1px solid var(--b-border); background-image: linear-gradient(to right, var(--b-border) 1px, transparent 1px); background-size: var(--hour-w) 100%; }
+.dirB .tline-block { position: absolute; top: 6px; height: 36px; border-radius: 5px; background: var(--b-accent-soft); color: var(--b-accent); border: 1px solid rgba(99,102,241,0.3); padding: 5px 10px; font-size: 12px; font-weight: 500; display:flex; align-items: center; gap: 6px; overflow: hidden; }
+.dirB .tline-block--own { background: rgba(16,185,129,0.12); color: #047857; border-color: rgba(16,185,129,0.3); }
+:root[data-theme="dark"] .dirB .tline-block--own { color: #34d399; }
+
+/* ===========================================================
+   DIRECTION C — Lab Notebook (editorial, bold, teal+amber)
+   =========================================================== */
+.dirC {
+  --c-paper: #fbfaf6;
+  --c-ink: #1a1a1a;
+  --c-muted: #6b6357;
+  --c-line: rgba(0,0,0,0.08);
+  --c-teal: #0e7c66;
+  --c-teal-bg: rgba(14,124,102,0.08);
+  --c-amber: #b45309;
+  --c-amber-bg: rgba(180,83,9,0.08);
+  --c-accent: #0e7c66;
+  font-family: 'Inter', sans-serif;
+}
+.dirC .stage-bg { background: var(--c-paper); min-height: calc(100vh - 50px); color: var(--c-ink); }
+:root[data-theme="dark"] .dirC {
+  --c-paper: #0f1211;
+  --c-ink: #e8e8e8;
+  --c-muted: #9ca3a4;
+  --c-line: rgba(255,255,255,0.1);
+  --c-teal: #2dd4bf;
+  --c-teal-bg: rgba(45,212,191,0.12);
+  --c-amber: #f59e0b;
+  --c-amber-bg: rgba(245,158,11,0.12);
+  --c-accent: #2dd4bf;
+}
+
+.dirC .top-ribbon {
+  display:flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 14px 48px; border-bottom: 1px solid var(--c-line); background: var(--c-paper);
+  position: sticky; top: 50px; z-index: 20;
+}
+.dirC .top-ribbon__brand { display:flex; align-items: baseline; gap: 14px; }
+.dirC .top-ribbon__brand .wordmark { font-family: 'Fraunces', serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: var(--c-ink); }
+.dirC .top-ribbon__brand .sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.dirC .top-ribbon__nav { display: flex; gap: 4px; }
+.dirC .top-ribbon__nav a {
+  padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--c-muted); cursor: pointer; border: 1px solid transparent;
+}
+.dirC .top-ribbon__nav a:hover { color: var(--c-ink); }
+.dirC .top-ribbon__nav a.active { background: var(--c-ink); color: var(--c-paper); }
+:root[data-theme="dark"] .dirC .top-ribbon__nav a.active { background: var(--c-ink); color: var(--c-paper); }
+.dirC .top-ribbon__actions { display: flex; align-items: center; gap: 10px; }
+.dirC .top-ribbon .user-chip {
+  display:flex; align-items:center; gap: 8px; padding: 4px 14px 4px 4px;
+  border: 1px solid var(--c-line); border-radius: 999px; font-size: 12.5px; font-weight: 500;
+}
+.dirC .top-ribbon .user-chip .av { width: 26px; height: 26px; border-radius: 50%; background: var(--c-teal); color: var(--c-paper); display:flex; align-items:center; justify-content:center; font-weight: 700; font-size: 12px; }
+
+.dirC .main { padding: 40px 48px 80px; max-width: 1400px; margin: 0 auto; }
+
+.dirC .section-head { display:grid; grid-template-columns: 200px 1fr auto; gap: 40px; margin-bottom: 36px; align-items: baseline; }
+.dirC .section-head__eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.16em; padding-top: 14px; border-top: 2px solid var(--c-ink); }
+.dirC .section-head__title { font-family: 'Fraunces', serif; font-size: 54px; font-weight: 600; letter-spacing: -0.03em; color: var(--c-ink); margin: 0; line-height: 1.02; }
+.dirC .section-head__sub { font-size: 14px; color: var(--c-muted); margin-top: 10px; max-width: 52ch; }
+.dirC .section-head__actions { display:flex; align-items:center; gap: 8px; padding-top: 14px; }
+
+.dirC .btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px;
+  border-radius: 999px; border: 1px solid var(--c-ink); background: var(--c-paper); color: var(--c-ink);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.dirC .btn:hover { background: var(--c-ink); color: var(--c-paper); }
+.dirC .btn--primary { background: var(--c-ink); color: var(--c-paper); }
+.dirC .btn--primary:hover { background: transparent; color: var(--c-ink); }
+.dirC .btn--accent { background: var(--c-teal); color: #fff; border-color: var(--c-teal); }
+.dirC .btn--accent:hover { background: transparent; color: var(--c-teal); border-color: var(--c-teal); }
+.dirC .btn--sm { padding: 6px 12px; font-size: 12px; }
+.dirC .btn--ghost { border-color: transparent; }
+.dirC .btn svg { width: 16px; height: 16px; flex: none; }
+
+.dirC .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 2px solid var(--c-ink); border-bottom: 1px solid var(--c-line); margin-bottom: 48px; }
+.dirC .stat-card { padding: 18px 20px 18px 0; border-right: 1px solid var(--c-line); }
+.dirC .stat-card:last-child { border-right: none; }
+.dirC .stat-card__label { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; }
+.dirC .stat-card__value { font-family: 'Fraunces', serif; font-size: 40px; font-weight: 600; color: var(--c-ink); line-height: 1; margin: 10px 0 8px; letter-spacing: -0.02em; }
+.dirC .stat-card__delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-teal); }
+.dirC .stat-card__delta.down { color: var(--c-amber); }
+
+.dirC .toolbar { display:flex; align-items:center; gap: 10px; padding: 14px 0; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); margin-bottom: 28px; flex-wrap: wrap; }
+.dirC .filter-chip { display:inline-flex; align-items:center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--c-line); font-size: 12.5px; color: var(--c-muted); cursor: pointer; background: transparent; font-family: inherit; }
+.dirC .filter-chip.active { background: var(--c-ink); color: var(--c-paper); border-color: var(--c-ink); }
+.dirC .search { display:flex; align-items:center; gap: 8px; flex: 1; min-width: 240px; padding: 6px 0; border-bottom: 1px solid var(--c-ink); }
+.dirC .search input { border: none; background: transparent; outline: none; flex: 1; font-size: 15px; font-family: 'Fraunces', serif; color: var(--c-ink); }
+.dirC .search input::placeholder { color: var(--c-muted); font-style: italic; }
+.dirC .search svg { color: var(--c-ink); width: 16px; height: 16px; }
+
+.dirC .seg { display:inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--c-line); border-radius: 999px; }
+.dirC .seg button { padding: 5px 12px; border-radius: 999px; background: transparent; border: none; font-size: 12px; color: var(--c-muted); cursor: pointer; display:inline-flex; align-items: center; gap: 6px; font-family: inherit; }
+.dirC .seg button.active { background: var(--c-ink); color: var(--c-paper); }
+.dirC .seg button svg { width: 13px; height: 13px; }
+
+.dirC .samples-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1px; background: var(--c-line); border: 1px solid var(--c-line); }
+.dirC .sample-card { background: var(--c-paper); padding: 0; cursor: pointer; display: flex; flex-direction: column; transition: background 0.2s; }
+.dirC .sample-card:hover { background: var(--surface-default); }
+.dirC .sample-card__thumb { height: 180px; background: var(--c-teal-bg); border-bottom: 1px solid var(--c-line); position: relative; overflow: hidden; }
+.dirC .sample-card__head { display:flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px 6px; }
+.dirC .sample-card__id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.dirC .sample-card__title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--c-ink); margin: 6px 0 8px; letter-spacing: -0.01em; padding: 0 20px; }
+.dirC .sample-card__desc { font-size: 13px; color: var(--c-muted); padding: 0 20px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dirC .sample-card__meta { padding: 14px 20px 18px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); display:flex; gap: 18px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.dirC .data-table { width: 100%; border-collapse: collapse; border-top: 2px solid var(--c-ink); border-bottom: 1px solid var(--c-line); }
+.dirC .data-table th { text-align: left; padding: 10px 14px 10px 0; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--c-line); }
+.dirC .data-table td { padding: 14px 14px 14px 0; font-size: 14px; border-bottom: 1px solid var(--c-line); color: var(--c-ink); }
+.dirC .data-table tr:hover td { background: rgba(14,124,102,0.04); }
+.dirC .data-table .name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; }
+.dirC .data-table .id { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--c-muted); }
+
+.dirC .status-chip--active { background: var(--c-teal-bg); color: var(--c-teal); border-color: transparent; }
+.dirC .status-chip--progress { background: var(--c-amber-bg); color: var(--c-amber); border-color: transparent; }
+.dirC .status-chip--archived { background: transparent; color: var(--c-muted); border-color: var(--c-line); }
+
+.dirC .field label { display:block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-muted); margin-bottom: 8px; }
+.dirC .field input, .dirC .field textarea, .dirC .field select {
+  width: 100%; padding: 10px 0; border: none; border-bottom: 1px solid var(--c-line); background: transparent;
+  color: var(--c-ink); font-family: 'Fraunces', serif; font-size: 18px; min-height: 40px;
+}
+.dirC .field input:focus, .dirC .field textarea:focus, .dirC .field select:focus { outline: none; border-bottom: 1px solid var(--c-ink); }
+.dirC .field textarea { font-family: 'Inter', sans-serif; font-size: 14px; min-height: 100px; resize: vertical; }
+
+.dirC .fab-step { display:grid; grid-template-columns: 80px 1fr auto; gap: 24px; align-items: baseline; padding: 20px 0; border-bottom: 1px solid var(--c-line); }
+.dirC .fab-step__num { font-family: 'Fraunces', serif; font-size: 40px; font-weight: 600; color: var(--c-ink); line-height: 1; letter-spacing: -0.03em; }
+.dirC .fab-step__title { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; color: var(--c-ink); letter-spacing: -0.01em; margin-bottom: 8px; }
+.dirC .fab-step__meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.08em; display:flex; gap: 20px; flex-wrap: wrap; }
+.dirC .fab-step__actions { opacity: 0; display:flex; gap: 6px; }
+.dirC .fab-step:hover .fab-step__actions { opacity: 1; }
+
+.dirC .panel { padding: 28px 0; border-top: 1px solid var(--c-line); }
+.dirC .panel__title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 16px; font-weight: 600; }
+
+.dirC .activity-item { display:grid; grid-template-columns: 80px 1fr auto; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--c-line); font-size: 13px; align-items: baseline; }
+.dirC .activity-item .time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.dirC .activity-item .who { font-weight: 600; }
+
+/* booking C */
+.dirC .timeline-wrap { overflow-x: auto; border-top: 2px solid var(--c-ink); border-bottom: 1px solid var(--c-line); }
+.dirC .tline { --equipment-col: 180px; --hour-w: 90px; --lane-w: calc(var(--hour-w) * 12); min-width: calc(var(--equipment-col) + var(--lane-w)); }
+.dirC .tline-head { display:flex; border-bottom: 1px solid var(--c-line); }
+.dirC .tline-head__left { width: var(--equipment-col); padding: 14px 20px 14px 0; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.dirC .tline-hours { display:grid; grid-template-columns: repeat(12, var(--hour-w)); }
+.dirC .tline-hour { padding: 14px 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); border-left: 1px solid var(--c-line); }
+.dirC .tline-row { display:flex; }
+.dirC .tline-row__left { width: var(--equipment-col); padding: 16px 20px 16px 0; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--c-ink); border-bottom: 1px solid var(--c-line); }
+.dirC .tline-lane { position: relative; width: var(--lane-w); height: 70px; border-bottom: 1px solid var(--c-line); background-image: linear-gradient(to right, var(--c-line) 1px, transparent 1px); background-size: var(--hour-w) 100%; }
+.dirC .tline-block { position: absolute; top: 10px; height: 50px; border-radius: 0; background: var(--c-teal); color: #fff; padding: 8px 12px; font-size: 12px; display:flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.dirC .tline-block--own { background: var(--c-amber); }
+.dirC .tline-block small { font-size: 10.5px; opacity: 0.85; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+
+.dirC .back-link { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.12em; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; cursor: pointer; }
+.dirC .back-link:hover { color: var(--c-ink); }
+
+/* scrollbar chroma for all */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+</style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+// Sample data for the lab redesign
+const SAMPLES = [
+  { id: 'SMP-042', name: 'GaAs Wafer Batch 042', createdAt: '2026-04-12', owner: 'j.chen', status: 'active', description: 'MBE-grown GaAs on Si substrate. Buffer layer 200 nm; verified by XRD. Device sizes 2–20 μm, 6 configs.', keywords: ['GaAs','MBE','heterostructure'], palette: 'blue', steps: 5, attachments: 8 },
+  { id: 'SMP-D07', name: 'NV-Center Diamond D7', createdAt: '2026-04-09', owner: 'k.nakamura', status: 'progress', description: 'CVD diamond plate, nitrogen-implanted, annealed at 800 °C. PL spectrum confirms NV⁻ resonance.', keywords: ['diamond','NV','quantum'], palette: 'teal', steps: 7, attachments: 12 },
+  { id: 'SMP-G115', name: 'Graphene Monolayer G-115', createdAt: '2026-04-07', owner: 'msmith', status: 'active', description: 'CVD on copper foil; transferred to SiO₂/Si. Raman 2D peak at 2680 cm⁻¹. Sheet resistance 510 Ω/□.', keywords: ['graphene','CVD','2D'], palette: 'violet', steps: 4, attachments: 6 },
+  { id: 'SMP-N231',name: 'Superconducting Nb #231', createdAt: '2026-04-05', owner: 'r.ivanov', status: 'active', description: 'Sputter-deposited Nb, 150 nm thickness, Tc measured at 9.1 K. Residual resistivity ratio 24.', keywords: ['Nb','superconductor','film'], palette: 'emerald', steps: 6, attachments: 4 },
+  { id: 'SMP-PS19',name: 'Perovskite Solar PS-19', createdAt: '2026-04-02', owner: 'a.patel', status: 'progress', description: 'MAPbI₃ spin-coated active layer. Encapsulated, tracked in glovebox. PCE 21.4% at AM1.5G.', keywords: ['perovskite','photovoltaic'], palette: 'amber', steps: 9, attachments: 15 },
+  { id: 'SMP-H04', name: 'Si/SiGe Heterostructure H-04', createdAt: '2026-03-28', owner: 'l.okafor', status: 'archived', description: 'Strained Si quantum well on relaxed SiGe. Hall bar fabricated, mobility 210,000 cm²/Vs at 4 K.', keywords: ['Si','SiGe','quantum well'], palette: 'blue', steps: 8, attachments: 9 },
+  { id: 'SMP-T11', name: 'TMDC MoS₂ Flake T-11', createdAt: '2026-03-22', owner: 'j.chen', status: 'active', description: 'Exfoliated MoS₂ monolayer on h-BN substrate. PL peak at 1.88 eV confirms direct bandgap.', keywords: ['MoS2','TMDC','monolayer'], palette: 'rose', steps: 3, attachments: 5 },
+  { id: 'SMP-C22', name: 'CsPbBr₃ Nanocrystal C-22', createdAt: '2026-03-18', owner: 'a.patel', status: 'archived', description: 'Hot-injection synthesis. QY 78%, emission 518 nm. Stored in toluene under N₂.', keywords: ['CsPbBr3','nanocrystal'], palette: 'emerald', steps: 5, attachments: 3 },
+];
+
+const STEPS = [
+  { title: 'Substrate clean (acetone / IPA / O₂ plasma)', date: '2026-04-12', by: 'j.chen', tool: 'Bench 3' },
+  { title: 'CA2DM Optical Lithography — bottom Cr/Au contacts', date: '2026-04-12', by: 'j.chen', tool: 'Optical', notes: '~3 nm Cr / 67 nm Au, HHV Thermal evap.' },
+  { title: 'MAC sputtering (UV or XeCl chamber, CA2DM)', date: '2026-04-13', by: 'j.chen', tool: 'Sputter B' },
+  { title: 'Optical Lithography — top Cr/Au contacts', date: '2026-04-14', by: 'j.chen', tool: 'Optical' },
+  { title: 'Probe-station I-V characterisation', date: '2026-04-15', by: 'msmith', tool: 'Probe Station', notes: 'Ran 12 devices, 9 yield' },
+];
+
+const ARTICLES = [
+  { slug: 'cleanroom-safety', title: 'Cleanroom Safety Checklist', createdAt: 'Apr 14, 2026', author: 'msmith', tag: 'Safety', summary: 'Mandatory gowning, chemical hygiene, emergency procedures.' },
+  { slug: 'mbe-startup', title: 'MBE Chamber Startup Procedure', createdAt: 'Apr 11, 2026', author: 'j.chen', tag: 'Equipment', summary: 'Cryopump regen, source cell temperatures, RHEED alignment.' },
+  { slug: 'raman-quick', title: 'Raman Spectrometer — Quick Reference', createdAt: 'Apr 09, 2026', author: 'k.nakamura', tag: 'Equipment', summary: 'Laser selection, grating, standard baselines for Si and graphene.' },
+  { slug: 'cryostat', title: 'Cryostat Transfer Protocol', createdAt: 'Apr 05, 2026', author: 'r.ivanov', tag: 'Protocols', summary: 'Safe He transfer, purge cycles, and loading the sample puck.' },
+  { slug: 'labeling', title: 'Sample Labeling Conventions', createdAt: 'Mar 30, 2026', author: 'msmith', tag: 'Admin', summary: 'SMP-XYZ format, batch codes, owner initials.' },
+  { slug: 'q2-meeting', title: 'Lab Meeting Rotation (Q2 2026)', createdAt: 'Mar 22, 2026', author: 'msmith', tag: 'Admin', summary: 'Who presents when — updated every quarter.' },
+];
+
+const EQUIPMENT = [
+  { id: 1, name: 'AFM Dimension Icon' },
+  { id: 2, name: 'Zeiss Merlin SEM' },
+  { id: 3, name: 'Raman Spectrometer' },
+  { id: 4, name: 'E-beam Evaporator' },
+  { id: 5, name: 'Probe Station' },
+  { id: 6, name: 'Keithley 6517B' },
+];
+
+const BOOKINGS = [
+  { eq: 1, start: 9, end: 11.5, user: 'j.chen', purpose: 'Topology G-115' },
+  { eq: 1, start: 14, end: 16, user: 'msmith', purpose: 'Follow-up 042', own: true },
+  { eq: 2, start: 10, end: 13, user: 'a.patel', purpose: 'SEM PS-19 cross' },
+  { eq: 3, start: 11, end: 12.25, user: 'k.nakamura', purpose: 'PL D7' },
+  { eq: 3, start: 15, end: 18, user: 'msmith', purpose: 'Raman transfers', own: true },
+  { eq: 4, start: 12, end: 17, user: 'r.ivanov', purpose: 'Nb #232' },
+  { eq: 5, start: 13, end: 14.5, user: 'l.okafor', purpose: 'I-V H-04' },
+  { eq: 6, start: 16, end: 17.5, user: 'j.chen', purpose: 'Leakage sweep' },
+];
+
+const ACTIVITY = [
+  { who: 'j.chen',    verb: 'created sample',            what: 'SMP-042', when: '2m ago' },
+  { who: 'msmith',    verb: 'booked',                     what: 'Raman Spectrometer, 15:00–18:00', when: '14m ago' },
+  { who: 'a.patel',   verb: 'uploaded 3 attachments to',  what: 'SMP-PS19', when: '32m ago' },
+  { who: 'k.nakamura',verb: 'added fabrication step to',  what: 'SMP-D07', when: '1h ago' },
+  { who: 'r.ivanov',  verb: 'edited',                     what: 'SMP-N231', when: '2h ago' },
+  { who: 'msmith',    verb: 'published wiki article',     what: 'Cleanroom Safety Checklist', when: '3h ago' },
+  { who: 'l.okafor',  verb: 'archived',                   what: 'SMP-H04', when: '5h ago' },
+];
+
+const USERS = [
+  { user: 'msmith', group: 'Barbaros', status: 'approved', admin: true },
+  { user: 'j.chen', group: 'Ahmet', status: 'approved', admin: false },
+  { user: 'a.patel', group: 'Barbaros', status: 'approved', admin: false },
+  { user: 'k.nakamura', group: 'Barbaros', status: 'approved', admin: false },
+  { user: 'r.ivanov', group: 'Ahmet', status: 'approved', admin: false },
+  { user: 'l.okafor', group: 'NewGroup', status: 'pending', admin: false },
+];
+
+const TOKENS = [
+  { name: 'skill_check', created: '2026-04-18', used: '2026-04-18', status: 'active' },
+  { name: 'CodeX_skill', created: '2026-04-17', used: 'Never', status: 'revoked' },
+  { name: 'mobile_app',  created: '2026-03-02', used: '2026-04-19', status: 'active' },
+];
+
+Object.assign(window, { SAMPLES, STEPS, ARTICLES, EQUIPMENT, BOOKINGS, ACTIVITY, USERS, TOKENS });
+
+  </script>
+  <script type="text/babel" data-presets="react">
+// Shared icons — all inline SVG, stroke=currentColor
+const Ic = {
+  Flask: (p={}) => (
+    <svg {...p} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M12 4 L12 12 L5 26 Q4 28 6 29 L26 29 Q28 28 27 26 L20 12 L20 4 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+      <line x1="10" y1="4" x2="22" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M8.5 20 L23.5 20 L27 26 Q28 28 26 29 L6 29 Q4 28 5 26 Z" fill="currentColor" opacity="0.2"/>
+      <circle cx="12" cy="24" r="1.3" fill="currentColor"/>
+      <circle cx="16" cy="22" r="1.3" fill="currentColor"/>
+      <circle cx="20" cy="25" r="1.3" fill="currentColor"/>
+    </svg>
+  ),
+  Dashboard: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="13.5" y="3.5" width="7" height="4" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="13.5" y="10.5" width="7" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>),
+  Samples: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Wiki: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><rect x="4.5" y="5" width="8" height="14" rx="1.75" stroke="currentColor" strokeWidth="1.5"/><path d="M12.5 5.75H17a1.75 1.75 0 011.75 1.75v11.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M7.25 9h3.25m-3.25 3h2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Plus: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Calendar: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><rect x="3.75" y="5.5" width="16.5" height="14.5" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M8 3.75v3.5m8-3.5v3.5M3.75 10.5h16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="16" cy="15.5" r="1.3" fill="currentColor"/></svg>),
+  Key: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><circle cx="7.5" cy="15.5" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M11 12.5L20.5 3M16.5 7.5l2 2M19 5l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Shield: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.23-2.86 8.09-7 9-4.14-.91-7-4.77-7-9V6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M12 11.5a2 2 0 100 4 2 2 0 000-4z" fill="currentColor"/></svg>),
+  Search: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M20 20l-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Moon: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8 8 0 119.5 4a7 7 0 0010.5 10.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="currentColor" fillOpacity="0.15"/></svg>),
+  Sun: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Grid: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="13" y="4" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="4" y="13" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="13" y="13" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>),
+  List: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Kanban: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="5" height="16" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="10" y="4" width="5" height="10" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="16" y="4" width="4" height="13" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>),
+  Filter: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M4 5h16l-6 8v6l-4-2v-4L4 5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>),
+  Download: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 4v12m-4-4l4 4 4-4M4 20h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  Edit: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M4 20h4L20 8l-4-4L4 16z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>),
+  Trash: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>),
+  Drag: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg>),
+  Caret: (p={}) => (<svg {...p} viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 10.12l3.71-2.89a.75.75 0 11.92 1.18l-4.18 3.26a.75.75 0 01-.92 0L5.21 8.41a.75.75 0 01.02-1.2z"/></svg>),
+  Arrow: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  ArrowLeft: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M19 12H5m6-6l-6 6 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  Clock: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.5"/><path d="M12 8v4.5l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Beaker: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M9 3h6v5l4.5 9a1.5 1.5 0 01-1.35 2.1H5.85A1.5 1.5 0 014.5 17L9 8V3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>),
+  Check: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  Close: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Upload: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 20V8m-4 4l4-4 4 4M4 4h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  Dot: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>),
+  Sparkle: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>),
+};
+
+// Abstract sample thumbnail
+function SampleThumb({ seed = 1, palette = 'blue', style }) {
+  const s = (seed * 12345) % 1000;
+  const rand = (n) => ((s * (n + 1) * 9301 + 49297) % 233280) / 233280;
+  const palettes = {
+    blue: ['#0c4a6e','#0369a1','#38bdf8','#bae6fd'],
+    teal: ['#134e4a','#0e7c66','#5eead4','#ccfbf1'],
+    violet: ['#3b0764','#7c3aed','#c4b5fd','#ede9fe'],
+    amber: ['#78350f','#d97706','#fbbf24','#fef3c7'],
+    emerald:['#064e3b','#047857','#34d399','#d1fae5'],
+    rose: ['#881337','#e11d48','#fb7185','#ffe4e6'],
+  };
+  const P = palettes[palette] || palettes.blue;
+  const shapes = Array.from({ length: 22 }, (_, i) => ({
+    cx: 10 + rand(i) * 380,
+    cy: 10 + rand(i * 3) * 160,
+    r:  3 + rand(i * 5) * 34,
+    c:  P[Math.floor(rand(i*7)*P.length)],
+    o:  0.25 + rand(i * 11) * 0.55,
+  }));
+  return (
+    <svg viewBox="0 0 400 180" preserveAspectRatio="xMidYMid slice" style={{ width: '100%', height: '100%', display: 'block', ...style }}>
+      <defs>
+        <radialGradient id={`g${seed}-${palette}`} cx="30%" cy="30%" r="90%">
+          <stop offset="0%" stopColor={P[2]} stopOpacity="0.6"/>
+          <stop offset="100%" stopColor={P[0]} stopOpacity="1"/>
+        </radialGradient>
+      </defs>
+      <rect width="400" height="180" fill={`url(#g${seed}-${palette})`}/>
+      {shapes.map((c, i) => (
+        <circle key={i} cx={c.cx} cy={c.cy} r={c.r} fill={c.c} opacity={c.o} />
+      ))}
+    </svg>
+  );
+}
+
+Object.assign(window, { Ic, SampleThumb });
+
+  </script>
+  <script type="text/babel" data-presets="react">
+// Direction A — Refined: classic card + sidebar shell
+const dirAStatusChip = (s) => {
+  const map = { active: 'status-chip--active', progress: 'status-chip--progress', archived: 'status-chip--archived', pending: 'status-chip--pending' };
+  const label = s === 'progress' ? 'In Progress' : s[0].toUpperCase() + s.slice(1);
+  return <span className={`status-chip ${map[s]||''}`}><span className="dot"/>{label}</span>;
+};
+
+function A_Sidebar({ screen, setScreen }) {
+  const items = [
+    { id: 'dashboard', label: 'Dashboard', icon: Ic.Dashboard },
+    { id: 'samples', label: 'Samples', icon: Ic.Samples, count: 247 },
+    { id: 'wiki', label: 'Wiki', icon: Ic.Wiki, count: 42 },
+    { id: 'booking', label: 'Equipment', icon: Ic.Calendar },
+    { id: 'tokens', label: 'API Tokens', icon: Ic.Key },
+    { id: 'admin', label: 'Admin', icon: Ic.Shield },
+  ];
+  return (
+    <aside className="sidebar">
+      <div className="sidebar__brand"><Ic.Flask style={{color:'var(--color-primary)'}}/><span>Sample Tracker</span></div>
+      <button className="btn btn--primary" style={{width:'100%', marginBottom: 10}} onClick={() => setScreen('new')}><Ic.Plus/> New Sample</button>
+      <div className="nav-group">
+        <div className="nav-group__title">Workspace</div>
+        {items.map(it => (
+          <button key={it.id} className={'nav-link' + (screen===it.id?' active':'')} onClick={()=>setScreen(it.id)}>
+            <it.icon/><span>{it.label}</span>{it.count!=null && <span className="count">{it.count}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="sidebar__footer">
+        <div className="avatar">MS</div>
+        <div style={{flex:1, fontSize:13}}>
+          <div style={{fontWeight:600}}>msmith</div>
+          <div style={{fontSize:11, color:'var(--text-muted)'}}>Admin · Barbaros</div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function A_Dashboard({ setScreen, setActiveSample }) {
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar__left">
+          <h1>Welcome back, msmith</h1>
+          <div className="crumbs">Friday · April 19, 2026</div>
+        </div>
+        <div className="topbar__actions">
+          <button className="btn btn--ghost"><Ic.Download/> Export</button>
+          <button className="btn btn--primary" onClick={()=>setScreen('new')}><Ic.Plus/> New Sample</button>
+        </div>
+      </div>
+      <div className="stats">
+        {[
+          {l:'Total Samples',v:'247',d:'+12 this week'},
+          {l:'Active Bookings',v:'8',d:'2 upcoming today'},
+          {l:'Wiki Articles',v:'42',d:'+3 this week'},
+          {l:'Pending Approvals',v:'3',d:'Requires action', down:true},
+        ].map((s,i)=>(
+          <div key={i} className="stat-card">
+            <div className="stat-card__label">{s.l}</div>
+            <div className="stat-card__value">{s.v}</div>
+            <div className={'stat-card__delta'+(s.down?' down':'')}>{s.d}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:'grid', gridTemplateColumns: '2fr 1fr', gap: 18}}>
+        <div className="card" style={{padding: '20px 24px'}}>
+          <div className="u-between" style={{marginBottom: 16}}>
+            <h3 style={{margin:0,fontSize:15}}>Recent samples</h3>
+            <a style={{fontSize:12.5, cursor:'pointer'}} onClick={()=>setScreen('samples')}>View all →</a>
+          </div>
+          <div style={{display:'flex', flexDirection:'column', gap: 8}}>
+            {SAMPLES.slice(0,5).map(s=>(
+              <div key={s.id} className="u-between" style={{padding:'10px 12px', borderRadius:8, cursor:'pointer'}}
+                   onMouseOver={(e)=>e.currentTarget.style.background='var(--surface-subtle)'}
+                   onMouseOut={(e)=>e.currentTarget.style.background='transparent'}
+                   onClick={()=>{ setActiveSample(s); setScreen('detail'); }}>
+                <div className="u-center u-gap-md">
+                  <div style={{width:36,height:36, borderRadius:8, overflow:'hidden'}}><SampleThumb seed={parseInt(s.id.slice(-3),36)} palette={s.palette}/></div>
+                  <div>
+                    <div style={{fontWeight:600, fontSize:13.5}}>{s.name}</div>
+                    <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font-family-mono)'}}>{s.id} · {s.owner}</div>
+                  </div>
+                </div>
+                <div className="u-center u-gap-md">
+                  {dirAStatusChip(s.status)}
+                  <div style={{fontSize:12, color:'var(--text-muted)', minWidth: 76, textAlign:'right'}}>{s.createdAt}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card" style={{padding: '20px 24px'}}>
+          <h3 style={{margin:'0 0 12px',fontSize:15}}>Activity</h3>
+          {ACTIVITY.slice(0,6).map((a,i)=>(
+            <div key={i} className="activity-item">
+              <div className="dot-col"/>
+              <div style={{flex:1}}>
+                <strong>{a.who}</strong> {a.verb} <a>{a.what}</a>
+              </div>
+              <div className="time">{a.when}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card" style={{padding:'20px 24px', marginTop: 18}}>
+        <div className="u-between" style={{marginBottom:14}}>
+          <h3 style={{margin:0, fontSize: 15}}>Today's bookings</h3>
+          <a style={{fontSize:12.5, cursor:'pointer'}} onClick={()=>setScreen('booking')}>Open schedule →</a>
+        </div>
+        <A_MiniBooking />
+      </div>
+    </div>
+  );
+}
+
+function A_MiniBooking() {
+  const hours = Array.from({length: 12}, (_,i) => i+8);
+  return (
+    <div className="timeline-wrap">
+      <div className="timeline-wrap__scroll">
+        <div className="tline">
+          <div className="tline-head">
+            <div className="tline-head__left">Equipment</div>
+            <div className="tline-hours">{hours.map(h => <div key={h} className="tline-hour">{h}:00</div>)}</div>
+          </div>
+          {EQUIPMENT.slice(0,4).map(eq => (
+            <div className="tline-row" key={eq.id}>
+              <div className="tline-row__left"><span className="tline-row__dot"/>{eq.name}</div>
+              <div className="tline-lane">
+                <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
+                {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                  const left = (b.start - 8) * 80;
+                  const w = (b.end - b.start) * 80;
+                  return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width: w-4}}>
+                    <div>{b.user}</div>
+                    <small>{b.purpose}</small>
+                  </div>;
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function A_Samples({ setScreen, setActiveSample }) {
+  const [view, setView] = React.useState('grid');
+  const [status, setStatus] = React.useState('all');
+  const filtered = SAMPLES.filter(s => status==='all' || s.status === status);
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar__left"><h1>Samples</h1><div className="crumbs">{filtered.length} of {SAMPLES.length} samples</div></div>
+        <div className="topbar__actions">
+          <button className="btn btn--ghost"><Ic.Download/> Export CSV</button>
+          <button className="btn btn--primary" onClick={()=>setScreen('new')}><Ic.Plus/> New Sample</button>
+        </div>
+      </div>
+      <div className="toolbar">
+        <div className="search"><Ic.Search/><input placeholder="Search samples, keywords, owners…"/></div>
+        <div className="filter-chip"><Ic.Calendar/> Apr 01 – Apr 19</div>
+        <div className="filter-chip"><Ic.Filter/> All owners</div>
+        {['all','active','progress','archived'].map(s => (
+          <button key={s} className={'filter-chip'+(status===s?' active':'')} onClick={()=>setStatus(s)} style={{border:'none'}}>
+            {s==='all'?'All status':s==='progress'?'In Progress':s[0].toUpperCase()+s.slice(1)}
+          </button>
+        ))}
+        <div style={{flex:1}}/>
+        <div className="seg">
+          <button className={view==='grid'?'active':''} onClick={()=>setView('grid')}><Ic.Grid/>Grid</button>
+          <button className={view==='table'?'active':''} onClick={()=>setView('table')}><Ic.List/>Table</button>
+        </div>
+      </div>
+      {view==='grid' ? (
+        <div className="samples-grid">
+          {filtered.map(s => (
+            <article key={s.id} className="card sample-card" onClick={()=>{ setActiveSample(s); setScreen('detail'); }}>
+              <div className="sample-card__thumb">
+                <span className="status-chip status">{dirAStatusChip(s.status).props.children[1]}</span>
+                <SampleThumb seed={parseInt(s.id.slice(-3),36)} palette={s.palette}/>
+              </div>
+              <div className="sample-card__body">
+                <div className="sample-card__id">{s.id}</div>
+                <h3 className="sample-card__title">{s.name}</h3>
+                <p className="sample-card__desc">{s.description}</p>
+                <div style={{display:'flex', flexWrap:'wrap', gap: 4, marginTop: 4}}>
+                  {s.keywords.map(k => <span key={k} style={{fontSize:11, padding:'2px 8px', borderRadius:999, background:'var(--surface-muted)', color:'var(--text-muted)'}}>{k}</span>)}
+                </div>
+                <div className="sample-card__meta"><span>{s.owner}</span><span>· {s.createdAt}</span><span>· {s.steps} steps</span></div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <table className="data-table">
+          <thead><tr>
+            <th style={{width:100}}>ID</th><th>Name</th><th>Status</th><th>Owner</th><th>Steps</th><th>Files</th><th>Created</th><th></th>
+          </tr></thead>
+          <tbody>
+            {filtered.map(s => (
+              <tr key={s.id} style={{cursor:'pointer'}} onClick={()=>{ setActiveSample(s); setScreen('detail'); }}>
+                <td><span className="sample-id">{s.id}</span></td>
+                <td><strong>{s.name}</strong><div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>{s.keywords.join(', ')}</div></td>
+                <td>{dirAStatusChip(s.status)}</td>
+                <td>{s.owner}</td>
+                <td>{s.steps}</td>
+                <td>{s.attachments}</td>
+                <td style={{fontFamily:'var(--font-family-mono)', fontSize:12, color:'var(--text-muted)'}}>{s.createdAt}</td>
+                <td><button className="btn btn--ghost btn--sm"><Ic.Edit/></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function A_SampleDetail({ sample, setScreen }) {
+  const s = sample || SAMPLES[0];
+  const [editing, setEditing] = React.useState(null);
+  const [name, setName] = React.useState(s.name);
+  const [desc, setDesc] = React.useState(s.description);
+  return (
+    <div>
+      <a style={{fontSize:12.5, color:'var(--text-muted)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap: 6, marginBottom: 10}} onClick={()=>setScreen('samples')}><Ic.ArrowLeft style={{width:14,height:14}}/> Back to samples</a>
+      <div className="topbar" style={{marginBottom: 20}}>
+        <div className="topbar__left" style={{flex:1}}>
+          <div className="u-center u-gap-md" style={{marginBottom: 4}}>
+            <span style={{fontFamily:'var(--font-family-mono)', fontSize:12, color:'var(--text-muted)'}}>{s.id}</span>
+            {dirAStatusChip(s.status)}
+          </div>
+          {editing==='name' ? (
+            <input autoFocus className="u-mono" style={{fontSize: 22, fontWeight: 700, width: '100%', padding: '4px 8px', border:'1px solid var(--color-primary)', borderRadius: 8, background:'var(--surface-default)', color:'var(--text-strong)'}} value={name} onChange={e=>setName(e.target.value)} onBlur={()=>setEditing(null)} onKeyDown={e=>{if(e.key==='Enter')setEditing(null)}}/>
+          ) : (
+            <h1 onClick={()=>setEditing('name')} style={{cursor:'text', color:'var(--text-strong)'}} title="Click to edit">{name}</h1>
+          )}
+          <div className="crumbs">Created {s.createdAt} · Owner <strong>{s.owner}</strong> · {s.attachments} files · {s.steps} fabrication steps</div>
+        </div>
+        <div className="topbar__actions">
+          <button className="btn btn--ghost"><Ic.Download/> Export</button>
+          <button className="btn btn--secondary"><Ic.Edit/> Edit</button>
+          <button className="btn btn--primary"><Ic.Sparkle/> Share</button>
+        </div>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap: 18}}>
+        <div style={{display:'flex', flexDirection:'column', gap:18}}>
+          <div className="card" style={{padding:'18px 22px'}}>
+            <div className="u-eyebrow" style={{marginBottom: 10}}>Description</div>
+            {editing==='desc' ? (
+              <textarea autoFocus value={desc} onChange={e=>setDesc(e.target.value)} onBlur={()=>setEditing(null)} style={{width:'100%', minHeight: 120, padding: 10, borderRadius: 8, border:'1px solid var(--color-primary)', background:'var(--surface-default)', color:'var(--text-strong)', fontFamily:'inherit', fontSize: 14, resize:'vertical'}}/>
+            ) : (
+              <p style={{margin:0, lineHeight: 1.7, cursor:'text'}} onClick={()=>setEditing('desc')} title="Click to edit">{desc}</p>
+            )}
+            <div style={{display:'flex', gap:6, marginTop: 14, flexWrap:'wrap'}}>
+              {s.keywords.map(k=> <span key={k} style={{fontSize:12, padding:'3px 10px', borderRadius:999, background:'var(--color-secondary-bg)', color:'var(--color-secondary-text)', fontWeight:500}}>{k}</span>)}
+              <span style={{fontSize:12, padding:'3px 10px', borderRadius:999, border:'1px dashed var(--border-subtle)', color:'var(--text-muted)', cursor:'pointer'}}>+ Add</span>
+            </div>
+          </div>
+          <div className="card" style={{padding:'18px 22px'}}>
+            <div className="u-between" style={{marginBottom: 14}}>
+              <div className="u-eyebrow">Fabrication Steps</div>
+              <button className="btn btn--ghost btn--sm"><Ic.Plus/> Add Step</button>
+            </div>
+            <div className="fab-timeline">
+              {STEPS.map((st, i) => (
+                <div key={i} className="fab-step">
+                  <div style={{display:'flex', alignItems:'center', gap: 8}}>
+                    <Ic.Drag style={{width: 12}} className="fab-step__grab"/>
+                    <div className="fab-step__num">{String(i+1).padStart(2,'0')}</div>
+                  </div>
+                  <div>
+                    <div className="fab-step__title">{st.title}</div>
+                    <div className="fab-step__meta">
+                      <span>📅 {st.date}</span><span>👤 {st.by}</span><span>🔧 {st.tool}</span>
+                      {st.notes && <span style={{fontStyle:'italic'}}>{st.notes}</span>}
+                    </div>
+                    <div className="fab-step__actions">
+                      <button className="btn btn--ghost btn--sm"><Ic.Edit/></button>
+                      <button className="btn btn--danger btn--sm"><Ic.Trash/></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="card" style={{padding:'18px 22px'}}>
+            <div className="u-between" style={{marginBottom: 14}}>
+              <div className="u-eyebrow">Attachments ({s.attachments})</div>
+              <button className="btn btn--ghost btn--sm"><Ic.Upload/> Upload</button>
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap: 10}}>
+              {Array.from({length: 5}).map((_,i)=>(
+                <div key={i} style={{height:100, borderRadius:8, overflow:'hidden', border:'1px solid var(--border-subtle)'}}>
+                  <SampleThumb seed={i+s.id.length} palette={s.palette}/>
+                </div>
+              ))}
+              <div style={{height:100, borderRadius:8, border:'1px dashed var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:12, flexDirection:'column', gap: 4}}>
+                <Ic.Upload style={{width:20,height:20}}/> Drop files
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{display:'flex', flexDirection:'column', gap:18}}>
+          <div className="card" style={{padding:'18px 22px'}}>
+            <div className="u-eyebrow" style={{marginBottom: 12}}>Details</div>
+            {[
+              ['Owner', s.owner], ['Status', dirAStatusChip(s.status)],
+              ['Created', s.createdAt], ['Last edit', '2h ago by msmith'],
+              ['Steps', s.steps], ['Files', s.attachments],
+            ].map(([k,v],i)=>(
+              <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'7px 0', borderBottom:'1px solid var(--border-subtle)', fontSize:13}}>
+                <span style={{color:'var(--text-muted)'}}>{k}</span><span style={{fontWeight:500}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{padding:'18px 22px'}}>
+            <div className="u-eyebrow" style={{marginBottom: 12}}>Activity</div>
+            {ACTIVITY.slice(0,5).map((a,i)=>(
+              <div key={i} className="activity-item" style={{padding:'6px 0'}}>
+                <div className="dot-col"/>
+                <div style={{flex:1, fontSize:12.5}}><strong>{a.who}</strong> {a.verb}</div>
+                <div className="time">{a.when}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{padding:'18px 22px', borderTopColor: 'var(--color-destructive)'}}>
+            <div className="u-eyebrow" style={{marginBottom: 8, color:'var(--color-destructive)'}}>Danger Zone</div>
+            <p style={{fontSize:12.5, color:'var(--text-muted)', margin:'0 0 10px'}}>Permanently delete this sample and all fabrication steps + attachments.</p>
+            <button className="btn btn--danger"><Ic.Trash/> Delete sample</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function A_New({ setScreen }) {
+  return (
+    <div>
+      <a style={{fontSize:12.5, color:'var(--text-muted)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap: 6, marginBottom: 10}} onClick={()=>setScreen('samples')}><Ic.ArrowLeft style={{width:14}}/> Back to samples</a>
+      <div className="topbar"><div className="topbar__left"><h1>New Sample</h1><div className="crumbs">Step 1 of 2 · Details → Fabrication steps</div></div></div>
+      <div className="card form-card" style={{maxWidth: 860}}>
+        <h3 style={{margin:'0 0 4px', fontSize: 15, color: 'var(--color-primary)'}}>Sample Details</h3>
+        <p style={{color:'var(--text-muted)', fontSize:13, margin:'0 0 20px'}}>Fill in the basics. You'll add fabrication steps after saving.</p>
+        <div className="field-row">
+          <div className="field"><label>Sample ID</label><input placeholder="SMP-043"/><div className="field-help">Auto-generated, editable.</div></div>
+          <div className="field"><label>Sample Name</label><input placeholder="e.g. GaAs Wafer Batch 043"/></div>
+        </div>
+        <div className="field"><label>Description</label><textarea placeholder="Growth conditions, substrate, key parameters…"/></div>
+        <div className="field-row">
+          <div className="field"><label>Owner</label><select><option>msmith</option><option>j.chen</option><option>-- Unassigned --</option></select></div>
+          <div className="field"><label>Status</label><select><option>Active</option><option>In Progress</option><option>Archived</option></select></div>
+        </div>
+        <div className="field"><label>Keywords (comma separated)</label><input placeholder="GaAs, MBE, heterostructure"/></div>
+        <div style={{display:'flex', justifyContent:'flex-end', gap: 10, marginTop: 8}}>
+          <button className="btn btn--ghost" onClick={()=>setScreen('samples')}>Cancel</button>
+          <button className="btn btn--primary">Save & add steps →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function A_Wiki({ setScreen }) {
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar__left"><h1>Wiki</h1><div className="crumbs">Protocols, equipment guides, and lab conventions</div></div>
+        <div className="topbar__actions">
+          <button className="btn btn--primary"><Ic.Plus/> New Article</button>
+        </div>
+      </div>
+      <div className="toolbar">
+        <div className="search"><Ic.Search/><input placeholder="Search articles…"/></div>
+        {['All','Safety','Equipment','Protocols','Admin'].map(t => <span key={t} className={'filter-chip'+(t==='All'?' active':'')}>{t}</span>)}
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap: 16}}>
+        {ARTICLES.map(a => (
+          <div key={a.slug} className="card" style={{padding:'18px 22px', cursor:'pointer'}} onClick={()=>setScreen('wikiArticle')}>
+            <div style={{display:'flex', alignItems:'center', gap:8, marginBottom: 10}}>
+              <span className="status-chip status-chip--progress">{a.tag}</span>
+              <span style={{fontSize:12, color:'var(--text-muted)'}}>{a.createdAt}</span>
+            </div>
+            <h3 style={{margin:'0 0 6px', fontSize: 16, color:'var(--color-primary)'}}>{a.title}</h3>
+            <p style={{margin:0, fontSize:13, color:'var(--text-muted)', lineHeight: 1.55}}>{a.summary}</p>
+            <div style={{marginTop:12, fontSize:12, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:6}}>
+              <div className="avatar" style={{width:22, height:22, fontSize: 11}}>{a.author[0].toUpperCase()}</div>
+              {a.author}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function A_WikiArticle({ setScreen }) {
+  return (
+    <div>
+      <a style={{fontSize:12.5, color:'var(--text-muted)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap: 6, marginBottom: 10}} onClick={()=>setScreen('wiki')}><Ic.ArrowLeft style={{width:14}}/> Back to Wiki</a>
+      <div className="topbar">
+        <div className="topbar__left">
+          <div className="u-center u-gap-sm" style={{marginBottom: 4}}>
+            <span className="status-chip status-chip--progress">Safety</span>
+            <span style={{fontSize:12, color:'var(--text-muted)'}}>Nov 10, 2024 · msmith</span>
+          </div>
+          <h1>Cleanroom Safety Checklist</h1>
+        </div>
+        <div className="topbar__actions">
+          <button className="btn btn--secondary"><Ic.Edit/> Edit</button>
+          <button className="btn btn--ghost"><Ic.Download/> Export</button>
+        </div>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns: '3fr 1fr', gap: 18}}>
+        <div className="card" style={{padding:'24px 32px', fontSize: 15, lineHeight: 1.75}}>
+          <h2 style={{fontSize: 18, marginTop: 0}}>Entering the cleanroom</h2>
+          <ol>
+            <li>Sign in at the access terminal using your lab badge.</li>
+            <li>Remove outerwear and store in the assigned locker.</li>
+            <li>Gown up in this order: booties → bouffant → mask → coverall → gloves.</li>
+          </ol>
+          <h2 style={{fontSize: 18}}>Chemical handling</h2>
+          <p>Any use of HF, KOH, or solvents above 10 mL must be logged in the wet bench registry. Double-glove and confirm the emergency shower is unobstructed.</p>
+          <pre style={{background:'var(--surface-muted)', padding: 14, borderRadius: 8, fontSize: 13, overflow:'auto'}}>{`# Wet-bench checklist
+[ ] PPE verified
+[ ] Ventilation on
+[ ] Spill kit accessible
+[ ] Logged in registry`}</pre>
+          <h2 style={{fontSize: 18}}>Emergency contacts</h2>
+          <p>EHS on-call: <strong>x2500</strong> · Lab manager: <strong>msmith</strong></p>
+        </div>
+        <div className="card" style={{padding:'18px 22px', alignSelf:'start'}}>
+          <div className="u-eyebrow" style={{marginBottom: 10}}>On this page</div>
+          <div style={{display:'flex', flexDirection:'column', gap: 6, fontSize: 13}}>
+            <a>Entering the cleanroom</a>
+            <a>Chemical handling</a>
+            <a>Emergency contacts</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function A_Booking({ setScreen }) {
+  const hours = Array.from({length: 12}, (_,i) => i+8);
+  return (
+    <div>
+      <div className="topbar">
+        <div className="topbar__left"><h1>Equipment Booking</h1><div className="crumbs">Friday, April 19, 2026 · Today</div></div>
+        <div className="topbar__actions">
+          <button className="btn btn--ghost">‹ Prev</button>
+          <input type="date" defaultValue="2026-04-19" style={{padding:'8px 10px', borderRadius: 8, border:'1px solid var(--border-subtle)', background:'var(--surface-default)', color:'var(--text-strong)', minHeight: 38}}/>
+          <button className="btn btn--ghost">Next ›</button>
+          <button className="btn btn--primary"><Ic.Plus/> Book Slot</button>
+        </div>
+      </div>
+      <div className="toolbar">
+        <div className="filter-chip active">All equipment</div>
+        <div className="filter-chip">My bookings</div>
+        <div className="filter-chip">Available now</div>
+        <div style={{flex:1}}/>
+        <div style={{fontSize:12.5, color:'var(--text-muted)'}}>Click a cell to book · drag to create a range</div>
+      </div>
+      <div className="timeline-wrap">
+        <div className="timeline-wrap__scroll">
+          <div className="tline">
+            <div className="tline-head">
+              <div className="tline-head__left">Equipment</div>
+              <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{h}:00</div>)}</div>
+            </div>
+            {EQUIPMENT.map(eq => (
+              <div className="tline-row" key={eq.id}>
+                <div className="tline-row__left"><span className="tline-row__dot"/>{eq.name}</div>
+                <div className="tline-lane">
+                  <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
+                  {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                    const left=(b.start-8)*80, w=(b.end-b.start)*80;
+                    return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-4}}>
+                      <div>{b.user}</div><small>{b.purpose}</small>
+                    </div>;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function A_Tokens() {
+  return (
+    <div>
+      <div className="topbar"><div className="topbar__left"><h1>API Tokens</h1><div className="crumbs">Personal access tokens for programmatic access</div></div></div>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18}}>
+        <div className="card form-card">
+          <h3 style={{margin:'0 0 4px', fontSize: 15, color:'var(--color-primary)'}}>Generate new token</h3>
+          <p style={{fontSize:13, color:'var(--text-muted)', margin: '0 0 16px'}}>Tokens have full account permissions. Keep them secret.</p>
+          <div className="field"><label>Token name</label><input placeholder="e.g. Mobile app"/></div>
+          <div className="field"><label>Expiration</label><select><option>30 days</option><option>90 days</option><option>1 year</option><option>Never</option></select></div>
+          <button className="btn btn--primary" style={{width:'100%'}}>Generate</button>
+        </div>
+        <div className="card" style={{padding: 0}}>
+          <div style={{padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)'}}>
+            <strong style={{fontSize: 14}}>Existing tokens ({TOKENS.length})</strong>
+          </div>
+          <table className="data-table" style={{border:'none', borderRadius: 0}}>
+            <thead><tr><th>Name</th><th>Created</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {TOKENS.map(t=>(
+                <tr key={t.name}>
+                  <td><strong>{t.name}</strong></td>
+                  <td style={{fontFamily:'var(--font-family-mono)', fontSize:12, color:'var(--text-muted)'}}>{t.created}</td>
+                  <td style={{fontFamily:'var(--font-family-mono)', fontSize:12, color:'var(--text-muted)'}}>{t.used}</td>
+                  <td>{t.status==='active' ? <span className="status-chip status-chip--active"><span className="dot"/>Active</span> : <span className="status-chip status-chip--archived"><span className="dot"/>Revoked</span>}</td>
+                  <td>{t.status==='active' && <button className="btn btn--danger btn--sm">Revoke</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="card" style={{marginTop: 18, padding: '18px 22px'}}>
+        <div className="u-eyebrow" style={{marginBottom: 10}}>Usage</div>
+        <p style={{margin:'0 0 10px', fontSize: 13, color: 'var(--text-muted)'}}>Send the token in the <code>Authorization</code> header on every API request.</p>
+        <pre style={{margin: 0, background:'var(--surface-subtle)', padding: 12, borderRadius: 8, fontSize: 13}}>Authorization: Bearer &lt;your-token&gt;</pre>
+      </div>
+    </div>
+  );
+}
+
+function A_Admin() {
+  return (
+    <div>
+      <div className="topbar"><div className="topbar__left"><h1>Admin Panel</h1><div className="crumbs">Manage users, groups, and equipment access</div></div></div>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18, marginBottom: 18}}>
+        <div className="card" style={{padding: 0}}>
+          <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <strong style={{fontSize:14}}>User Groups</strong><button className="btn btn--secondary btn--sm"><Ic.Plus/>Add</button>
+          </div>
+          {['Barbaros', 'Ahmet', 'NewGroup'].map(g => (
+            <div key={g} style={{padding:'12px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid var(--border-subtle)'}}>
+              <div><strong style={{fontSize:14}}>{g}</strong><div style={{fontSize:12, color:'var(--text-muted)'}}>{g==='Barbaros'?3:g==='Ahmet'?2:1} members</div></div>
+              <button className="btn btn--ghost btn--sm"><Ic.Trash/></button>
+            </div>
+          ))}
+        </div>
+        <div className="card" style={{padding: 0}}>
+          <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between'}}>
+            <strong style={{fontSize:14}}>Equipment Catalogue</strong><button className="btn btn--secondary btn--sm"><Ic.Plus/>Add Equipment</button>
+          </div>
+          <table className="data-table" style={{border:'none', borderRadius: 0}}>
+            <thead><tr><th>Name</th><th>Group access</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {EQUIPMENT.map(eq => (
+                <tr key={eq.id}><td><strong>{eq.name}</strong></td>
+                  <td><span className="status-chip status-chip--progress">Barbaros</span> <span className="status-chip status-chip--progress">Ahmet</span></td>
+                  <td><span className="status-chip status-chip--active"><span className="dot"/>Online</span></td>
+                  <td><button className="btn btn--ghost btn--sm">Usage</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="card" style={{padding: 0}}>
+        <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent: 'space-between'}}>
+          <strong style={{fontSize:14}}>User Management ({USERS.length})</strong>
+          <div className="search" style={{minWidth: 220, minHeight: 30}}><Ic.Search/><input placeholder="Search users…"/></div>
+        </div>
+        <table className="data-table" style={{border:'none', borderRadius: 0}}>
+          <thead><tr><th>User</th><th>Group</th><th>Status</th><th>Admin</th><th>Equipment access</th><th></th></tr></thead>
+          <tbody>
+            {USERS.map(u=>(
+              <tr key={u.user}>
+                <td><div style={{display:'flex', alignItems:'center', gap: 10}}><div className="avatar" style={{width: 28, height: 28, fontSize: 12}}>{u.user[0].toUpperCase()}</div><strong>{u.user}</strong></div></td>
+                <td><select defaultValue={u.group} style={{minHeight: 30, padding: '4px 10px', fontSize: 13}}>{['Barbaros','Ahmet','NewGroup','No group'].map(g=><option key={g}>{g}</option>)}</select></td>
+                <td>{u.status==='approved' ? <span className="status-chip status-chip--active"><span className="dot"/>Approved</span> : <span className="status-chip status-chip--pending"><span className="dot"/>Pending</span>}</td>
+                <td>{u.admin ? <span className="status-chip status-chip--progress">Admin</span> : '—'}</td>
+                <td><span className="status-chip status-chip--archived">4 tools</span></td>
+                <td><button className="btn btn--ghost btn--sm"><Ic.Edit/></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function DirectionA({ screen, setScreen, activeSample, setActiveSample }) {
+  return (
+    <div className="dirA">
+      <div className="app-shell">
+        <A_Sidebar screen={screen} setScreen={setScreen}/>
+        <div className="main">
+          {screen === 'dashboard' && <A_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
+          {screen === 'samples' && <A_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
+          {screen === 'detail' && <A_SampleDetail sample={activeSample} setScreen={setScreen}/>}
+          {screen === 'new' && <A_New setScreen={setScreen}/>}
+          {screen === 'wiki' && <A_Wiki setScreen={setScreen}/>}
+          {screen === 'wikiArticle' && <A_WikiArticle setScreen={setScreen}/>}
+          {screen === 'booking' && <A_Booking setScreen={setScreen}/>}
+          {screen === 'tokens' && <A_Tokens/>}
+          {screen === 'admin' && <A_Admin/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { DirectionA });
+
+  </script>
+  <script type="text/babel" data-presets="react">
+// Direction B — Linear-inspired: dense, monospace, subtle
+const bStatusChip = (s) => {
+  const map = { active:['#10b981','Active'], progress:['#6366f1','In Progress'], archived:['var(--text-muted)','Archived'], pending:['#f59e0b','Pending'] };
+  const [c, l] = map[s] || map.active;
+  return <span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:11.5,fontWeight:500,color:c}}><span style={{width:6,height:6,borderRadius:'50%',background:c}}/>{l}</span>;
+};
+
+function B_Sidebar({ screen, setScreen }) {
+  const items = [
+    { id:'dashboard', label:'Dashboard', icon:Ic.Dashboard },
+    { id:'samples',   label:'Samples',   icon:Ic.Samples, count: 247 },
+    { id:'wiki',      label:'Wiki',      icon:Ic.Wiki, count: 42 },
+    { id:'booking',   label:'Equipment', icon:Ic.Calendar },
+    { id:'tokens',    label:'API Tokens',icon:Ic.Key },
+    { id:'admin',     label:'Admin',     icon:Ic.Shield },
+  ];
+  return (
+    <aside className="sidebar">
+      <div className="sidebar__brand"><div className="mark">S</div><span>SampleDB</span><Ic.Caret style={{marginLeft:'auto',width:12,color:'var(--text-muted)'}}/></div>
+      <div className="cmdk"><span>Jump to…</span><span><span className="kbd">⌘</span> <span className="kbd">K</span></span></div>
+      <div className="nav-group">
+        {items.map(it => (
+          <button key={it.id} className={'nav-link'+(screen===it.id?' active':'')} onClick={()=>setScreen(it.id)}>
+            <it.icon/><span>{it.label}</span>{it.count && <span className="count">{it.count}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="nav-group">
+        <div className="nav-group__title">Views</div>
+        <button className="nav-link"><Ic.Dot/><span>My samples</span></button>
+        <button className="nav-link"><Ic.Dot/><span>Shared with me</span></button>
+        <button className="nav-link"><Ic.Dot/><span>Archive</span></button>
+      </div>
+      <div className="sidebar__footer"><div className="avatar">M</div><span>msmith</span></div>
+    </aside>
+  );
+}
+
+function B_Topbar({ title, crumbs, actions }) {
+  return (
+    <div className="topbar">
+      <div className="crumbs">
+        <span>Workspace</span><span className="sep">/</span>
+        <h1>{title}</h1>
+        {crumbs && <><span className="sep">·</span><span>{crumbs}</span></>}
+      </div>
+      <div className="topbar__actions">
+        {actions || (
+          <><button className="btn"><Ic.Filter/> Filter</button>
+          <button className="btn btn--primary"><Ic.Plus/> New</button></>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function B_Dashboard({ setScreen, setActiveSample }) {
+  return (
+    <>
+      <B_Topbar title="Dashboard"/>
+      <div className="sub-toolbar"><span style={{fontSize:12.5,color:'var(--text-muted)'}}>Friday · April 19, 2026</span></div>
+      <div className="content">
+        <div className="stats">
+          {[['Samples','247','+12 wk'],['Bookings today','8','2 upcoming'],['Articles','42','+3 wk'],['Pending','3','needs review']].map((x,i)=>(
+            <div key={i} className="stat-card">
+              <div className="stat-card__label"><Ic.Dot style={{width:8,height:8,color:'var(--b-accent)'}}/>{x[0]}</div>
+              <div className="stat-card__value">{x[1]}</div>
+              <div className="stat-card__delta">{x[2]}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap: 16}}>
+          <div>
+            <div className="u-between" style={{marginBottom:10}}><strong style={{fontSize:13}}>Recent samples</strong><a style={{fontSize:12,cursor:'pointer'}} onClick={()=>setScreen('samples')}>View all</a></div>
+            <table className="data-table">
+              <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Owner</th><th>Updated</th></tr></thead>
+              <tbody>
+                {SAMPLES.slice(0,6).map(s=>(
+                  <tr key={s.id} style={{cursor:'pointer'}} onClick={()=>{setActiveSample(s); setScreen('detail');}}>
+                    <td><span className="id">{s.id}</span></td>
+                    <td><span className="name">{s.name}</span></td>
+                    <td>{bStatusChip(s.status)}</td>
+                    <td>{s.owner}</td>
+                    <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11.5,color:'var(--text-muted)'}}>{s.createdAt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div className="u-between" style={{marginBottom:10}}><strong style={{fontSize:13}}>Activity</strong></div>
+            <div style={{background:'var(--surface-default)', border:'1px solid var(--b-border)', borderRadius: 8, padding: 6}}>
+              {ACTIVITY.slice(0,8).map((a,i)=>(
+                <div key={i} className="activity-item">
+                  <span className="who">{a.who}</span>
+                  <span style={{color:'var(--text-muted)'}}>{a.verb}</span>
+                  <a style={{color:'var(--b-accent)'}}>{a.what}</a>
+                  <span className="time">{a.when}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function B_Samples({ setScreen, setActiveSample }) {
+  const [view, setView] = React.useState('table');
+  const [status, setStatus] = React.useState('all');
+  const filtered = SAMPLES.filter(s => status==='all' || s.status === status);
+  return (
+    <>
+      <B_Topbar title="Samples" crumbs={`${filtered.length} of ${SAMPLES.length}`}
+        actions={<><button className="btn"><Ic.Download/> Export</button><button className="btn btn--primary" onClick={()=>setScreen('new')}><Ic.Plus/> New Sample</button></>}/>
+      <div className="sub-toolbar">
+        <div className="search"><Ic.Search/><input placeholder="Search samples…"/></div>
+        <div className="filter-chip"><Ic.Filter/> Owner</div>
+        <div className="filter-chip"><Ic.Calendar/> Apr 1 – 19</div>
+        {['all','active','progress','archived'].map(s => (
+          <button key={s} className={'filter-chip'+(status===s?' active':'')} onClick={()=>setStatus(s)} style={{border:'none'}}>
+            {s==='all'?'Any status':s[0].toUpperCase()+s.slice(1)}
+          </button>
+        ))}
+        <div style={{flex:1}}/>
+        <div className="seg">
+          <button className={view==='table'?'active':''} onClick={()=>setView('table')}><Ic.List/>Table</button>
+          <button className={view==='grid'?'active':''} onClick={()=>setView('grid')}><Ic.Grid/>Grid</button>
+          <button className={view==='kanban'?'active':''} onClick={()=>setView('kanban')}><Ic.Kanban/>Board</button>
+        </div>
+      </div>
+      <div className="content">
+        {view==='table' && (
+          <table className="data-table">
+            <thead><tr><th style={{width:28}}><input type="checkbox"/></th><th>ID</th><th>Name</th><th>Status</th><th>Owner</th><th>Steps</th><th>Files</th><th>Keywords</th><th>Updated</th></tr></thead>
+            <tbody>
+              {filtered.map(s => (
+                <tr key={s.id} style={{cursor:'pointer'}} onClick={()=>{setActiveSample(s); setScreen('detail');}}>
+                  <td><input type="checkbox" onClick={e=>e.stopPropagation()}/></td>
+                  <td><span className="id">{s.id}</span></td>
+                  <td><span className="name">{s.name}</span></td>
+                  <td>{bStatusChip(s.status)}</td>
+                  <td>{s.owner}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--text-muted)'}}>{s.steps}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--text-muted)'}}>{s.attachments}</td>
+                  <td><div style={{display:'flex',gap:4,flexWrap:'wrap'}}>{s.keywords.slice(0,2).map(k=><span key={k} style={{fontSize:11,padding:'1px 7px',borderRadius:4,background:'var(--surface-muted)',color:'var(--text-muted)',fontFamily:'JetBrains Mono,monospace'}}>{k}</span>)}</div></td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11.5,color:'var(--text-muted)'}}>{s.createdAt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {view==='grid' && (
+          <div className="samples-grid">
+            {filtered.map(s=>(
+              <div key={s.id} className="sample-card" onClick={()=>{setActiveSample(s); setScreen('detail');}}>
+                <div className="sample-card__head">
+                  <span className="sample-card__id">{s.id}</span>
+                  {bStatusChip(s.status)}
+                </div>
+                <h3 className="sample-card__title">{s.name}</h3>
+                <p className="sample-card__desc">{s.description}</p>
+                <div className="sample-card__meta"><span>{s.owner}</span><span>·</span><span style={{fontFamily:'JetBrains Mono,monospace'}}>{s.createdAt}</span><span style={{marginLeft:'auto'}}>{s.steps} steps · {s.attachments} files</span></div>
+              </div>
+            ))}
+          </div>
+        )}
+        {view==='kanban' && (
+          <div className="kanban">
+            {['active','progress','archived'].map(st => (
+              <div key={st} className="kan-col">
+                <div className="kan-col__title"><span style={{width:6,height:6,borderRadius:'50%',background: st==='active'?'#10b981':st==='progress'?'#6366f1':'var(--text-muted)'}}/>{st} · {SAMPLES.filter(s=>s.status===st).length}</div>
+                {SAMPLES.filter(s=>s.status===st).map(s=>(
+                  <div key={s.id} className="kan-item" onClick={()=>{setActiveSample(s); setScreen('detail');}} style={{cursor:'pointer'}}>
+                    <div className="id">{s.id}</div>
+                    <div className="title">{s.name}</div>
+                    <div style={{fontSize:11.5, color:'var(--text-muted)'}}>{s.owner} · {s.steps} steps</div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function B_Detail({ sample, setScreen }) {
+  const s = sample || SAMPLES[0];
+  return (
+    <>
+      <B_Topbar title={s.name} crumbs={s.id} actions={<><button className="btn btn--ghost btn--sm"><Ic.ArrowLeft/> Back</button><button className="btn"><Ic.Edit/> Edit</button><button className="btn btn--primary"><Ic.Sparkle/> Share</button></>}/>
+      <div className="content">
+        <div style={{display:'grid', gridTemplateColumns: '2fr 1fr', gap: 16}}>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:16}}>
+              <div className="u-eyebrow" style={{marginBottom:8}}>Description</div>
+              <p style={{margin:0,fontSize:13.5,lineHeight:1.65}}>{s.description}</p>
+              <div style={{display:'flex',gap:5,marginTop:12,flexWrap:'wrap'}}>{s.keywords.map(k=><span key={k} style={{fontSize:11,padding:'2px 8px',borderRadius:4,background:'var(--surface-muted)',color:'var(--text-muted)',fontFamily:'JetBrains Mono,monospace'}}>{k}</span>)}</div>
+            </div>
+            <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:'12px 8px'}}>
+              <div className="u-between" style={{padding:'2px 10px 10px'}}>
+                <div className="u-eyebrow">Fabrication · {STEPS.length} steps</div>
+                <button className="btn btn--sm"><Ic.Plus/> Step</button>
+              </div>
+              {STEPS.map((st,i)=>(
+                <div key={i} className="fab-step">
+                  <span className="fab-step__grab">⋮⋮</span>
+                  <div className="fab-step__num">{String(i+1).padStart(2,'0')}</div>
+                  <div>
+                    <div className="fab-step__title">{st.title}</div>
+                    <div className="fab-step__meta">{st.date} · {st.by} · {st.tool}{st.notes?' · '+st.notes:''}</div>
+                  </div>
+                  <div style={{display:'flex',gap:4,opacity:0.6}}>
+                    <button className="btn btn--ghost btn--icon btn--sm"><Ic.Edit/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:16}}>
+              <div className="u-between" style={{marginBottom:12}}><div className="u-eyebrow">Attachments · {s.attachments}</div><button className="btn btn--sm"><Ic.Upload/> Upload</button></div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}}>
+                {Array.from({length:5}).map((_,i)=><div key={i} style={{height:80,borderRadius:6,overflow:'hidden',border:'1px solid var(--b-border)'}}><SampleThumb seed={i+s.id.length} palette={s.palette}/></div>)}
+              </div>
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:16}}>
+              <div className="u-eyebrow" style={{marginBottom:12}}>Properties</div>
+              {[['Status',bStatusChip(s.status)],['Owner',s.owner],['Created',s.createdAt],['Steps',s.steps],['Files',s.attachments]].map(([k,v],i)=>(
+                <div key={i} style={{display:'grid',gridTemplateColumns:'80px 1fr',padding:'5px 0',fontSize:12.5,borderBottom:'1px solid var(--b-border)'}}>
+                  <span style={{color:'var(--text-muted)'}}>{k}</span><span>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:'12px 8px'}}>
+              <div className="u-eyebrow" style={{padding:'4px 10px 8px'}}>Activity</div>
+              {ACTIVITY.slice(0,6).map((a,i)=>(
+                <div key={i} className="activity-item">
+                  <span className="who">{a.who}</span>
+                  <span style={{color:'var(--text-muted)'}}>{a.verb.split(' ')[0]}</span>
+                  <span className="time">{a.when}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function B_New({ setScreen }) {
+  return (
+    <>
+      <B_Topbar title="New Sample" crumbs="Step 1 of 2" actions={<><button className="btn" onClick={()=>setScreen('samples')}>Cancel</button><button className="btn btn--primary">Create & add steps</button></>}/>
+      <div className="content">
+        <div style={{maxWidth:720, background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:24}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+            <div className="field"><label>Sample ID</label><input placeholder="SMP-043"/></div>
+            <div className="field"><label>Name</label><input placeholder="GaAs Wafer Batch 043"/></div>
+          </div>
+          <div className="field" style={{marginTop:12}}><label>Description</label><textarea placeholder="Growth conditions, substrate, key parameters…"/></div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:12}}>
+            <div className="field"><label>Owner</label><select><option>msmith</option><option>-- Unassigned --</option></select></div>
+            <div className="field"><label>Status</label><select><option>Active</option><option>In Progress</option></select></div>
+          </div>
+          <div className="field" style={{marginTop:12}}><label>Keywords</label><input placeholder="GaAs, MBE"/></div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function B_Wiki({ setScreen }) {
+  return (
+    <>
+      <B_Topbar title="Wiki" crumbs={`${ARTICLES.length} articles`} actions={<><button className="btn btn--primary"><Ic.Plus/>New Article</button></>}/>
+      <div className="sub-toolbar">
+        <div className="search"><Ic.Search/><input placeholder="Search articles…"/></div>
+        {['All','Safety','Equipment','Protocols','Admin'].map(t=><span key={t} className={'filter-chip'+(t==='All'?' active':'')}>{t}</span>)}
+      </div>
+      <div className="content">
+        <table className="data-table">
+          <thead><tr><th>Title</th><th>Category</th><th>Author</th><th>Updated</th></tr></thead>
+          <tbody>
+            {ARTICLES.map(a => (
+              <tr key={a.slug} onClick={()=>setScreen('wikiArticle')} style={{cursor:'pointer'}}>
+                <td><span className="name">{a.title}</span><div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{a.summary}</div></td>
+                <td><span style={{fontSize:11.5,padding:'2px 8px',borderRadius:4,background:'var(--b-accent-soft)',color:'var(--b-accent)',fontFamily:'JetBrains Mono,monospace'}}>{a.tag}</span></td>
+                <td>{a.author}</td>
+                <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11.5,color:'var(--text-muted)'}}>{a.createdAt}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function B_WikiArticle({ setScreen }) {
+  return (
+    <>
+      <B_Topbar title="Cleanroom Safety Checklist" crumbs="Safety" actions={<><button className="btn btn--ghost btn--sm" onClick={()=>setScreen('wiki')}><Ic.ArrowLeft/>Back</button><button className="btn"><Ic.Edit/>Edit</button></>}/>
+      <div className="content">
+        <div style={{maxWidth: 780, margin: '0 auto'}}>
+          <div style={{fontSize: 12, color:'var(--text-muted)', fontFamily:'JetBrains Mono,monospace', marginBottom: 20}}>msmith · Updated Nov 10, 2024</div>
+          <h2 style={{fontSize: 20, marginTop: 0}}>Entering the cleanroom</h2>
+          <ol style={{lineHeight: 1.8, fontSize: 14}}>
+            <li>Sign in at the access terminal using your lab badge.</li>
+            <li>Remove outerwear and store in the assigned locker.</li>
+            <li>Gown up in this order: booties → bouffant → mask → coverall → gloves.</li>
+          </ol>
+          <h2 style={{fontSize: 20}}>Chemical handling</h2>
+          <p style={{fontSize: 14, lineHeight: 1.7}}>Any use of HF, KOH, or solvents above 10 mL must be logged in the wet bench registry. Double-glove and confirm the emergency shower is unobstructed.</p>
+          <pre style={{background:'var(--surface-muted)',padding:14,borderRadius:6,fontSize:12.5,border:'1px solid var(--b-border)'}}>{`# Wet-bench checklist
+[ ] PPE verified
+[ ] Ventilation on
+[ ] Spill kit accessible`}</pre>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function B_Booking() {
+  const hours = Array.from({length:12},(_,i)=>i+8);
+  return (
+    <>
+      <B_Topbar title="Equipment" crumbs="Friday, Apr 19" actions={<><button className="btn btn--sm">‹</button><button className="btn btn--sm">Today</button><button className="btn btn--sm">›</button><button className="btn btn--primary"><Ic.Plus/>Book</button></>}/>
+      <div className="sub-toolbar">
+        <div className="filter-chip active">All</div><div className="filter-chip">My bookings</div><div className="filter-chip">Available now</div>
+      </div>
+      <div className="content">
+        <div className="timeline-wrap">
+          <div className="timeline-wrap__scroll">
+            <div className="tline">
+              <div className="tline-head">
+                <div className="tline-head__left">Equipment</div>
+                <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
+              </div>
+              {EQUIPMENT.map(eq=>(
+                <div className="tline-row" key={eq.id}>
+                  <div className="tline-row__left"><Ic.Beaker style={{width:13,height:13,color:'var(--text-muted)'}}/>{eq.name}</div>
+                  <div className="tline-lane">
+                    {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                      const left=(b.start-8)*72, w=(b.end-b.start)*72;
+                      return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
+                        <strong style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{b.user}</strong><span style={{opacity:.7, fontSize:11, marginLeft:4}}>{b.purpose}</span>
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function B_Tokens() {
+  return (
+    <>
+      <B_Topbar title="API Tokens"/>
+      <div className="content">
+        <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:16}}>
+          <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:16}}>
+            <div className="u-eyebrow" style={{marginBottom:12}}>Generate new token</div>
+            <div className="field"><label>Name</label><input placeholder="e.g. Mobile app"/></div>
+            <div className="field" style={{marginTop:10}}><label>Expiration</label><select><option>30 days</option><option>Never</option></select></div>
+            <button className="btn btn--primary" style={{marginTop:12,width:'100%'}}>Generate</button>
+          </div>
+          <table className="data-table">
+            <thead><tr><th>Name</th><th>Created</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {TOKENS.map(t => (
+                <tr key={t.name}>
+                  <td><span className="name">{t.name}</span></td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--text-muted)'}}>{t.created}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--text-muted)'}}>{t.used}</td>
+                  <td>{t.status==='active'?bStatusChip('active'):<span style={{color:'var(--text-muted)',fontSize:11.5}}>Revoked</span>}</td>
+                  <td>{t.status==='active' && <button className="btn btn--sm">Revoke</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8,padding:16,marginTop:16}}>
+          <div className="u-eyebrow" style={{marginBottom:8}}>Usage</div>
+          <pre style={{margin:0,fontSize:12.5,background:'var(--surface-muted)',padding:10,borderRadius:6,border:'1px solid var(--b-border)'}}>Authorization: Bearer &lt;your-token&gt;</pre>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function B_Admin() {
+  return (
+    <>
+      <B_Topbar title="Admin"/>
+      <div className="content">
+        <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:16, marginBottom:16}}>
+          <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8}}>
+            <div className="u-between" style={{padding:'10px 14px',borderBottom:'1px solid var(--b-border)'}}><strong style={{fontSize:13}}>Groups</strong><button className="btn btn--sm"><Ic.Plus/></button></div>
+            {['Barbaros','Ahmet','NewGroup'].map(g=>(
+              <div key={g} style={{padding:'10px 14px', borderBottom:'1px solid var(--b-border)', display:'flex', justifyContent:'space-between',fontSize:13}}>
+                <div><strong>{g}</strong><div style={{fontSize:11.5,color:'var(--text-muted)',fontFamily:'JetBrains Mono,monospace'}}>{g==='Barbaros'?3:g==='Ahmet'?2:1} members</div></div>
+                <button className="btn btn--ghost btn--icon btn--sm"><Ic.Trash/></button>
+              </div>
+            ))}
+          </div>
+          <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8}}>
+            <div className="u-between" style={{padding:'10px 14px',borderBottom:'1px solid var(--b-border)'}}><strong style={{fontSize:13}}>Equipment</strong><button className="btn btn--sm"><Ic.Plus/>Add</button></div>
+            <table className="data-table" style={{border:'none',borderRadius:0}}>
+              <thead><tr><th>Name</th><th>Access</th><th>Status</th><th></th></tr></thead>
+              <tbody>{EQUIPMENT.map(e=>(<tr key={e.id}><td><span className="name">{e.name}</span></td><td style={{fontSize:11.5,color:'var(--text-muted)',fontFamily:'JetBrains Mono,monospace'}}>all groups</td><td>{bStatusChip('active')}</td><td><button className="btn btn--sm">Usage</button></td></tr>))}</tbody>
+            </table>
+          </div>
+        </div>
+        <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8}}>
+          <div className="u-between" style={{padding:'10px 14px',borderBottom:'1px solid var(--b-border)'}}><strong style={{fontSize:13}}>Users · {USERS.length}</strong><div className="search"><Ic.Search/><input placeholder="Search users"/></div></div>
+          <table className="data-table" style={{border:'none',borderRadius:0}}>
+            <thead><tr><th>User</th><th>Group</th><th>Status</th><th>Role</th><th></th></tr></thead>
+            <tbody>{USERS.map(u=>(
+              <tr key={u.user}>
+                <td><span className="name">{u.user}</span></td>
+                <td>{u.group}</td>
+                <td>{bStatusChip(u.status==='approved'?'active':'pending')}</td>
+                <td>{u.admin?<span style={{fontSize:11.5,padding:'2px 8px',borderRadius:4,background:'var(--b-accent-soft)',color:'var(--b-accent)',fontFamily:'JetBrains Mono,monospace'}}>admin</span>:'member'}</td>
+                <td><button className="btn btn--sm"><Ic.Edit/></button></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DirectionB({ screen, setScreen, activeSample, setActiveSample }) {
+  return (
+    <div className="dirB">
+      <div className="app-shell">
+        <B_Sidebar screen={screen} setScreen={setScreen}/>
+        <div className="main">
+          {screen==='dashboard' && <B_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
+          {screen==='samples' && <B_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
+          {screen==='detail' && <B_Detail sample={activeSample} setScreen={setScreen}/>}
+          {screen==='new' && <B_New setScreen={setScreen}/>}
+          {screen==='wiki' && <B_Wiki setScreen={setScreen}/>}
+          {screen==='wikiArticle' && <B_WikiArticle setScreen={setScreen}/>}
+          {screen==='booking' && <B_Booking/>}
+          {screen==='tokens' && <B_Tokens/>}
+          {screen==='admin' && <B_Admin/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { DirectionB });
+
+  </script>
+  <script type="text/babel" data-presets="react">
+// Direction C — Lab Notebook: editorial, serif hero, teal+amber
+const cStatusChip = (s) => {
+  const map = { active:'status-chip--active', progress:'status-chip--progress', archived:'status-chip--archived' };
+  const label = s==='progress'?'In Progress':s[0].toUpperCase()+s.slice(1);
+  return <span className={`status-chip ${map[s]||''}`} style={{fontFamily:'JetBrains Mono,monospace',textTransform:'uppercase',letterSpacing:'0.08em',fontSize:10.5,padding:'3px 10px'}}>{label}</span>;
+};
+
+function C_Ribbon({ screen, setScreen }) {
+  const nav = [
+    {id:'dashboard', l:'Dashboard'}, {id:'samples', l:'Samples'}, {id:'wiki', l:'Wiki'},
+    {id:'booking', l:'Equipment'}, {id:'tokens', l:'Tokens'}, {id:'admin', l:'Admin'},
+  ];
+  return (
+    <div className="top-ribbon">
+      <div className="top-ribbon__brand"><Ic.Flask style={{width:26,height:26, color:'var(--c-teal)'}}/><div className="wordmark">SampleDB</div><div className="sub">Lab notebook / v2</div></div>
+      <div className="top-ribbon__nav">{nav.map(n=><a key={n.id} className={screen===n.id?'active':''} onClick={()=>setScreen(n.id)}>{n.l}</a>)}</div>
+      <div className="top-ribbon__actions">
+        <button className="btn btn--sm btn--ghost">⌘K Search</button>
+        <div className="user-chip"><div className="av">M</div>msmith</div>
+      </div>
+    </div>
+  );
+}
+
+function C_Dashboard({ setScreen, setActiveSample }) {
+  return (
+    <div className="main">
+      <div className="section-head">
+        <div className="section-head__eyebrow">Entry · 04.19.26</div>
+        <div>
+          <h1 className="section-head__title">Good afternoon,<br/>msmith.</h1>
+          <p className="section-head__sub">Five samples updated today, two bookings ahead of you, and three access requests waiting.</p>
+        </div>
+        <div className="section-head__actions"><button className="btn btn--accent" onClick={()=>setScreen('new')}>+ New sample</button></div>
+      </div>
+      <div className="stats">
+        {[['Total samples','247','+12 this week'],['Active bookings','8','2 today'],['Articles','42','+3'],['Pending','3','needs review','down']].map((x,i)=>(
+          <div key={i} className="stat-card">
+            <div className="stat-card__label">{x[0]}</div>
+            <div className="stat-card__value">{x[1]}</div>
+            <div className={'stat-card__delta'+(x[3]==='down'?' down':'')}>{x[2]}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap: 48}}>
+        <div>
+          <div className="panel__title">Recent samples</div>
+          <table className="data-table">
+            <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Owner</th></tr></thead>
+            <tbody>{SAMPLES.slice(0,6).map(s=>(
+              <tr key={s.id} style={{cursor:'pointer'}} onClick={()=>{setActiveSample(s); setScreen('detail');}}>
+                <td><span className="id">{s.id}</span></td>
+                <td><span className="name">{s.name}</span></td>
+                <td>{cStatusChip(s.status)}</td>
+                <td style={{fontSize:13, color:'var(--c-muted)'}}>{s.owner}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <div>
+          <div className="panel__title">Activity log</div>
+          {ACTIVITY.slice(0,7).map((a,i)=>(
+            <div key={i} className="activity-item">
+              <span className="time">{a.when}</span>
+              <div><span className="who">{a.who}</span> <span style={{color:'var(--c-muted)'}}>{a.verb}</span> <strong>{a.what}</strong></div>
+              <span/>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function C_Samples({ setScreen, setActiveSample }) {
+  const [view,setView]=React.useState('grid');
+  const [status,setStatus]=React.useState('all');
+  const filtered = SAMPLES.filter(s=>status==='all'||s.status===status);
+  return (
+    <div className="main">
+      <div className="section-head">
+        <div className="section-head__eyebrow">Index · {SAMPLES.length} entries</div>
+        <div>
+          <h1 className="section-head__title">Samples.</h1>
+          <p className="section-head__sub">Every batch, wafer and flake in the lab. Click to open, hover to peek.</p>
+        </div>
+        <div className="section-head__actions"><button className="btn btn--accent" onClick={()=>setScreen('new')}>+ New sample</button></div>
+      </div>
+      <div className="toolbar">
+        <div className="search"><Ic.Search/><input placeholder="Search name, ID, keyword…"/></div>
+        {['all','active','progress','archived'].map(s=><button key={s} className={'filter-chip'+(status===s?' active':'')} onClick={()=>setStatus(s)}>{s==='all'?'all':s}</button>)}
+        <div className="seg">
+          <button className={view==='grid'?'active':''} onClick={()=>setView('grid')}><Ic.Grid/>Gallery</button>
+          <button className={view==='table'?'active':''} onClick={()=>setView('table')}><Ic.List/>Index</button>
+        </div>
+      </div>
+      {view==='grid' ? (
+        <div className="samples-grid">
+          {filtered.map(s => (
+            <div key={s.id} className="sample-card" onClick={()=>{setActiveSample(s); setScreen('detail');}}>
+              <div className="sample-card__thumb"><SampleThumb seed={parseInt(s.id.slice(-3),36)} palette={s.palette}/></div>
+              <div className="sample-card__head"><span className="sample-card__id">{s.id}</span>{cStatusChip(s.status)}</div>
+              <h3 className="sample-card__title">{s.name}</h3>
+              <p className="sample-card__desc">{s.description}</p>
+              <div className="sample-card__meta"><span>{s.owner}</span><span>{s.createdAt}</span><span>{s.steps} steps</span></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <table className="data-table">
+          <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Owner</th><th>Steps</th><th>Updated</th></tr></thead>
+          <tbody>{filtered.map(s=>(
+            <tr key={s.id} style={{cursor:'pointer'}} onClick={()=>{setActiveSample(s); setScreen('detail');}}>
+              <td><span className="id">{s.id}</span></td>
+              <td><span className="name">{s.name}</span><div style={{fontSize:12,color:'var(--c-muted)',marginTop:2}}>{s.description.slice(0,80)}…</div></td>
+              <td>{cStatusChip(s.status)}</td>
+              <td style={{color:'var(--c-muted)'}}>{s.owner}</td>
+              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--c-muted)'}}>{s.steps}</td>
+              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--c-muted)'}}>{s.createdAt}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function C_Detail({ sample, setScreen }) {
+  const s = sample || SAMPLES[0];
+  return (
+    <div className="main">
+      <div className="back-link" onClick={()=>setScreen('samples')}><Ic.ArrowLeft style={{width:12,height:12}}/> back to samples</div>
+      <div className="section-head">
+        <div className="section-head__eyebrow">{s.id}</div>
+        <div>
+          <div style={{marginBottom: 14}}>{cStatusChip(s.status)}</div>
+          <h1 className="section-head__title">{s.name}</h1>
+          <p className="section-head__sub">{s.description}</p>
+        </div>
+        <div className="section-head__actions"><button className="btn btn--sm">Share</button><button className="btn btn--accent btn--sm">Edit</button></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:48}}>
+        <div>
+          <div className="panel" style={{borderTop:'none', paddingTop:0}}>
+            <div className="panel__title">Keywords</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{s.keywords.map(k=><span key={k} style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,padding:'4px 12px',borderRadius:999,border:'1px solid var(--c-line)', textTransform:'uppercase', letterSpacing:'0.08em'}}>{k}</span>)}</div>
+          </div>
+          <div className="panel">
+            <div className="panel__title">Attachments · {s.attachments}</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1,background:'var(--c-line)',border:'1px solid var(--c-line)'}}>
+              {Array.from({length:6}).map((_,i)=><div key={i} style={{height:100,overflow:'hidden',background:'var(--c-paper)'}}><SampleThumb seed={i+s.id.length} palette={s.palette}/></div>)}
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="panel" style={{borderTop: 'none', paddingTop: 0}}>
+            <div className="panel__title">Properties</div>
+            {[['Owner',s.owner],['Created',s.createdAt],['Last edit','2h ago'],['Steps',s.steps],['Files',s.attachments]].map(([k,v],i)=>(
+              <div key={i} style={{display:'grid',gridTemplateColumns:'120px 1fr',padding:'12px 0',borderBottom:'1px solid var(--c-line)',fontSize:14}}>
+                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:10.5,color:'var(--c-muted)',textTransform:'uppercase',letterSpacing:'0.1em'}}>{k}</span><span>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="panel">
+        <div className="panel__title">Fabrication — {STEPS.length} steps</div>
+        {STEPS.map((st,i)=>(
+          <div key={i} className="fab-step">
+            <div className="fab-step__num">{String(i+1).padStart(2,'0')}</div>
+            <div>
+              <div className="fab-step__title">{st.title}</div>
+              <div className="fab-step__meta"><span>{st.date}</span><span>by {st.by}</span><span>{st.tool}</span>{st.notes && <span style={{textTransform:'none',letterSpacing:0,fontFamily:'Inter',fontSize:13,color:'var(--c-muted)'}}>{st.notes}</span>}</div>
+            </div>
+            <div className="fab-step__actions"><button className="btn btn--sm btn--ghost"><Ic.Edit/></button></div>
+          </div>
+        ))}
+        <button className="btn btn--sm" style={{marginTop: 16}}>+ Add step</button>
+      </div>
+    </div>
+  );
+}
+
+function C_New({ setScreen }) {
+  return (
+    <div className="main">
+      <div className="back-link" onClick={()=>setScreen('samples')}><Ic.ArrowLeft style={{width:12,height:12}}/> back to samples</div>
+      <div className="section-head">
+        <div className="section-head__eyebrow">Entry · New</div>
+        <div><h1 className="section-head__title">Register a sample.</h1><p className="section-head__sub">Capture the essentials. Fabrication steps come next.</p></div>
+      </div>
+      <div style={{maxWidth:720,display:'grid',gap:28}}>
+        <div className="field"><label>Sample name</label><input placeholder="GaAs Wafer Batch 043"/></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:28}}>
+          <div className="field"><label>Sample ID</label><input placeholder="SMP-043"/></div>
+          <div className="field"><label>Owner</label><select><option>msmith</option><option>— unassigned —</option></select></div>
+        </div>
+        <div className="field"><label>Description</label><textarea placeholder="Growth conditions, substrate, key parameters…"/></div>
+        <div className="field"><label>Keywords</label><input placeholder="GaAs, MBE, heterostructure"/></div>
+        <div style={{display:'flex',gap:10,marginTop: 10}}>
+          <button className="btn" onClick={()=>setScreen('samples')}>Cancel</button>
+          <button className="btn btn--accent">Save & add steps →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function C_Wiki({ setScreen }) {
+  return (
+    <div className="main">
+      <div className="section-head">
+        <div className="section-head__eyebrow">Knowledge base</div>
+        <div><h1 className="section-head__title">Wiki.</h1><p className="section-head__sub">Protocols, equipment guides, and everything you need to not blow up the cleanroom.</p></div>
+        <div className="section-head__actions"><button className="btn btn--accent">+ New article</button></div>
+      </div>
+      <div className="toolbar">
+        <div className="search"><Ic.Search/><input placeholder="Search articles…"/></div>
+        {['All','Safety','Equipment','Protocols','Admin'].map(t=><button key={t} className={'filter-chip'+(t==='All'?' active':'')}>{t}</button>)}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:1,background:'var(--c-line)',border:'1px solid var(--c-line)'}}>
+        {ARTICLES.map(a=>(
+          <div key={a.slug} onClick={()=>setScreen('wikiArticle')} style={{background:'var(--c-paper)',padding:'28px 24px',cursor:'pointer'}}>
+            <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:10.5,color:'var(--c-muted)',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:10}}>{a.tag} · {a.createdAt}</div>
+            <h3 style={{fontFamily:'Fraunces,serif',fontSize:24,fontWeight:600,margin:'0 0 10px',letterSpacing:'-0.02em'}}>{a.title}</h3>
+            <p style={{margin:0,fontSize:13.5,color:'var(--c-muted)',lineHeight:1.65}}>{a.summary}</p>
+            <div style={{marginTop:14,fontSize:12,color:'var(--c-muted)'}}>— {a.author}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function C_WikiArticle({ setScreen }) {
+  return (
+    <div className="main">
+      <div className="back-link" onClick={()=>setScreen('wiki')}><Ic.ArrowLeft style={{width:12,height:12}}/> back to wiki</div>
+      <div className="section-head">
+        <div className="section-head__eyebrow">Safety · msmith</div>
+        <div><h1 className="section-head__title">Cleanroom<br/>safety checklist.</h1><p className="section-head__sub">Published Nov 2024. Review before every session.</p></div>
+        <div className="section-head__actions"><button className="btn btn--sm">Edit</button></div>
+      </div>
+      <div style={{maxWidth:720,fontSize:16,lineHeight:1.75}}>
+        <h2 style={{fontFamily:'Fraunces,serif', fontSize: 28, fontWeight: 600, marginTop: 20, letterSpacing: '-0.02em'}}>Entering the cleanroom</h2>
+        <ol style={{lineHeight:1.9}}>
+          <li>Sign in at the access terminal using your lab badge.</li>
+          <li>Remove outerwear and store in the assigned locker.</li>
+          <li>Gown up in this order: booties → bouffant → mask → coverall → gloves.</li>
+        </ol>
+        <h2 style={{fontFamily:'Fraunces,serif', fontSize: 28, fontWeight: 600, marginTop: 32, letterSpacing: '-0.02em'}}>Chemical handling</h2>
+        <p>Any use of HF, KOH, or solvents above 10 mL must be logged in the wet bench registry. Double-glove and confirm the emergency shower is unobstructed.</p>
+      </div>
+    </div>
+  );
+}
+
+function C_Booking() {
+  const hours = Array.from({length:12},(_,i)=>i+8);
+  return (
+    <div className="main">
+      <div className="section-head">
+        <div className="section-head__eyebrow">Schedule · Apr 19, 2026</div>
+        <div><h1 className="section-head__title">Equipment.</h1><p className="section-head__sub">Click a lane to book. Drag the block edge to adjust.</p></div>
+        <div className="section-head__actions"><button className="btn btn--sm">‹ Prev</button><button className="btn btn--sm">Today</button><button className="btn btn--sm">Next ›</button></div>
+      </div>
+      <div className="timeline-wrap">
+        <div className="tline">
+          <div className="tline-head">
+            <div className="tline-head__left">Equipment</div>
+            <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
+          </div>
+          {EQUIPMENT.map(eq=>(
+            <div className="tline-row" key={eq.id}>
+              <div className="tline-row__left">{eq.name}</div>
+              <div className="tline-lane">
+                {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                  const left=(b.start-8)*90, w=(b.end-b.start)*90;
+                  return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
+                    <div style={{fontWeight:600}}>{b.user}</div><small>{b.purpose}</small>
+                  </div>;
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function C_Tokens() {
+  return (
+    <div className="main">
+      <div className="section-head">
+        <div className="section-head__eyebrow">Personal access</div>
+        <div><h1 className="section-head__title">API tokens.</h1><p className="section-head__sub">Programmatic access for mobile, MCP clients, and lab automations.</p></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:48}}>
+        <div>
+          <div className="panel__title">Generate new</div>
+          <div className="field" style={{marginBottom:20}}><label>Token name</label><input placeholder="e.g. iOS app"/></div>
+          <div className="field" style={{marginBottom:20}}><label>Expiration</label><select><option>30 days</option><option>Never</option></select></div>
+          <button className="btn btn--accent">Generate →</button>
+        </div>
+        <div>
+          <div className="panel__title">Existing tokens</div>
+          <table className="data-table">
+            <thead><tr><th>Name</th><th>Created</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+            <tbody>{TOKENS.map(t=>(
+              <tr key={t.name}>
+                <td><span className="name">{t.name}</span></td>
+                <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--c-muted)'}}>{t.created}</td>
+                <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,color:'var(--c-muted)'}}>{t.used}</td>
+                <td>{t.status==='active'?cStatusChip('active'):<span style={{color:'var(--c-muted)',fontSize:11.5}}>Revoked</span>}</td>
+                <td>{t.status==='active'&&<button className="btn btn--sm">Revoke</button>}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function C_Admin() {
+  return (
+    <div className="main">
+      <div className="section-head">
+        <div className="section-head__eyebrow">Lab administration</div>
+        <div><h1 className="section-head__title">Admin.</h1><p className="section-head__sub">Manage users, groups, and equipment access.</p></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:48,marginBottom:48}}>
+        <div>
+          <div className="panel__title">Groups</div>
+          {['Barbaros','Ahmet','NewGroup'].map(g=>(
+            <div key={g} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 0',borderBottom:'1px solid var(--c-line)'}}>
+              <div><div style={{fontFamily:'Fraunces,serif',fontSize:18,fontWeight:600}}>{g}</div><div style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:'var(--c-muted)',textTransform:'uppercase',letterSpacing:'0.1em'}}>{g==='Barbaros'?3:g==='Ahmet'?2:1} members</div></div>
+              <button className="btn btn--sm btn--ghost"><Ic.Trash/></button>
+            </div>
+          ))}
+          <button className="btn btn--sm" style={{marginTop:16}}>+ Add group</button>
+        </div>
+        <div>
+          <div className="panel__title">Equipment</div>
+          <table className="data-table"><thead><tr><th>Name</th><th>Status</th><th>Access</th></tr></thead><tbody>{EQUIPMENT.map(e=><tr key={e.id}><td><span className="name">{e.name}</span></td><td>{cStatusChip('active')}</td><td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11.5,color:'var(--c-muted)'}}>all groups</td></tr>)}</tbody></table>
+        </div>
+      </div>
+      <div>
+        <div className="panel__title">Users · {USERS.length}</div>
+        <table className="data-table"><thead><tr><th>User</th><th>Group</th><th>Status</th><th>Role</th></tr></thead><tbody>{USERS.map(u=>(
+          <tr key={u.user}>
+            <td><span className="name">{u.user}</span></td>
+            <td style={{color:'var(--c-muted)'}}>{u.group}</td>
+            <td>{u.status==='approved'?cStatusChip('active'):<span style={{fontFamily:'JetBrains Mono,monospace',fontSize:10.5,color:'var(--c-amber)',letterSpacing:'0.08em',textTransform:'uppercase'}}>pending</span>}</td>
+            <td>{u.admin?<span style={{fontFamily:'JetBrains Mono,monospace',fontSize:10.5,color:'var(--c-teal)',letterSpacing:'0.08em',textTransform:'uppercase'}}>admin</span>:<span style={{color:'var(--c-muted)'}}>member</span>}</td>
+          </tr>
+        ))}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+function DirectionC({ screen, setScreen, activeSample, setActiveSample }) {
+  return (
+    <div className="dirC">
+      <div className="stage-bg">
+        <C_Ribbon screen={screen} setScreen={setScreen}/>
+        {screen==='dashboard' && <C_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
+        {screen==='samples' && <C_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
+        {screen==='detail' && <C_Detail sample={activeSample} setScreen={setScreen}/>}
+        {screen==='new' && <C_New setScreen={setScreen}/>}
+        {screen==='wiki' && <C_Wiki setScreen={setScreen}/>}
+        {screen==='wikiArticle' && <C_WikiArticle setScreen={setScreen}/>}
+        {screen==='booking' && <C_Booking/>}
+        {screen==='tokens' && <C_Tokens/>}
+        {screen==='admin' && <C_Admin/>}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { DirectionC });
+
+  </script>
+  <script type="text/babel" data-presets="react">
+// Main App — depends on window.Ic, window.DirectionA/B/C
+const { useState: useStateA, useEffect: useEffectA } = React;
+
+const SCREENS = [
+  ['login','Login'], ['dashboard','Dashboard'], ['samples','Samples'],
+  ['detail','Sample'], ['new','New Sample'],
+  ['wiki','Wiki'], ['wikiArticle','Article'],
+  ['booking','Booking'], ['tokens','Tokens'], ['admin','Admin'],
+];
+
+function LoginScreen({ dir, setScreen, theme }) {
+  const accent = dir==='A' ? '#2563eb' : dir==='B' ? '#6366f1' : '#0e7c66';
+  const isDark = theme === 'dark';
+  const bg = isDark ? '#0d1117' : '#f8fafc';
+  const panel = isDark ? '#161b22' : '#ffffff';
+  const text = isDark ? '#e8e8e8' : '#0b1120';
+  const muted = isDark ? '#9ca3a4' : '#64748b';
+  const inputBg = isDark ? '#0d1117' : '#ffffff';
+  const inputBrd = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.12)';
+  return (
+    <div style={{minHeight:'calc(100vh - 50px)', background: bg, display:'flex', alignItems:'center', justifyContent:'center', padding: 24, fontFamily: dir==='C' ? '"Fraunces", Georgia, serif' : 'Inter, -apple-system, sans-serif'}}>
+      <div style={{width: 460, background: panel, borderRadius: 16, padding: 36, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.45)' : '0 20px 60px rgba(15,23,42,0.12)', border: `1px solid ${inputBrd}`, borderTop: dir==='A' ? `3px solid ${accent}` : `1px solid ${inputBrd}`}}>
+        <div style={{display:'flex', alignItems:'center', gap: 12, marginBottom: 6}}>
+          <Ic.Flask style={{width: 34, height: 34, color: accent}}/>
+          <div>
+            <div style={{fontWeight: 800, fontSize: 18, color: text, letterSpacing: '-0.01em'}}>SampleDB</div>
+            <div style={{fontSize: 11, color: muted, fontFamily: '"JetBrains Mono", monospace', textTransform:'uppercase', letterSpacing:'0.1em'}}>Lab portal · v2</div>
+          </div>
+        </div>
+        <h1 style={{fontSize: 32, fontWeight: 800, color: accent, margin: '26px 0 6px', letterSpacing: '-0.02em'}}>Welcome back</h1>
+        <p style={{color: muted, fontSize: 14, margin: '0 0 26px', lineHeight: 1.55}}>Sign in to manage samples, wiki pages, and equipment bookings.</p>
+        <div style={{display:'flex', flexDirection:'column', gap: 14}}>
+          <div>
+            <label style={{fontSize: 11, fontWeight: 700, color: muted, display:'block', marginBottom: 8, textTransform:'uppercase', letterSpacing: '0.08em'}}>Username</label>
+            <input defaultValue="msmith" style={{width:'100%', padding: '11px 14px', borderRadius: 8, border: `1px solid ${inputBrd}`, background: inputBg, color: text, fontSize: 14, fontFamily:'inherit', boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <label style={{fontSize: 11, fontWeight: 700, color: muted, display:'block', marginBottom: 8, textTransform:'uppercase', letterSpacing: '0.08em'}}>Password</label>
+            <input type="password" defaultValue="passpasspass" style={{width:'100%', padding: '11px 14px', borderRadius: 8, border: `1px solid ${inputBrd}`, background: inputBg, color: text, fontSize: 14, fontFamily:'inherit', boxSizing:'border-box'}}/>
+          </div>
+          <button onClick={()=>setScreen('dashboard')} style={{padding: '13px', borderRadius: 8, background: accent, color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor:'pointer', marginTop: 8, letterSpacing: '-0.01em'}}>Sign in →</button>
+        </div>
+        <div style={{textAlign:'center', marginTop: 22, fontSize: 13, color: muted}}>Need an account? <a style={{color: accent, fontWeight: 600, cursor:'pointer'}}>Request access</a></div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [dir, setDir] = useStateA(() => localStorage.getItem('sdb_dir') || 'A');
+  const [screen, setScreen] = useStateA(() => localStorage.getItem('sdb_screen') || 'dashboard');
+  const [theme, setTheme] = useStateA(() => localStorage.getItem('sdb_theme') || 'dark');
+  const [activeSample, setActiveSample] = useStateA(null);
+
+  useEffectA(() => { localStorage.setItem('sdb_dir', dir); }, [dir]);
+  useEffectA(() => { localStorage.setItem('sdb_screen', screen); }, [screen]);
+  useEffectA(() => {
+    localStorage.setItem('sdb_theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const directionLabels = { A:'Refined', B:'Dense', C:'Editorial' };
+  const directionSubs   = { A:'Classic blue, app shell, polished', B:'Linear-inspired, dense, table-first', C:'Lab notebook, serif + teal' };
+
+  const renderScreen = () => {
+    if (screen === 'login') return <LoginScreen dir={dir} setScreen={setScreen} theme={theme}/>;
+    const props = { screen, setScreen, activeSample, setActiveSample };
+    if (dir === 'A') return <DirectionA {...props}/>;
+    if (dir === 'B') return <DirectionB {...props}/>;
+    return <DirectionC {...props}/>;
+  };
+
+  return (
+    <React.Fragment>
+      <div className="direction-bar">
+        <Ic.Flask style={{width:20,height:20, color:'#60a5fa'}}/>
+        <span style={{fontWeight:700, letterSpacing:'-0.01em'}}>SampleDB redesign</span>
+        <span className="direction-bar__label" style={{marginLeft: 8}}>Direction</span>
+        <div className="direction-bar__segs">
+          {['A','B','C'].map(k => (
+            <button key={k} className={'direction-bar__seg' + (dir===k?' active':'')} onClick={()=>setDir(k)}>
+              {k} · {directionLabels[k]}
+            </button>
+          ))}
+        </div>
+        <span style={{fontSize: 11, color: 'rgba(255,255,255,0.55)', marginLeft: 2, maxWidth: 220}}>{directionSubs[dir]}</span>
+        <div className="direction-bar__screens">
+          {SCREENS.map(([k,l]) => (
+            <button key={k} className={screen===k?'active':''} onClick={()=>setScreen(k)}>{l}</button>
+          ))}
+        </div>
+        <button className="direction-bar__theme" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')}>
+          {theme==='dark' ? <Ic.Sun style={{width:14,height:14}}/> : <Ic.Moon style={{width:14,height:14}}/>}
+          {theme==='dark' ? 'Light' : 'Dark'}
+        </button>
+      </div>
+      <div className="stage" data-dir={dir} data-theme={theme}>{renderScreen()}</div>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+  </script>
+</body>
+</html>
