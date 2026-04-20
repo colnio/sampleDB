@@ -15,7 +15,7 @@ import (
 
 // Handlers groups all HTTP handler methods for the profile domain.
 type Handlers struct {
-	svc     Service
+	svc      Service
 	renderer *web.Renderer
 	authMgr  *auth.Manager
 }

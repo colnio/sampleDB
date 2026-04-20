@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -38,6 +40,15 @@ func TestMain(m *testing.M) {
 }
 
 func runTests(m *testing.M) int {
+	// Point the app's base dir at the repo root so template/static files resolve
+	// regardless of where `go test` drops the compiled test binary.
+	if os.Getenv("APP_BASE_DIR") == "" {
+		if _, thisFile, _, ok := runtime.Caller(0); ok {
+			repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
+			os.Setenv("APP_BASE_DIR", repoRoot)
+		}
+	}
+
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "postgres://app:app@localhost:5432/sampledb"

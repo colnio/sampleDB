@@ -117,4 +117,3 @@ func main() {
 	log.Printf("HTTP server listening on %s", cfg.Addr)
 	log.Fatal(server.ListenAndServe())
 }
-

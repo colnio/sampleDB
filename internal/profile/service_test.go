@@ -35,11 +35,11 @@ func newSvc(t *testing.T) (profile.Service, pgxmock.PgxPoolIface) {
 // mockService is a controllable in-memory implementation of profile.Service,
 // used for handler-level tests that don't exercise real DB queries.
 type mockService struct {
-	isAdmin       bool
-	adminErr      error
-	passwordHash  string
-	hashErr       error
-	updateErr     error
+	isAdmin      bool
+	adminErr     error
+	passwordHash string
+	hashErr      error
+	updateErr    error
 }
 
 func (m *mockService) GetAdminStatus(_ context.Context, _ int) (bool, error) {

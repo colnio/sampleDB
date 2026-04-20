@@ -555,7 +555,6 @@ func generateSessionToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-
 type authPageData struct {
 	Error      string
 	Success    string

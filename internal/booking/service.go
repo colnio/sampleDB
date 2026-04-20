@@ -131,7 +131,6 @@ func (s *DBService) GetBookingsForWeek(ctx context.Context, start, end time.Time
 	return bookings, nil
 }
 
-
 // CheckConflict returns true if a booking for equipmentID already overlaps [start, end).
 // Uses half-open interval semantics (start inclusive, end exclusive) matching the
 // bookings_no_overlap exclusion constraint, so back-to-back bookings are allowed.

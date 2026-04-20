@@ -26,7 +26,9 @@ func TestActivityLogger_Insert_And_Query(t *testing.T) {
 		t.Fatalf("insert sample: %v", err)
 	}
 	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM samples WHERE sample_id = $1`, sampleID) })
-	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM activity_log WHERE target_type = 'sample' AND target_id = $1`, sampleID) })
+	t.Cleanup(func() {
+		pool.Exec(ctx, `DELETE FROM activity_log WHERE target_type = 'sample' AND target_id = $1`, sampleID)
+	})
 
 	actor := activity.Actor{ID: testUser.id, Username: testUser.username}
 	if err := logger.Log(ctx, actor, "created", "sample", sampleID, "activity-integ-sample"); err != nil {
@@ -97,7 +99,9 @@ func TestActivityLogger_SampleCreate_WritesRow(t *testing.T) {
 		t.Fatalf("lookup sample: %v", err)
 	}
 	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM samples WHERE sample_id = $1`, sampleID) })
-	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM activity_log WHERE target_type = 'sample' AND target_id = $1`, sampleID) })
+	t.Cleanup(func() {
+		pool.Exec(ctx, `DELETE FROM activity_log WHERE target_type = 'sample' AND target_id = $1`, sampleID)
+	})
 
 	// Now PUT to rename it — must add a second ("updated") activity row.
 	resp = apiDo(t, "PUT", "/api/v1/samples/"+itoa(sampleID),
