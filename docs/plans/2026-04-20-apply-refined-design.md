@@ -187,9 +187,9 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] verify dark and light themes both render correctly on every page (screenshots are in dark theme; light must also work) — [skipped: manual visual QA not automatable in this environment]
 
 ### Task 12: [Final] Documentation updates
-- [ ] update `README.md` — document `/dashboard`, sample status, wiki tags, equipment status, activity_log table
-- [ ] update `CLAUDE.md` (if present) with any new internal patterns (activity.Logger usage)
-- [ ] add a brief "Refined redesign" note to `docs/` summarizing the implemented scope vs the SampleDB_design/ prototype
+- [x] update `README.md` — document `/dashboard`, sample status, wiki tags, equipment status, activity_log table — Features list rewritten to cover Dashboard, status-enabled Sample Registry + `/samples` URL move, wiki tags + TOC, equipment status, admin group-access badges, and the new Activity Log entry; project-structure tree now lists `internal/activity/` and `internal/dashboard/`
+- [x] update `CLAUDE.md` (if present) with any new internal patterns (activity.Logger usage) — [skipped: no `CLAUDE.md` exists in this repo]
+- [x] add a brief "Refined redesign" note to `docs/` summarizing the implemented scope vs the SampleDB_design/ prototype — created `docs/refined-redesign.md` covering scope shipped, deliberate divergences (thumbnails, Share/Edit panel, token expiration), data-model additions, new routes, activity verb/target vocabulary, and a usage example for `activity.Logger`
 
 *Note: ralphex automatically moves completed plans to `docs/plans/completed/`*
 
