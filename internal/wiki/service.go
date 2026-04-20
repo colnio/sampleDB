@@ -21,12 +21,12 @@ type Service interface {
 	// Article CRUD. ListArticles filters by tag when tag != "".
 	ListArticles(ctx context.Context, tag string) ([]Article, error)
 	GetArticle(ctx context.Context, title string) (*Article, error)
-	CreateArticle(ctx context.Context, title, content string, tags []string, createdBy int) error
+	CreateArticle(ctx context.Context, title, content string, tags []string, createdBy int) (int, error)
 	UpdateArticleContent(ctx context.Context, title, content string, tags []string, modifiedBy int) error
 	DeleteArticle(ctx context.Context, title string) (filePaths []string, err error)
 
 	// Access control
-	ArticleEditAccess(ctx context.Context, title string, userID int) (createdBy int, isAdmin bool, err error)
+	ArticleEditAccess(ctx context.Context, title string, userID int) (articleID int, createdBy int, isAdmin bool, err error)
 	ArticleUploadAccess(ctx context.Context, articleID string, userID int) (createdBy int, isAdmin bool, err error)
 	AttachmentDeleteAccess(ctx context.Context, attachmentID string, userID int) (createdBy int, isAdmin bool, err error)
 	IsAdmin(ctx context.Context, userID int) (bool, error)
@@ -134,7 +134,9 @@ func (s *DBService) ListArticles(ctx context.Context, tag string) ([]Article, er
 		  LEFT JOIN users u ON u.user_id = a.created_by`
 	args := []any{}
 	if tag != "" {
-		baseQuery += ` WHERE $1 = ANY(a.tags)`
+		// Case-insensitive match so the hard-coded filter chips (Title-Case) also
+		// surface articles saved with arbitrary casing.
+		baseQuery += ` WHERE EXISTS (SELECT 1 FROM unnest(a.tags) AS t WHERE lower(t) = lower($1))`
 		args = append(args, tag)
 	}
 	baseQuery += ` ORDER BY a.created_at DESC`
@@ -206,16 +208,17 @@ func (s *DBService) GetArticle(ctx context.Context, title string) (*Article, err
 	return &article, nil
 }
 
-// CreateArticle inserts a new article. tags may be nil or empty.
-func (s *DBService) CreateArticle(ctx context.Context, title, content string, tags []string, createdBy int) error {
+// CreateArticle inserts a new article. tags may be nil or empty. Returns the new article_id.
+func (s *DBService) CreateArticle(ctx context.Context, title, content string, tags []string, createdBy int) (int, error) {
 	if tags == nil {
 		tags = []string{}
 	}
-	_, err := s.db.Exec(ctx,
+	var articleID int
+	err := s.db.QueryRow(ctx,
 		`INSERT INTO articles (title, content, tags, created_by, last_modified_by)
-		 VALUES ($1, $2, $3, $4, $4)`,
-		title, content, tags, createdBy)
-	return err
+		 VALUES ($1, $2, $3, $4, $4) RETURNING article_id`,
+		title, content, tags, createdBy).Scan(&articleID)
+	return articleID, err
 }
 
 // UpdateArticleContent replaces an article's Markdown content and tags.
@@ -289,18 +292,18 @@ func (s *DBService) DeleteArticle(ctx context.Context, title string) ([]string, 
 // ArticleEditAccess returns the creator's user ID and whether the given user
 // is an admin, for an article identified by title.  Returns web.ErrNotFound if
 // the article does not exist.
-func (s *DBService) ArticleEditAccess(ctx context.Context, title string, userID int) (int, bool, error) {
-	var createdBy int
+func (s *DBService) ArticleEditAccess(ctx context.Context, title string, userID int) (int, int, bool, error) {
+	var articleID, createdBy int
 	var isAdmin bool
 	err := s.db.QueryRow(ctx,
-		`SELECT a.created_by, COALESCE(u.admin, false)
+		`SELECT a.article_id, a.created_by, COALESCE(u.admin, false)
 		   FROM articles a
 		   LEFT JOIN users u ON u.user_id = $1
-		  WHERE a.title = $2`, userID, title).Scan(&createdBy, &isAdmin)
+		  WHERE a.title = $2`, userID, title).Scan(&articleID, &createdBy, &isAdmin)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, false, web.ErrNotFound
+		return 0, 0, false, web.ErrNotFound
 	}
-	return createdBy, isAdmin, err
+	return articleID, createdBy, isAdmin, err
 }
 
 // ArticleUploadAccess returns the creator's user ID and admin flag for an
@@ -410,6 +413,9 @@ func (s *DBService) GetArticleTitle(ctx context.Context, articleID string) (stri
 	var title string
 	err := s.db.QueryRow(ctx,
 		"SELECT title FROM articles WHERE article_id = $1", articleID).Scan(&title)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", web.ErrNotFound
+	}
 	return title, err
 }
 

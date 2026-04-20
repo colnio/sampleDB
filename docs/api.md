@@ -74,6 +74,7 @@ List samples with optional filtering.
 | --- | --- |
 | `q` | Keyword search across name, owner, and keywords fields |
 | `owner` | Filter by owner name (partial match) |
+| `status` | Filter by status: `active`, `in_progress`, or `archived` |
 | `from` | Filter by creation date ≥ value (YYYY-MM-DD) |
 | `to` | Filter by creation date ≤ value (YYYY-MM-DD) |
 | `limit` | Max results (default 100, max 1000) |
@@ -88,6 +89,7 @@ List samples with optional filtering.
       "name": "Si wafer",
       "description": "4-inch p-type silicon",
       "keywords": "silicon wafer substrate",
+      "status": "active",
       "owner": "alice",
       "owner_user_id": 3,
       "owner_username": "alice",
@@ -101,7 +103,7 @@ List samples with optional filtering.
 }
 ```
 
-Note: `owner_user_id` and `owner_username` are omitted when `owner_user_id` is NULL (legacy samples with free-text owner only).
+Note: `owner_user_id` and `owner_username` are omitted when `owner_user_id` is NULL (legacy samples with free-text owner only). `status` is one of `active`, `in_progress`, or `archived`.
 
 ---
 
@@ -116,6 +118,7 @@ Get full sample detail including fabrication steps and attachments.
   "name": "Si wafer",
   "description": "4-inch p-type silicon",
   "keywords": "silicon wafer substrate",
+  "status": "active",
   "owner": "alice",
   "owner_user_id": 3,
   "owner_username": "alice",
@@ -176,6 +179,7 @@ Create a new sample.
 | `name` | Yes | Sample name |
 | `description` | No | Short description |
 | `keywords` | No | Space- or comma-separated keywords |
+| `status` | No | Initial status: `active` (default), `in_progress`, or `archived` (admin only) |
 | `owner` | No | Free-text owner name |
 | `sample_prep` | No | Markdown preparation notes |
 | `owner_user_id` | No | Admin only — assign sample to this user ID; overrides the `owner` text field |
@@ -477,6 +481,7 @@ List wiki articles, newest first.
     {
       "id": 1,
       "title": "RCA Clean Protocol",
+      "tags": ["Safety", "Equipment"],
       "created_at": "2026-01-10T09:00:00Z",
       "last_modified_at": "2026-03-01T14:30:00Z"
     }
@@ -499,6 +504,7 @@ Get a wiki article including its raw Markdown content and attachment list.
   "id": 1,
   "title": "RCA Clean Protocol",
   "content": "## Overview\n\nThe RCA clean consists of...",
+  "tags": ["Safety", "Equipment"],
   "created_at": "2026-01-10T09:00:00Z",
   "last_modified_at": "2026-03-01T14:30:00Z",
   "attachments": [
@@ -536,6 +542,7 @@ Create a new wiki article. The authenticated user is recorded as the author.
 | --- | --- | --- |
 | `title` | Yes | Article title |
 | `content` | No | Raw Markdown content |
+| `tags` | No | JSON array of tag strings (e.g. `["Safety", "Equipment"]`) |
 
 **Response 201** — full article detail (same shape as GET /api/v1/wiki/{id}).
 

@@ -27,7 +27,7 @@
     <div class="samples-grid wiki-grid">
         {{range .Articles}}
             <article class="card tile article-tile">
-                <a href="/wiki/view/{{.Title}}" class="article-tile__link">
+                <a href="/wiki/view/{{urlEscape .Title}}" class="article-tile__link">
                     {{if .Tags}}
                         <div class="article-tile__tags">
                             {{range .Tags}}
@@ -43,7 +43,7 @@
                         <span class="mono muted">{{.CreatedAt.Format "Jan 02, 2006"}}</span>
                         {{if .CreatorName}}
                             <span class="article-tile__author" title="{{.CreatorName}}">
-                                <span class="avatar-initial" aria-hidden="true">{{slice .CreatorName 0 1}}</span>
+                                <span class="avatar-initial" aria-hidden="true">{{firstInitial .CreatorName}}</span>
                                 <span class="muted">{{.CreatorName}}</span>
                             </span>
                         {{end}}

@@ -91,7 +91,7 @@ func TestListArticles_TagFilterAppliesWhereClause(t *testing.T) {
 	svc, mock := newSvc(t)
 
 	now := time.Now()
-	mock.ExpectQuery(`WHERE \$1 = ANY\(a\.tags\)`).
+	mock.ExpectQuery(`WHERE EXISTS.*lower\(t\) = lower\(\$1\)`).
 		WithArgs("Safety").
 		WillReturnRows(pgxmock.NewRows([]string{"article_id", "title", "created_at", "tags", "username", "excerpt"}).
 			AddRow(3, "Lab Safety", now, []string{"Safety"}, "", ""))
@@ -168,12 +168,16 @@ func TestGetArticle_NotFound(t *testing.T) {
 func TestCreateArticle_InsertsRow(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectExec(`INSERT INTO articles`).
+	mock.ExpectQuery(`INSERT INTO articles`).
 		WithArgs("New Title", "some content", []string{"Safety"}, 7).
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+		WillReturnRows(pgxmock.NewRows([]string{"article_id"}).AddRow(42))
 
-	if err := svc.CreateArticle(context.Background(), "New Title", "some content", []string{"Safety"}, 7); err != nil {
+	id, err := svc.CreateArticle(context.Background(), "New Title", "some content", []string{"Safety"}, 7)
+	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
+	}
+	if id != 42 {
+		t.Errorf("expected article_id 42, got %d", id)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -183,11 +187,11 @@ func TestCreateArticle_InsertsRow(t *testing.T) {
 func TestCreateArticle_NilTagsCoercesToEmpty(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectExec(`INSERT INTO articles`).
+	mock.ExpectQuery(`INSERT INTO articles`).
 		WithArgs("New", "body", []string{}, 1).
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+		WillReturnRows(pgxmock.NewRows([]string{"article_id"}).AddRow(1))
 
-	if err := svc.CreateArticle(context.Background(), "New", "body", nil, 1); err != nil {
+	if _, err := svc.CreateArticle(context.Background(), "New", "body", nil, 1); err != nil {
 		t.Fatalf("CreateArticle(nil tags): %v", err)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -255,13 +259,16 @@ func TestDeleteArticle_ReturnsFilePaths(t *testing.T) {
 func TestArticleEditAccess_CreatorNonAdmin(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT a.created_by, COALESCE\(u.admin`).
+	mock.ExpectQuery(`SELECT a.article_id, a.created_by, COALESCE\(u.admin`).
 		WithArgs(5, "My Article").
-		WillReturnRows(pgxmock.NewRows([]string{"created_by", "admin"}).AddRow(5, false))
+		WillReturnRows(pgxmock.NewRows([]string{"article_id", "created_by", "admin"}).AddRow(10, 5, false))
 
-	createdBy, isAdmin, err := svc.ArticleEditAccess(context.Background(), "My Article", 5)
+	articleID, createdBy, isAdmin, err := svc.ArticleEditAccess(context.Background(), "My Article", 5)
 	if err != nil {
 		t.Fatalf("ArticleEditAccess: %v", err)
+	}
+	if articleID != 10 {
+		t.Errorf("expected articleID 10, got %d", articleID)
 	}
 	if createdBy != 5 {
 		t.Errorf("expected createdBy 5, got %d", createdBy)
@@ -277,13 +284,16 @@ func TestArticleEditAccess_CreatorNonAdmin(t *testing.T) {
 func TestArticleEditAccess_NonCreatorAdmin(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT a.created_by, COALESCE\(u.admin`).
+	mock.ExpectQuery(`SELECT a.article_id, a.created_by, COALESCE\(u.admin`).
 		WithArgs(99, "My Article").
-		WillReturnRows(pgxmock.NewRows([]string{"created_by", "admin"}).AddRow(3, true))
+		WillReturnRows(pgxmock.NewRows([]string{"article_id", "created_by", "admin"}).AddRow(10, 3, true))
 
-	createdBy, isAdmin, err := svc.ArticleEditAccess(context.Background(), "My Article", 99)
+	articleID, createdBy, isAdmin, err := svc.ArticleEditAccess(context.Background(), "My Article", 99)
 	if err != nil {
 		t.Fatalf("ArticleEditAccess: %v", err)
+	}
+	if articleID != 10 {
+		t.Errorf("expected articleID 10, got %d", articleID)
 	}
 	if createdBy != 3 {
 		t.Errorf("expected createdBy 3, got %d", createdBy)

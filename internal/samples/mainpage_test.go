@@ -365,7 +365,7 @@ func (s *editStatusStub) Update(_ context.Context, _ int, p samples.UpdateParams
 	return nil
 }
 
-func TestEditSample_ForwardsStatus(t *testing.T) {
+func TestEditSample_NonAdminCannotSetStatus(t *testing.T) {
 	stub := &editStatusStub{isAdmin: false}
 	h := samples.NewHandlers(stub, newRenderer(t), auth.NewManager(nil), samples.HandlerConfig{})
 
@@ -382,8 +382,30 @@ func TestEditSample_ForwardsStatus(t *testing.T) {
 	if rr.Code != http.StatusSeeOther && rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
+	if stub.capturedUpdate.Status != "" {
+		t.Errorf("non-admin status must be dropped, got %q", stub.capturedUpdate.Status)
+	}
+}
+
+func TestEditSample_AdminCanSetStatus(t *testing.T) {
+	stub := &editStatusStub{isAdmin: true}
+	h := samples.NewHandlers(stub, newRenderer(t), auth.NewManager(nil), samples.HandlerConfig{})
+
+	body := url.Values{}
+	body.Set("name", "n")
+	body.Set("status", "archived")
+	req := httptest.NewRequest(http.MethodPost, "/samples/edit/1", bytes.NewBufferString(body.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(auth.ContextWithSession(req.Context(), auth.Session{UserID: 1, Username: "admin"}))
+
+	rr := httptest.NewRecorder()
+	h.EditSample(rr, req)
+
+	if rr.Code != http.StatusSeeOther && rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
 	if stub.capturedUpdate.Status != "archived" {
-		t.Errorf("UpdateParams.Status = %q, want archived", stub.capturedUpdate.Status)
+		t.Errorf("admin status not forwarded, got %q", stub.capturedUpdate.Status)
 	}
 }
 

@@ -347,8 +347,9 @@ func (h *Handlers) SetEquipmentStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status := strings.TrimSpace(r.FormValue("status"))
-	if status == "" {
-		http.Redirect(w, r, "/admin?error=Status+is+required", http.StatusSeeOther)
+	validStatuses := map[string]bool{"online": true, "offline": true, "maintenance": true}
+	if !validStatuses[status] {
+		http.Redirect(w, r, "/admin?error=Invalid+status+value", http.StatusSeeOther)
 		return
 	}
 
@@ -445,6 +446,9 @@ func extractIDFromPrefixAndSuffix(path, prefix, suffix string) (int, error) {
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return 0, fmt.Errorf("invalid id %q: %w", idStr, err)
+	}
+	if id <= 0 {
+		return 0, fmt.Errorf("non-positive id %d in path %q", id, path)
 	}
 	return id, nil
 }

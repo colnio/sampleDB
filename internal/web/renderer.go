@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -139,9 +140,11 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 			return t.Format("2006-01-02")
 		},
 		"add":             func(a, b int) int { return a + b },
+		"urlEscape":       url.PathEscape,
 		"statusChipClass": statusChipClass,
 		"statusLabel":     statusLabel,
 		"activityVerb":    activityVerb,
+		"firstInitial":    firstInitial,
 	}
 	for k, v := range extraFuncs {
 		fm[k] = v
@@ -181,6 +184,17 @@ func statusLabel(status string) string {
 		}
 		return strings.ToUpper(status[:1]) + status[1:]
 	}
+}
+
+// firstInitial returns the uppercase first rune of s, or "" if s is empty.
+// Rune-aware so multi-byte leading characters (e.g. non-ASCII names) are not
+// truncated mid-codepoint, unlike `{{slice .Name 0 1}}` which operates on
+// bytes.
+func firstInitial(s string) string {
+	for _, r := range s {
+		return strings.ToUpper(string(r))
+	}
+	return ""
 }
 
 // activityVerb expands the stored verb into a short phrase for the feed.

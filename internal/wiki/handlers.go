@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"sampleDB/internal/activity"
@@ -372,12 +373,13 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 	content := r.FormValue("content")
 	tags := NormalizeTagsCSV(r.FormValue("tags"))
 
-	if err := h.svc.CreateArticle(r.Context(), title, content, tags, session.UserID); err != nil {
+	articleID, err := h.svc.CreateArticle(r.Context(), title, content, tags, session.UserID)
+	if err != nil {
 		log.Printf("wiki: error creating article %q: %v", title, err)
 		http.Error(w, "Error creating article", http.StatusInternalServerError)
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("created"), activity.TargetType("article"), 0, title)
+	h.logActivity(r.Context(), session, activity.Verb("created"), activity.TargetType("article"), articleID, title)
 
 	http.Redirect(w, r, "/wiki/view/"+url.PathEscape(title), http.StatusSeeOther)
 }
@@ -437,7 +439,7 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdBy, isAdmin, authErr := h.svc.ArticleEditAccess(r.Context(), title, session.UserID)
+	editArticleID, createdBy, isAdmin, authErr := h.svc.ArticleEditAccess(r.Context(), title, session.UserID)
 	if authErr != nil {
 		if errors.Is(authErr, web.ErrNotFound) {
 			if isHTMXRequest(r) {
@@ -483,7 +485,7 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error updating article", http.StatusInternalServerError)
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("article"), 0, title)
+	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("article"), editArticleID, title)
 
 	if isHTMXRequest(r) {
 		h.renderContentPanel(w, r, session, title, "Content updated", "", false)
@@ -512,7 +514,7 @@ func (h *Handlers) deleteArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdBy, isAdmin, err := h.svc.ArticleEditAccess(r.Context(), title, session.UserID)
+	deleteArticleID, createdBy, isAdmin, err := h.svc.ArticleEditAccess(r.Context(), title, session.UserID)
 	if err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			http.Error(w, "Article not found", http.StatusNotFound)
@@ -535,7 +537,7 @@ func (h *Handlers) deleteArticle(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("article"), 0, title)
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("article"), deleteArticleID, title)
 
 	for _, fp := range filePaths {
 		if removeErr := os.Remove(h.resolveAppPath(fp)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
@@ -610,7 +612,8 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
 		}
-		h.logActivity(r.Context(), session, activity.Verb("uploaded"), activity.TargetType("article_attachment"), 0, fh.Filename)
+		articleIDInt, _ := strconv.Atoi(articleID)
+		h.logActivity(r.Context(), session, activity.Verb("uploaded"), activity.TargetType("article_attachment"), articleIDInt, fh.Filename)
 		uploaded++
 	}
 

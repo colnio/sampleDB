@@ -23,12 +23,13 @@ type sampleAPIServiceStub struct {
 
 	apiListSamples   func(ctx context.Context, p samples.APIListParams) (samples.APIListResult, error)
 	apiGetSample     func(ctx context.Context, id int) (samples.APISampleDetail, error)
-	apiCreateSample  func(ctx context.Context, name, description, keywords, owner, samplePrep string, ownerUserID *int) (samples.APISampleItem, error)
-	apiUpdateSample  func(ctx context.Context, id int, name, description, keywords, owner, samplePrep string, ownerUserID *int) error
+	apiCreateSample  func(ctx context.Context, name, description, keywords, owner, samplePrep, status string, ownerUserID *int) (samples.APISampleItem, error)
+	apiUpdateSample  func(ctx context.Context, id int, name, description, keywords, owner, samplePrep, status string, ownerUserID *int) error
 	apiDeleteSample  func(ctx context.Context, id int) ([]string, error)
 	checkOwner       func(ctx context.Context, sampleID, userID int) error
 	isAdmin          func(ctx context.Context, userID int) (bool, error)
 	getUsernameByID  func(ctx context.Context, userID int) (string, error)
+	getByID          func(ctx context.Context, id int) (samples.Sample, error)
 	sampleExistsByID func(ctx context.Context, id int) (bool, error)
 	getSteps         func(ctx context.Context, sampleID int) ([]samples.FabricationStep, error)
 	addStep          func(ctx context.Context, sampleID int, step samples.FabricationStep) (samples.FabricationStep, error)
@@ -50,12 +51,12 @@ func (s *sampleAPIServiceStub) APIGetSample(ctx context.Context, id int) (sample
 	return s.apiGetSample(ctx, id)
 }
 
-func (s *sampleAPIServiceStub) APICreateSample(ctx context.Context, name, description, keywords, owner, samplePrep string, ownerUserID *int) (samples.APISampleItem, error) {
-	return s.apiCreateSample(ctx, name, description, keywords, owner, samplePrep, ownerUserID)
+func (s *sampleAPIServiceStub) APICreateSample(ctx context.Context, name, description, keywords, owner, samplePrep, status string, ownerUserID *int) (samples.APISampleItem, error) {
+	return s.apiCreateSample(ctx, name, description, keywords, owner, samplePrep, status, ownerUserID)
 }
 
-func (s *sampleAPIServiceStub) APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner, samplePrep string, ownerUserID *int) error {
-	return s.apiUpdateSample(ctx, id, name, description, keywords, owner, samplePrep, ownerUserID)
+func (s *sampleAPIServiceStub) APIUpdateSample(ctx context.Context, id int, name, description, keywords, owner, samplePrep, status string, ownerUserID *int) error {
+	return s.apiUpdateSample(ctx, id, name, description, keywords, owner, samplePrep, status, ownerUserID)
 }
 
 func (s *sampleAPIServiceStub) APIDeleteSample(ctx context.Context, id int) ([]string, error) {
@@ -72,6 +73,13 @@ func (s *sampleAPIServiceStub) IsAdmin(ctx context.Context, userID int) (bool, e
 
 func (s *sampleAPIServiceStub) GetUsernameByID(ctx context.Context, userID int) (string, error) {
 	return s.getUsernameByID(ctx, userID)
+}
+
+func (s *sampleAPIServiceStub) GetByID(ctx context.Context, id int) (samples.Sample, error) {
+	if s.getByID != nil {
+		return s.getByID(ctx, id)
+	}
+	return samples.Sample{}, nil
 }
 
 func (s *sampleAPIServiceStub) SampleExistsByID(ctx context.Context, id int) (bool, error) {
@@ -291,7 +299,7 @@ func TestAPISamples_CreateSample_AcceptsSamplePrep(t *testing.T) {
 			}
 			return "alice", nil
 		},
-		apiCreateSample: func(_ context.Context, name, description, keywords, owner, samplePrep string, ownerUserID *int) (samples.APISampleItem, error) {
+		apiCreateSample: func(_ context.Context, name, description, keywords, owner, samplePrep, _ string, ownerUserID *int) (samples.APISampleItem, error) {
 			captured = struct {
 				Name        string
 				Description string
@@ -357,7 +365,7 @@ func TestAPISamples_UpdateSample_ReturnsUpdatedDetail(t *testing.T) {
 			}
 			return ownerUsername, nil
 		},
-		apiUpdateSample: func(_ context.Context, id int, _, _, _, _, samplePrep string, ownerUserID *int) error {
+		apiUpdateSample: func(_ context.Context, id int, _, _, _, _, samplePrep, _ string, ownerUserID *int) error {
 			captured.ID = id
 			captured.SamplePrep = samplePrep
 			captured.OwnerUserID = ownerUserID

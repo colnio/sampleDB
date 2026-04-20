@@ -204,6 +204,7 @@ type sampleRequest struct {
 	Keywords    string `json:"keywords"`
 	Owner       string `json:"owner"`
 	SamplePrep  string `json:"sample_prep"`
+	Status      string `json:"status,omitempty"`
 	OwnerUserID *int   `json:"owner_user_id,omitempty"`
 }
 
@@ -253,8 +254,14 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Only admins may set an initial status; everyone else gets the DB default.
+	status := ""
+	if isAdmin {
+		status = normalizeStatusInput(req.Status)
+	}
+
 	item, err := h.svc.APICreateSample(r.Context(),
-		req.Name, req.Description, req.Keywords, ownerName, req.SamplePrep, ownerUserIDPtr)
+		req.Name, req.Description, req.Keywords, ownerName, req.SamplePrep, status, ownerUserIDPtr)
 	if err != nil {
 		log.Printf("samples api: createSample error: %v", err)
 		writeError(w, http.StatusInternalServerError, "database error")
@@ -320,7 +327,13 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		ownerName = resolved
 	}
 
-	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, ownerName, req.SamplePrep, ownerUserID); err != nil {
+	// Only admins may change status; non-admin callers leave it untouched.
+	status := ""
+	if isAdmin {
+		status = normalizeStatusInput(req.Status)
+	}
+
+	if err := h.svc.APIUpdateSample(r.Context(), id, req.Name, req.Description, req.Keywords, ownerName, req.SamplePrep, status, ownerUserID); err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "sample not found")
 			return
@@ -348,6 +361,12 @@ func (h *Handlers) apiDeleteSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
+	// Look up the sample name for the activity-log label before deleting.
+	var sampleName string
+	if s, getErr := h.svc.GetByID(r.Context(), id); getErr == nil {
+		sampleName = s.Name
+	}
+
 	// APIDeleteSample collects file paths and removes both the sample row and
 	// its attachment rows, returning the paths for disk cleanup.
 	filePaths, err := h.svc.APIDeleteSample(r.Context(), id)
@@ -360,7 +379,7 @@ func (h *Handlers) apiDeleteSample(w http.ResponseWriter, r *http.Request, sampl
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("sample"), id, "")
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("sample"), id, sampleName)
 
 	// Remove attachment files from disk.
 	for _, fp := range filePaths {

@@ -103,7 +103,11 @@ func (h *Handlers) DashboardPage(w http.ResponseWriter, r *http.Request) {
 
 	var isAdmin bool
 	if h.admin != nil {
-		isAdmin, _ = h.admin.IsAdmin(r.Context(), session.UserID)
+		var adminErr error
+		isAdmin, adminErr = h.admin.IsAdmin(r.Context(), session.UserID)
+		if adminErr != nil {
+			log.Printf("dashboard: IsAdmin: %v", adminErr)
+		}
 	}
 
 	data := PageData{

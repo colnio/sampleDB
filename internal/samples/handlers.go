@@ -571,7 +571,10 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		ownerName, _ = h.svc.GetUsernameByID(r.Context(), session.UserID)
 	}
 
-	status := normalizeStatusInput(r.FormValue("status"))
+	var status string
+	if isAdmin {
+		status = normalizeStatusInput(r.FormValue("status"))
+	}
 
 	if err := h.svc.Update(r.Context(), sampleIDInt, UpdateParams{
 		Name:        name,
@@ -632,6 +635,13 @@ func (h *Handlers) DeleteSample(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Grab the sample name up front so the activity log entry has a human label
+	// (the row is about to be removed).
+	var sampleName string
+	if s, getErr := h.svc.GetByID(r.Context(), sampleID); getErr == nil {
+		sampleName = s.Name
+	}
+
 	filePaths, err := h.svc.APIDeleteSample(r.Context(), sampleID)
 	if err != nil {
 		if errors.Is(err, web.ErrNotFound) {
@@ -642,7 +652,7 @@ func (h *Handlers) DeleteSample(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to delete sample", http.StatusInternalServerError)
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("sample"), sampleID, "")
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("sample"), sampleID, sampleName)
 
 	// Remove attachment files from disk (best-effort; DB row is already gone).
 	for _, fp := range filePaths {

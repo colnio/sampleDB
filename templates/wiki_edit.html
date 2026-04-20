@@ -13,7 +13,7 @@
         <span>{{if .Article}}Edit Article{{else}}Create New Article{{end}}</span>
     </h1>
 
-    <form action="{{if .Article}}/wiki/edit/{{.Article.Title}}{{else}}/wiki/new{{end}}" method="POST" class="form-container stacked-form" onsubmit="return validateForm()">
+    <form action="{{if .Article}}/wiki/edit/{{urlEscape .Article.Title}}{{else}}/wiki/new{{end}}" method="POST" class="form-container stacked-form" onsubmit="return validateForm()">
         <div class="form-group">
             <label for="title">Title</label>
             <input type="text" id="title" name="title" value="{{if .Article}}{{.Article.Title}}{{end}}" {{if .Article}}readonly{{else}}required{{end}}>
@@ -33,7 +33,7 @@
 
         <div class="button-row">
             <button type="submit" class="button button--primary">{{if .Article}}Save Changes{{else}}Create Article{{end}}</button>
-            <a href="{{if .Article}}/wiki/view/{{.Article.Title}}{{else}}/wiki{{end}}" class="button button--secondary">Cancel</a>
+            <a href="{{if .Article}}/wiki/view/{{urlEscape .Article.Title}}{{else}}/wiki{{end}}" class="button button--secondary">Cancel</a>
         </div>
     </form>
 
