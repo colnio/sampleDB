@@ -296,11 +296,11 @@ func TestCreate_Success(t *testing.T) {
 	start := time.Date(2024, 1, 10, 9, 0, 0, 0, time.UTC)
 	end := start.Add(time.Hour)
 
-	mock.ExpectExec(`INSERT INTO bookings`).
+	mock.ExpectQuery(`INSERT INTO bookings`).
 		WithArgs(1, 2, pgxmock.AnyArg(), pgxmock.AnyArg(), "test purpose").
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+		WillReturnRows(pgxmock.NewRows([]string{"booking_id"}).AddRow(42))
 
-	err := svc.Create(context.Background(), booking.CreateParams{
+	id, err := svc.Create(context.Background(), booking.CreateParams{
 		EquipmentID: 1,
 		UserID:      2,
 		StartTime:   start,
@@ -309,6 +309,9 @@ func TestCreate_Success(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
+	}
+	if id != 42 {
+		t.Errorf("expected booking_id 42, got %d", id)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -322,11 +325,11 @@ func TestCreate_ExclusionViolationReturnsErrConflict(t *testing.T) {
 	end := start.Add(time.Hour)
 
 	pgErr := &pgconn.PgError{Code: "23P01"}
-	mock.ExpectExec(`INSERT INTO bookings`).
+	mock.ExpectQuery(`INSERT INTO bookings`).
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnError(pgErr)
 
-	err := svc.Create(context.Background(), booking.CreateParams{
+	_, err := svc.Create(context.Background(), booking.CreateParams{
 		EquipmentID: 1,
 		UserID:      2,
 		StartTime:   start,
@@ -428,22 +431,22 @@ func TestCreate_ConcurrentConflictViaService(t *testing.T) {
 	end := start.Add(2 * time.Hour)
 
 	// First insert succeeds.
-	mock.ExpectExec(`INSERT INTO bookings`).
+	mock.ExpectQuery(`INSERT INTO bookings`).
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+		WillReturnRows(pgxmock.NewRows([]string{"booking_id"}).AddRow(1))
 
 	// Second insert (concurrent) returns exclusion_violation.
 	pgErr := &pgconn.PgError{Code: "23P01"}
-	mock.ExpectExec(`INSERT INTO bookings`).
+	mock.ExpectQuery(`INSERT INTO bookings`).
 		WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnError(pgErr)
 
 	p := booking.CreateParams{EquipmentID: 1, UserID: 2, StartTime: start, EndTime: end, Purpose: "concurrent"}
 
-	if err := svc.Create(context.Background(), p); err != nil {
+	if _, err := svc.Create(context.Background(), p); err != nil {
 		t.Fatalf("first Create should succeed, got: %v", err)
 	}
-	err := svc.Create(context.Background(), p)
+	_, err := svc.Create(context.Background(), p)
 	if !errors.Is(err, web.ErrConflict) {
 		t.Errorf("second Create should return web.ErrConflict, got: %v", err)
 	}
@@ -483,8 +486,8 @@ func (m *mockService) GetBookingsForWeek(_ context.Context, _, _ time.Time) ([]b
 func (m *mockService) CheckConflict(_ context.Context, _ int, _, _ time.Time) (bool, error) {
 	return m.hasConflict, m.conflictErr
 }
-func (m *mockService) Create(_ context.Context, _ booking.CreateParams) error {
-	return m.createErr
+func (m *mockService) Create(_ context.Context, _ booking.CreateParams) (int, error) {
+	return 0, m.createErr
 }
 func (m *mockService) Delete(_ context.Context, _, _ int, _ bool) error {
 	return m.deleteErr
@@ -770,7 +773,7 @@ END $$;`
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			results[idx].err = svc.Create(ctx, booking.CreateParams{
+			_, results[idx].err = svc.Create(ctx, booking.CreateParams{
 				EquipmentID: eqID,
 				UserID:      userID,
 				StartTime:   start,

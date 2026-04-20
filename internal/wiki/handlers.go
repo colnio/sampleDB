@@ -379,7 +379,7 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error creating article", http.StatusInternalServerError)
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("created"), activity.TargetType("article"), articleID, title)
+	h.logActivity(r.Context(), session, activity.Verb("published"), activity.TargetType("article"), articleID, title)
 
 	http.Redirect(w, r, "/wiki/view/"+url.PathEscape(title), http.StatusSeeOther)
 }
@@ -690,6 +690,10 @@ func (h *Handlers) deleteAttachment(w http.ResponseWriter, r *http.Request, atta
 		log.Printf("wiki: failed to delete attachment %s: %v", attachmentID, err)
 		http.Error(w, "Error deleting attachment", http.StatusInternalServerError)
 		return
+	}
+
+	if attachmentIDInt, convErr := strconv.Atoi(attachmentID); convErr == nil {
+		h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("article_attachment"), attachmentIDInt, filePath)
 	}
 
 	if removeErr := os.Remove(h.resolveAppPath(filePath)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {

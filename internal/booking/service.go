@@ -23,7 +23,7 @@ type Service interface {
 	// Bookings
 	GetBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, error)
 	CheckConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error)
-	Create(ctx context.Context, p CreateParams) error
+	Create(ctx context.Context, p CreateParams) (int, error)
 	Delete(ctx context.Context, bookingID, userID int, isAdmin bool) error
 }
 
@@ -146,34 +146,35 @@ func (s *DBService) CheckConflict(ctx context.Context, equipmentID int, start, e
 	return exists, err
 }
 
-// Create inserts a new booking.
+// Create inserts a new booking and returns the new booking_id.
 // Returns web.ErrConflict if an exclusion constraint violation occurs (concurrent insert).
 // Retries once on deadlock (40P01), which can occur when concurrent inserts race on GiST locks.
-func (s *DBService) Create(ctx context.Context, p CreateParams) error {
+func (s *DBService) Create(ctx context.Context, p CreateParams) (int, error) {
 	const maxAttempts = 2
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		_, err := s.db.Exec(ctx,
+		var bookingID int
+		err := s.db.QueryRow(ctx,
 			`INSERT INTO bookings (equipment_id, user_id, start_time, end_time, purpose)
-         VALUES ($1, $2, $3, $4, $5)`,
-			p.EquipmentID, p.UserID, p.StartTime, p.EndTime, p.Purpose)
+         VALUES ($1, $2, $3, $4, $5) RETURNING booking_id`,
+			p.EquipmentID, p.UserID, p.StartTime, p.EndTime, p.Purpose).Scan(&bookingID)
 		if err == nil {
-			return nil
+			return bookingID, nil
 		}
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case "23P01": // exclusion_violation
-				return web.ErrConflict
+				return 0, web.ErrConflict
 			case "40P01": // deadlock_detected — retry once
 				if attempt < maxAttempts-1 {
 					continue
 				}
-				return err
+				return 0, err
 			}
 		}
-		return err
+		return 0, err
 	}
-	return nil // unreachable: loop always returns
+	return 0, nil // unreachable: loop always returns
 }
 
 // Delete removes a booking. Admins may delete any booking; non-admins must own it.

@@ -33,7 +33,9 @@ func (r *renderStub) GetBookingsForWeek(_ context.Context, _, _ time.Time) ([]bo
 func (r *renderStub) CheckConflict(_ context.Context, _ int, _, _ time.Time) (bool, error) {
 	return false, nil
 }
-func (r *renderStub) Create(_ context.Context, _ booking.CreateParams) error { return nil }
+func (r *renderStub) Create(_ context.Context, _ booking.CreateParams) (int, error) {
+	return 0, nil
+}
 func (r *renderStub) Delete(_ context.Context, _, _ int, _ bool) error       { return nil }
 
 func renderBookingPage(t *testing.T, equipment []booking.Equipment) *httptest.ResponseRecorder {

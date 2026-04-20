@@ -219,7 +219,7 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.svc.Create(r.Context(), CreateParams{
+	bookingID, err := h.svc.Create(r.Context(), CreateParams{
 		EquipmentID: equipmentID,
 		UserID:      session.UserID,
 		StartTime:   startTime,
@@ -235,7 +235,7 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/booking?error=Error+creating+booking", http.StatusSeeOther)
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("booked"), activity.TargetType("booking"), equipmentID, purpose)
+	h.logActivity(r.Context(), session, activity.Verb("booked"), activity.TargetType("booking"), bookingID, purpose)
 
 	week := r.FormValue("week")
 	if week != "" {

@@ -90,6 +90,9 @@ func TestRegisterRoutes_AllPatternsRegistered(t *testing.T) {
 		{"/admin/add-group", "/admin/add-group"},
 		{"/admin/delete-group/3", "/admin/delete-group/"},
 		{"/admin/equipment-report", "/admin/equipment-report"},
+		{"/admin/equipment/1/status", "/admin/equipment/"},
+		{"/admin/equipment/1/groups/add", "/admin/equipment/"},
+		{"/admin/equipment/1/groups/remove", "/admin/equipment/"},
 		{"/admin/delete-user", "/admin/delete-user"},
 		// steps
 		{"/steps/10/edit", "/steps/"},
