@@ -162,11 +162,11 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 9: API Tokens page — verify screenshot match, minor polish
-- [ ] compare `templates/profile_tokens.html` against screenshot #9 (two-column: Generate form left, Existing tokens table right + Usage example card below)
-- [ ] ensure revoke button uses standardized `button--destructive button--small` (QA UX-1 — verify already fixed in commit `fcbde3e`)
-- [ ] fix any visual gaps — layout split, token list columns (Name, Created, Last used, Status chip), Usage monospace block
-- [ ] write unit test asserting revoke button renders with standard classes
-- [ ] run `go test ./...` — must pass before next task
+- [x] compare `templates/profile_tokens.html` against screenshot #9 (two-column: Generate form left, Existing tokens table right + Usage example card below) — pre-refactor it was single-column; rebuilt as `tokens-grid` (Generate | Existing) with Usage card below
+- [x] ensure revoke button uses standardized `button--destructive button--small` (QA UX-1 — verify already fixed in commit `fcbde3e`) — verified classes remain on the revoke button
+- [x] fix any visual gaps — layout split, token list columns (Name, Created, Last used, Status chip), Usage monospace block — two-column grid, table renamed `tokens-table`, status column now uses `status-chip` + `status-chip__dot`, Usage block rendered inside its own card with monospace `tokens-usage__code`; Expiration dropdown added (disabled placeholder — backend support out of scope)
+- [x] write unit test asserting revoke button renders with standard classes — added `internal/profile/render_test.go` with three render assertions: revoke button classes, status-chip dots (active + revoked), and two-column layout + Usage block
+- [x] run `go test ./...` — must pass before next task — all packages pass; `go vet ./...` clean
 
 ### Task 10: Admin panel — equipment status + group-access badges, user management polish
 - [ ] update `internal/admin/` to fetch equipment with status and joined group-access rows; expose per-equipment "Add/Remove Group" controls

@@ -8,97 +8,182 @@
     </div>
 </div>
 
-<div class="account-page">
-    <div class="card">
+<div class="tokens-page">
+    {{with .Error}}
+    <div class="alert alert-error">{{.}}</div>
+    {{end}}
+    {{with .Success}}
+    <div class="alert alert-success">{{.}}</div>
+    {{end}}
 
-        {{with .Error}}
-        <div class="alert alert-error">{{.}}</div>
-        {{end}}
-        {{with .Success}}
-        <div class="alert alert-success">{{.}}</div>
-        {{end}}
-
-        {{with .PlainToken}}
-        <div class="alert alert-info token-reveal">
-            <strong>Your new token (copy it now — not shown again):</strong>
-            <code class="token-value">{{.}}</code>
-        </div>
-        {{end}}
-
-        <h2>Generate a new token</h2>
-        <form method="POST" action="/profile/tokens" class="form token-form">
-            <div class="form-group form-group--inline">
-                <label for="name">Token name</label>
-                <input type="text" id="name" name="name" placeholder="e.g. iOS app, MCP client" required maxlength="100" autocomplete="off">
-                <button type="submit" class="button button--primary">Generate</button>
-            </div>
-        </form>
-
-        <h2>Existing tokens</h2>
-        {{if .Tokens}}
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Created</th>
-                    <th>Last used</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-            {{range .Tokens}}
-            <tr{{if .Revoked}} class="token-row--revoked"{{end}}>
-                <td>{{.Name}}</td>
-                <td>{{.CreatedAt.Format "2006-01-02"}}</td>
-                <td>{{if .LastUsedAt}}{{.LastUsedAt.Format "2006-01-02"}}{{else}}Never{{end}}</td>
-                <td>{{if .Revoked}}<span class="badge badge--error">Revoked</span>{{else}}<span class="badge badge--success">Active</span>{{end}}</td>
-                <td>
-                {{if not .Revoked}}
-                <form method="POST" action="/profile/tokens/{{.TokenID}}/revoke" style="display:inline">
-                    <button type="submit" class="button button--destructive button--small" onclick="return confirm('Revoke this token?')">Revoke</button>
-                </form>
-                {{end}}
-                </td>
-            </tr>
-            {{end}}
-            </tbody>
-        </table>
-        {{else}}
-        <p class="empty-state">No tokens yet. Generate one above to authenticate API requests.</p>
-        {{end}}
-
-        <div class="token-usage">
-            <h2>Usage</h2>
-            <p>Send the token in the <code>Authorization</code> header on every API request:</p>
-            <pre class="code-block">Authorization: Bearer &lt;your-token&gt;</pre>
-        </div>
+    {{with .PlainToken}}
+    <div class="alert alert-info token-reveal">
+        <strong>Your new token (copy it now — not shown again):</strong>
+        <code class="token-value">{{.}}</code>
     </div>
+    {{end}}
+
+    <div class="tokens-grid">
+        <section class="card tokens-generate">
+            <header class="tokens-generate__head">
+                <h2>Generate new token</h2>
+                <p class="tokens-generate__hint">Tokens have full account permissions. Keep them secret.</p>
+            </header>
+            <form method="POST" action="/profile/tokens" class="form tokens-generate__form">
+                <div class="form-group">
+                    <label for="name">Token name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g. Mobile app" required maxlength="100" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="expiration">Expiration</label>
+                    <select id="expiration" name="expiration" disabled title="Expiration support coming soon">
+                        <option value="never">Never</option>
+                    </select>
+                </div>
+                <button type="submit" class="button button--primary tokens-generate__submit">Generate</button>
+            </form>
+        </section>
+
+        <section class="card tokens-list">
+            <header class="tokens-list__head">
+                <h2>Existing tokens <span class="tokens-list__count">({{len .Tokens}})</span></h2>
+            </header>
+            {{if .Tokens}}
+            <table class="tokens-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Created</th>
+                        <th>Last used</th>
+                        <th>Status</th>
+                        <th class="tokens-table__actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {{range .Tokens}}
+                <tr{{if .Revoked}} class="tokens-table__row--revoked"{{end}}>
+                    <td class="tokens-table__name">{{.Name}}</td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>{{if .LastUsedAt}}{{.LastUsedAt.Format "2006-01-02"}}{{else}}<span class="tokens-table__muted">Never</span>{{end}}</td>
+                    <td>
+                        {{if .Revoked}}
+                            <span class="status-chip status-chip--archived"><span class="status-chip__dot"></span>Revoked</span>
+                        {{else}}
+                            <span class="status-chip status-chip--active"><span class="status-chip__dot"></span>Active</span>
+                        {{end}}
+                    </td>
+                    <td class="tokens-table__actions">
+                    {{if not .Revoked}}
+                    <form method="POST" action="/profile/tokens/{{.TokenID}}/revoke" style="display:inline">
+                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Revoke this token?')">Revoke</button>
+                    </form>
+                    {{end}}
+                    </td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p class="tokens-empty">No tokens yet. Generate one to authenticate API requests.</p>
+            {{end}}
+        </section>
+    </div>
+
+    <section class="card tokens-usage">
+        <header class="tokens-usage__head">
+            <h2>Usage</h2>
+        </header>
+        <p>Send the token in the <code>Authorization</code> header on every API request:</p>
+        <pre class="tokens-usage__code">Authorization: Bearer &lt;your-token&gt;</pre>
+    </section>
 </div>
 
 <style>
-.account-page {
-    max-width: 960px;
+.tokens-page { display: flex; flex-direction: column; gap: 18px; }
+.tokens-page .card { padding: 20px 24px; margin: 0; }
+.tokens-page h2 { font-size: 15px; margin: 0; color: var(--text-strong); }
+
+.tokens-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: 18px;
+    align-items: start;
 }
-.account-page .card {
-    padding: 24px;
+
+.tokens-generate__head { margin-bottom: 14px; }
+.tokens-generate__hint {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 12.5px;
 }
-.account-page h2 { font-size: 1.1rem; margin-top: 28px; margin-bottom: 12px; }
+.tokens-generate__form { display: flex; flex-direction: column; gap: 14px; }
+.tokens-generate__form .form-group { display: flex; flex-direction: column; gap: 6px; }
+.tokens-generate__form .form-group label { font-size: 12.5px; color: var(--text-muted); font-weight: 500; }
+.tokens-generate__form .form-group input,
+.tokens-generate__form .form-group select {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-subtle);
+    color: var(--text-strong);
+    font-size: 14px;
+}
+.tokens-generate__form .form-group select[disabled] { opacity: 0.65; cursor: not-allowed; }
+.tokens-generate__submit { align-self: stretch; margin-top: 4px; }
+
+.tokens-list__head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.tokens-list__count { color: var(--text-muted); font-weight: 500; font-size: 13px; }
+.tokens-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tokens-table th,
+.tokens-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
+.tokens-table th {
+    font-weight: 600;
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.tokens-table__name { font-weight: 600; color: var(--text-strong); }
+.tokens-table__muted { color: var(--text-muted); }
+.tokens-table__actions { text-align: right; width: 1%; white-space: nowrap; }
+.tokens-table__row--revoked { opacity: 0.6; }
+.tokens-empty { color: var(--text-muted); font-style: italic; margin: 0; }
+
+.tokens-usage__head { margin-bottom: 10px; }
+.tokens-usage__code {
+    margin: 10px 0 0;
+    padding: 14px 16px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    overflow-x: auto;
+}
+
 .token-reveal { word-break: break-all; }
-.token-value { display: block; margin-top: 8px; font-size: 0.9rem; background: var(--neutral-100); padding: 8px 10px; border-radius: 4px; }
-.token-form .form-group--inline { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-.token-form .form-group--inline label { display: none; }
-.token-form input[type="text"] { flex: 1; min-width: 200px; border: 1px solid var(--neutral-200); border-radius: 6px; padding: 8px 10px; font-size: 1rem; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.data-table th, .data-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--neutral-100); }
-.data-table th { font-weight: 600; color: var(--neutral-600); }
-.token-row--revoked { opacity: 0.55; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
-.badge--success { background: #d1fae5; color: #065f46; }
-.badge--error { background: #fee2e2; color: #991b1b; }
-.empty-state { color: var(--neutral-500); font-style: italic; }
-.token-usage { margin-top: 28px; }
-.code-block { background: var(--neutral-100); padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; overflow-x: auto; }
-.alert-info { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e3a5f; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; }
+.token-value {
+    display: block;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+}
+
+.alert-info {
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    color: var(--text-strong);
+}
+
+@media (max-width: 900px) {
+    .tokens-grid { grid-template-columns: 1fr; }
+}
 </style>
 {{end}}
