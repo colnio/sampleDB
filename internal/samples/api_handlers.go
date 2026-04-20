@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"sampleDB/internal/activity"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
 )
@@ -258,6 +259,7 @@ func (h *Handlers) apiCreateSample(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("created"), activity.TargetType("sample"), item.ID, item.Name)
 	writeJSON(w, http.StatusCreated, item)
 }
 
@@ -326,6 +328,7 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), id, req.Name)
 
 	// Re-fetch and return the updated detail.
 	h.apiGetSample(w, r, sampleID)
@@ -356,6 +359,7 @@ func (h *Handlers) apiDeleteSample(w http.ResponseWriter, r *http.Request, sampl
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("sample"), id, "")
 
 	// Remove attachment files from disk.
 	for _, fp := range filePaths {
@@ -470,6 +474,7 @@ func (h *Handlers) apiAddStep(w http.ResponseWriter, r *http.Request, sampleID s
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("added_step"), activity.TargetType("fabrication_step"), created.ID, created.Description)
 	writeJSON(w, http.StatusCreated, FabricationStepToAPI(created))
 }
 
@@ -519,6 +524,7 @@ func (h *Handlers) apiUpdateStep(w http.ResponseWriter, r *http.Request, stepID 
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("edited_step"), activity.TargetType("fabrication_step"), id, step.Description)
 
 	updated, err := h.svc.GetStepByID(r.Context(), id)
 	if err != nil {
@@ -562,6 +568,7 @@ func (h *Handlers) apiDeleteStep(w http.ResponseWriter, r *http.Request, stepID 
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("fabrication_step"), id, existing.Description)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -680,6 +687,7 @@ func (h *Handlers) apiUploadAttachments(w http.ResponseWriter, r *http.Request, 
 			errs = append(errs, uploadError{Filename: fh.Filename, Error: "could not store attachment record"})
 			continue
 		}
+		h.logActivity(r.Context(), session, activity.Verb("uploaded"), activity.TargetType("attachment"), attID, fh.Filename)
 		insertedIDs[attID] = struct{}{}
 	}
 
@@ -768,6 +776,7 @@ func (h *Handlers) apiDeleteAttachment(w http.ResponseWriter, r *http.Request, a
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("attachment"), attachmentID, originalFilenameFromPath(filePath))
 	if filePath != "" {
 		if rmErr := removeFile(h.resolveAppPath(filePath)); rmErr != nil {
 			log.Printf("samples api: deleteAttachment remove file %q: %v", filePath, rmErr)

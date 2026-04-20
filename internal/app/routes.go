@@ -77,6 +77,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 		PublicHost: a.Config.PublicHost,
 		UseTLS:     a.Config.UseTLS,
 	})
+	samplesHdlrs.Activity = a.Activity
 	mux.HandleFunc("/", withAuth(samplesHdlrs.MainPage))
 	mux.HandleFunc("/samples/new", withAuth(samplesHdlrs.NewSample))
 	mux.HandleFunc("/samples/edit/", withAuth(samplesHdlrs.EditSample))
@@ -92,6 +93,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	// --- Booking domain routes (wired via booking.Handlers) ---
 	bookingSvc := booking.NewService(a.DB, a.Location)
 	bookingHdlrs := booking.NewHandlers(bookingSvc, a.Renderer, a.Auth, a.Location)
+	bookingHdlrs.Activity = a.Activity
 	mux.HandleFunc("/booking", withAuth(bookingHdlrs.HandleBooking))
 	mux.HandleFunc("/api/bookings", withAuth(bookingHdlrs.GetBookings))
 	mux.HandleFunc("/booking/delete", withAuth(bookingHdlrs.DeleteBooking))
@@ -102,6 +104,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 		UploadsDir: a.Config.UploadsDir,
 		BaseDir:    a.Config.BaseDir,
 	})
+	wikiHdlrs.Activity = a.Activity
 	mux.HandleFunc("/wiki", withAuth(wikiHdlrs.HandleWiki))
 	mux.HandleFunc("/wiki/", withAuth(wikiHdlrs.HandleWiki))
 	mux.HandleFunc("/wiki/attachment/", withAuth(wikiHdlrs.HandleAttachment))

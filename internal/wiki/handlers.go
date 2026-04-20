@@ -1,6 +1,7 @@
 package wiki
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"regexp"
 	"strings"
 
+	"sampleDB/internal/activity"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
 )
@@ -33,11 +35,25 @@ type Handlers struct {
 	svc      Service
 	renderer *web.Renderer
 	cfg      HandlerConfig
+	// Activity is a best-effort write-path. A nil Logger is safe.
+	Activity *activity.Logger
 }
 
 // NewHandlers constructs a Handlers value.
 func NewHandlers(svc Service, r *web.Renderer, cfg HandlerConfig) *Handlers {
 	return &Handlers{svc: svc, renderer: r, cfg: cfg}
+}
+
+// logActivity writes a best-effort activity_log row. Errors are swallowed
+// (logged only) so they never fail the underlying request.
+func (h *Handlers) logActivity(ctx context.Context, session auth.Session, verb activity.Verb, targetType activity.TargetType, targetID int, label string) {
+	if h == nil || h.Activity == nil {
+		return
+	}
+	actor := activity.Actor{ID: session.UserID, Username: session.Username}
+	if err := h.Activity.Log(ctx, actor, verb, targetType, targetID, label); err != nil {
+		log.Printf("wiki: activity log (%s/%s) failed: %v", verb, targetType, err)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -344,6 +360,7 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error creating article", http.StatusInternalServerError)
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("created"), activity.TargetType("article"), 0, title)
 
 	http.Redirect(w, r, "/wiki/view/"+url.PathEscape(title), http.StatusSeeOther)
 }
@@ -437,6 +454,7 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error updating article", http.StatusInternalServerError)
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("article"), 0, title)
 
 	if isHTMXRequest(r) {
 		h.renderContentPanel(w, r, session, title, "Content updated", "", false)
@@ -488,6 +506,7 @@ func (h *Handlers) deleteArticle(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("article"), 0, title)
 
 	for _, fp := range filePaths {
 		if removeErr := os.Remove(h.resolveAppPath(fp)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
@@ -562,6 +581,7 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
 		}
+		h.logActivity(r.Context(), session, activity.Verb("uploaded"), activity.TargetType("article_attachment"), 0, fh.Filename)
 		uploaded++
 	}
 

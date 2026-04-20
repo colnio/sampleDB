@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"sampleDB/internal/activity"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
 )
@@ -141,6 +142,7 @@ func (h *Handlers) apiCreateArticle(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("created"), activity.TargetType("article"), detail.ID, detail.Title)
 
 	writeJSON(w, http.StatusCreated, detail)
 }
@@ -190,6 +192,7 @@ func (h *Handlers) apiUpdateArticle(w http.ResponseWriter, r *http.Request, arti
 		writeError(w, http.StatusNotFound, "article not found")
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("article"), id, req.Title)
 
 	h.apiGetArticle(w, r, articleID)
 }

@@ -92,14 +92,14 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 2: Activity logging infrastructure (new internal/activity package)
-- [ ] create `internal/activity/activity.go` with a `Logger` struct holding a `dbiface.Pool` and a `Log(ctx, actor, verb, targetType, targetID, targetLabel) error` method
-- [ ] expose helper `Recent(ctx, limit int) ([]Entry, error)` that returns the latest N entries joined with `users` for display
-- [ ] expose helper `ForTarget(ctx, targetType string, targetID int, limit int) ([]Entry, error)` for the sample-detail "Activity" panel
-- [ ] wire the logger into `App` in `internal/app/app.go` (new optional field `Activity *activity.Logger`, constructed in `NewRouter`)
-- [ ] hook activity inserts into: sample create/update/delete, attachment upload/delete (sample), fabrication-step add/update/delete, booking create/delete, wiki article create/update/delete, wiki attachment upload — each call-site gets one `a.Activity.Log(...)` right after the DB write succeeds (best-effort: log error, do not fail the request)
-- [ ] write unit tests for `Log`, `Recent`, `ForTarget` using `pgxmock`
-- [ ] write integration test that creates a sample, edits it, and verifies the activity_log has two rows with the right verbs
-- [ ] run `go test ./...` — must pass before next task
+- [x] create `internal/activity/activity.go` with a `Logger` struct holding a `dbiface.Pool` and a `Log(ctx, actor, verb, targetType, targetID, targetLabel) error` method
+- [x] expose helper `Recent(ctx, limit int) ([]Entry, error)` that returns the latest N entries joined with `users` for display
+- [x] expose helper `ForTarget(ctx, targetType string, targetID int, limit int) ([]Entry, error)` for the sample-detail "Activity" panel
+- [x] wire the logger into `App` in `internal/app/app.go` (new optional field `Activity *activity.Logger`, constructed in `NewRouter`)
+- [x] hook activity inserts into: sample create/update/delete, attachment upload/delete (sample), fabrication-step add/update/delete, booking create/delete, wiki article create/update/delete, wiki attachment upload — each call-site gets one `a.Activity.Log(...)` right after the DB write succeeds (best-effort: log error, do not fail the request)
+- [x] write unit tests for `Log`, `Recent`, `ForTarget` using `pgxmock`
+- [x] write integration test that creates a sample, edits it, and verifies the activity_log has two rows with the right verbs
+- [x] run `go test ./...` — must pass before next task
 
 ### Task 3: Dashboard page (new `/dashboard` route, KPIs, Recent samples, Activity feed, Today's bookings)
 - [ ] add `GET /dashboard` route in `internal/app/routes.go`; wire a new handler in `internal/samples/` (or a new `internal/dashboard/` package if it stays small) that aggregates KPI counts, recent samples, activity entries, and today's bookings

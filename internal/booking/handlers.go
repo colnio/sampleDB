@@ -1,6 +1,7 @@
 package booking
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"sampleDB/internal/activity"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
 )
@@ -20,11 +22,24 @@ type Handlers struct {
 	renderer *web.Renderer
 	authMgr  *auth.Manager
 	loc      *time.Location
+	// Activity is a best-effort write-path. A nil Logger is safe.
+	Activity *activity.Logger
 }
 
 // NewHandlers constructs a Handlers value.
 func NewHandlers(svc Service, r *web.Renderer, a *auth.Manager, loc *time.Location) *Handlers {
 	return &Handlers{svc: svc, renderer: r, authMgr: a, loc: loc}
+}
+
+// logActivity writes a best-effort activity_log row.
+func (h *Handlers) logActivity(ctx context.Context, session auth.Session, verb activity.Verb, targetType activity.TargetType, targetID int, label string) {
+	if h == nil || h.Activity == nil {
+		return
+	}
+	actor := activity.Actor{ID: session.UserID, Username: session.Username}
+	if err := h.Activity.Log(ctx, actor, verb, targetType, targetID, label); err != nil {
+		log.Printf("booking: activity log (%s/%s) failed: %v", verb, targetType, err)
+	}
 }
 
 // HandleBooking dispatches GET (calendar view) and POST (booking submission).
@@ -220,6 +235,7 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/booking?error=Error+creating+booking", http.StatusSeeOther)
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("booked"), activity.TargetType("booking"), equipmentID, purpose)
 
 	week := r.FormValue("week")
 	if week != "" {
@@ -263,6 +279,7 @@ func (h *Handlers) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("booking"), bookingID, "")
 
 	http.Redirect(w, r, "/booking?success=Booking+deleted", http.StatusSeeOther)
 }

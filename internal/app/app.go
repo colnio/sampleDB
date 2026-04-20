@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"sampleDB/internal/activity"
 	"sampleDB/internal/agents"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/dbiface"
@@ -31,6 +32,11 @@ type App struct {
 	// Agents handles the public /agents and /agents/examples pages.
 	// A nil value causes those routes to return 503.
 	Agents *agents.Handlers
+	// Activity records cross-domain user actions (sample edits, wiki edits,
+	// bookings, attachment uploads) for the Dashboard feed. A nil Logger is
+	// safe — call sites treat logging as best-effort, so this may be unset
+	// in constrained test environments.
+	Activity *activity.Logger
 }
 
 // New constructs an App, validating that the required fields are provided.
@@ -71,5 +77,6 @@ func New(
 		Logger:   logger,
 		Clock:    clock,
 		Location: loc,
+		Activity: activity.NewLogger(db),
 	}, nil
 }

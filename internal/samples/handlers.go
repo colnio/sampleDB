@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"sampleDB/internal/activity"
 	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
 )
@@ -39,11 +40,27 @@ type Handlers struct {
 	renderer *web.Renderer
 	authMgr  *auth.Manager
 	cfg      HandlerConfig
+	// Activity is a best-effort write-path. A nil Logger is safe; call-sites
+	// ignore errors so failure of the activity log never fails the request.
+	Activity *activity.Logger
 }
 
 // NewHandlers constructs a Handlers value.
 func NewHandlers(svc Service, r *web.Renderer, a *auth.Manager, cfg HandlerConfig) *Handlers {
 	return &Handlers{svc: svc, renderer: r, authMgr: a, cfg: cfg}
+}
+
+// logActivity is a best-effort wrapper around Activity.Log. It returns no
+// error: any DB failure is swallowed (the user's request must not fail because
+// the activity log is unavailable).
+func (h *Handlers) logActivity(ctx context.Context, session auth.Session, verb activity.Verb, targetType activity.TargetType, targetID int, label string) {
+	if h == nil || h.Activity == nil {
+		return
+	}
+	actor := activity.Actor{ID: session.UserID, Username: session.Username}
+	if err := h.Activity.Log(ctx, actor, verb, targetType, targetID, label); err != nil {
+		log.Printf("samples: activity log (%s/%s) failed: %v", verb, targetType, err)
+	}
 }
 
 // ------------------------------------------------------------------ utilities --
@@ -377,6 +394,7 @@ func (h *Handlers) NewSample(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Error adding sample", http.StatusInternalServerError)
 			return
 		}
+		h.logActivity(r.Context(), session, activity.Verb("created"), activity.TargetType("sample"), newID, name)
 		http.Redirect(w, r, fmt.Sprintf("/samples/%d", newID), http.StatusSeeOther)
 
 	default:
@@ -469,6 +487,7 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error updating sample", http.StatusInternalServerError)
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), sampleIDInt, name)
 
 	if isHTMXRequest(r) {
 		h.renderSampleEditSection(w, r, session, sampleID, "Changes saved", "")
@@ -521,6 +540,7 @@ func (h *Handlers) DeleteSample(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to delete sample", http.StatusInternalServerError)
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("sample"), sampleID, "")
 
 	// Remove attachment files from disk (best-effort; DB row is already gone).
 	for _, fp := range filePaths {
@@ -688,6 +708,7 @@ func (h *Handlers) deleteAttachment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error deleting attachment", http.StatusInternalServerError)
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("attachment"), attachmentID, originalFilenameFromPath(filePath))
 	if filePath != "" {
 		if removeErr := os.Remove(h.resolveAppPath(filePath)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
 			log.Printf("samples.deleteAttachment: file remove error: %v", removeErr)
@@ -762,11 +783,13 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 			errMsgs = append(errMsgs, fmt.Sprintf("could not save %s", fh.Filename))
 			continue
 		}
-		if _, dbErr := h.svc.AddAttachment(r.Context(), sampleID, fp); dbErr != nil {
+		attID, dbErr := h.svc.AddAttachment(r.Context(), sampleID, fp)
+		if dbErr != nil {
 			_ = os.Remove(h.resolveAppPath(fp))
 			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
 		}
+		h.logActivity(r.Context(), session, activity.Verb("uploaded"), activity.TargetType("attachment"), attID, fh.Filename)
 		uploaded++
 	}
 
@@ -1090,10 +1113,12 @@ func (h *Handlers) stepsEndpoint(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if _, err := h.svc.AddStep(r.Context(), sampleID, step); err != nil {
+		created, err := h.svc.AddStep(r.Context(), sampleID, step)
+		if err != nil {
 			h.renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Failed to add step.", 0)
 			return
 		}
+		h.logActivity(r.Context(), session, activity.Verb("added_step"), activity.TargetType("fabrication_step"), created.ID, step.Description)
 
 		if isHTMXRequest(r) {
 			h.renderFabricationStepsSection(w, r, session, sampleIDStr, "Step added", "", 0)
@@ -1165,6 +1190,7 @@ func (h *Handlers) stepEdit(w http.ResponseWriter, r *http.Request, stepIDStr st
 			http.Error(w, "Failed to update step", http.StatusInternalServerError)
 			return
 		}
+		h.logActivity(r.Context(), session, activity.Verb("edited_step"), activity.TargetType("fabrication_step"), stepID, step.Description)
 
 		sampleIDStr := strconv.Itoa(existing.SampleID)
 		if isHTMXRequest(r) {
@@ -1212,6 +1238,7 @@ func (h *Handlers) stepDelete(w http.ResponseWriter, r *http.Request, stepIDStr 
 		h.renderFabricationStepsSection(w, r, session, sampleIDStr, "", "Failed to delete step.", 0)
 		return
 	}
+	h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("fabrication_step"), stepID, existing.Description)
 
 	if isHTMXRequest(r) {
 		h.renderFabricationStepsSection(w, r, session, sampleIDStr, "Step deleted", "", 0)
