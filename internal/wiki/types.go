@@ -12,10 +12,13 @@ type Article struct {
 	ID             int
 	Title          string
 	Content        ArticleContent
+	Tags           []string
 	CreatedBy      int
+	CreatorName    string
 	CreatedAt      time.Time
 	LastModifiedAt time.Time
 	LastModifiedBy int
+	Excerpt        string
 	Attachments    []ArticleAttachment
 }
 
@@ -46,7 +49,9 @@ type BasePageData struct {
 // WikiListPageData is the template data for the article list page.
 type WikiListPageData struct {
 	BasePageData
-	Articles []Article
+	Articles  []Article
+	Tags      []string // tag chip vocabulary (stable set: All + known)
+	TagFilter string   // currently-applied tag filter ("" = all)
 }
 
 // WikiViewPageData is the template data for viewing or inline-editing an article.
@@ -64,6 +69,7 @@ type WikiEditPageData struct {
 	BasePageData
 	Article       *Article
 	ArticleImages []ArticleAttachment
+	TagsCSV       string // pre-filled tags input value (comma-separated)
 }
 
 // APIArticleItem is the summary response used in list endpoints.

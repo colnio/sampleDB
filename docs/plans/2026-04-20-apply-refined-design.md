@@ -137,13 +137,13 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task
 
 ### Task 6: Wiki list — tag grid with filters, article cards
-- [ ] extend `articles` query in `internal/wiki/handlers.go` to return `tags` and support `?tag=<tag>` filtering
-- [ ] define a stable tag vocabulary for the filter chips (`All | Safety | Equipment | Protocols | Admin`) matching screenshot #6; allow free-form tags beyond these (just not featured in chips)
-- [ ] update `templates/wiki_list.html` to render grid of article cards (screenshot #6) — each card: tag chip, title, one-line excerpt, date, author initial-avatar; filter-chip row above the grid
-- [ ] update "New Article" + "Edit Article" flows in `templates/wiki_edit.html` to accept tags (comma-separated input stored as TEXT[])
-- [ ] write unit tests for the list handler's tag filtering + for save-with-tags
-- [ ] write integration tests: create article with tags, list filtered by tag, verify tags render
-- [ ] run `go test ./...` — must pass before next task
+- [x] extend `articles` query in `internal/wiki/handlers.go` to return `tags` and support `?tag=<tag>` filtering
+- [x] define a stable tag vocabulary for the filter chips (`All | Safety | Equipment | Protocols | Admin`) matching screenshot #6; allow free-form tags beyond these (just not featured in chips)
+- [x] update `templates/wiki_list.html` to render grid of article cards (screenshot #6) — each card: tag chip, title, one-line excerpt, date, author initial-avatar; filter-chip row above the grid
+- [x] update "New Article" + "Edit Article" flows in `templates/wiki_edit.html` to accept tags (comma-separated input stored as TEXT[])
+- [x] write unit tests for the list handler's tag filtering + for save-with-tags
+- [x] write integration tests: create article with tags, list filtered by tag, verify tags render
+- [x] run `go test ./...` — must pass before next task
 
 ### Task 7: Wiki view — "On this page" TOC sidebar
 - [ ] in `internal/wiki/handlers.go` parse the article's markdown headings (h2/h3) to build a TOC slice `[{Anchor, Title, Level}]`; inject `id` attributes into the rendered HTML so anchor links work

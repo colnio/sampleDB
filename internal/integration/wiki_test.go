@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"sampleDB/internal/wiki"
@@ -76,6 +77,56 @@ func TestWiki_CRUD(t *testing.T) {
 	}
 	if updated.Content != "Updated content." {
 		t.Fatalf("updated content = %q, want Updated content.", updated.Content)
+	}
+}
+
+func TestWiki_List_FiltersByTag_HTMLPage(t *testing.T) {
+	// Seed two articles with different tags directly via the DB so we can
+	// exercise the HTML /wiki handler's ?tag= path. (The API doesn't accept
+	// tags yet, so direct DB seeding is the cleanest route.)
+	title1 := "inttest-safety-" + randomHex(4)
+	title2 := "inttest-other-" + randomHex(4)
+
+	var id1, id2 int
+	if err := pool.QueryRow(bgCtx,
+		`INSERT INTO articles (title, content, tags, created_by, last_modified_by)
+		 VALUES ($1, 'Body about safety.', $2, $3, $3) RETURNING article_id`,
+		title1, []string{"Safety"}, testUser.id).Scan(&id1); err != nil {
+		t.Fatalf("seed safety article: %v", err)
+	}
+	if err := pool.QueryRow(bgCtx,
+		`INSERT INTO articles (title, content, tags, created_by, last_modified_by)
+		 VALUES ($1, 'Body about protocols.', $2, $3, $3) RETURNING article_id`,
+		title2, []string{"Protocols"}, testUser.id).Scan(&id2); err != nil {
+		t.Fatalf("seed protocols article: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(bgCtx, "DELETE FROM articles WHERE article_id IN ($1, $2)", id1, id2)
+	})
+
+	// Hit the HTML page with ?tag=Safety — should include title1 but not title2.
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/wiki?tag=Safety", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+apiToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /wiki?tag=Safety: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", resp.StatusCode, mustReadBody(t, resp))
+	}
+	body := mustReadBody(t, resp)
+	if !strings.Contains(body, title1) {
+		t.Errorf("expected safety article %q in response; body did not contain it", title1)
+	}
+	if strings.Contains(body, title2) {
+		t.Errorf("unexpected protocols article %q leaked through with ?tag=Safety", title2)
+	}
+	if !strings.Contains(body, "filter-chip--tag") {
+		t.Errorf("expected tag filter chips in rendered HTML")
 	}
 }
 

@@ -238,7 +238,9 @@ func (h *Handlers) HandleAttachment(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) listArticles(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 
-	articles, err := h.svc.ListArticles(r.Context())
+	tagFilter := normalizeTagFilter(r.URL.Query().Get("tag"))
+
+	articles, err := h.svc.ListArticles(r.Context(), tagFilter)
 	if err != nil {
 		http.Error(w, "Error retrieving articles", http.StatusInternalServerError)
 		return
@@ -252,11 +254,23 @@ func (h *Handlers) listArticles(w http.ResponseWriter, r *http.Request) {
 	data := WikiListPageData{
 		BasePageData: BasePageData{Username: session.Username, IsAdmin: isAdmin},
 		Articles:     articles,
+		Tags:         KnownTags,
+		TagFilter:    tagFilter,
 	}
 
 	if err := h.renderer.Render(w, "wiki_list", data); err != nil {
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
+}
+
+// normalizeTagFilter accepts the raw ?tag= query value. Empty or "all"
+// collapse to "" (no filter); anything else is passed through trimmed.
+func normalizeTagFilter(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" || strings.EqualFold(v, "all") {
+		return ""
+	}
+	return v
 }
 
 func (h *Handlers) viewArticle(w http.ResponseWriter, r *http.Request, title string) {
@@ -354,8 +368,9 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	content := r.FormValue("content")
+	tags := NormalizeTagsCSV(r.FormValue("tags"))
 
-	if err := h.svc.CreateArticle(r.Context(), title, content, session.UserID); err != nil {
+	if err := h.svc.CreateArticle(r.Context(), title, content, tags, session.UserID); err != nil {
 		log.Printf("wiki: error creating article %q: %v", title, err)
 		http.Error(w, "Error creating article", http.StatusInternalServerError)
 		return
@@ -401,6 +416,7 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 			BasePageData:  BasePageData{Username: session.Username},
 			Article:       article,
 			ArticleImages: articleImages,
+			TagsCSV:       strings.Join(article.Tags, ", "),
 		}
 		if err := h.renderer.Render(w, "wiki_edit", data); err != nil {
 			http.Error(w, "Error rendering page", http.StatusInternalServerError)
@@ -446,7 +462,18 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := r.FormValue("content")
-	if execErr := h.svc.UpdateArticleContent(r.Context(), title, content, session.UserID); execErr != nil {
+	var tags []string
+	if _, hasTagsField := r.Form["tags"]; hasTagsField {
+		tags = NormalizeTagsCSV(r.FormValue("tags"))
+	} else {
+		// HTMX inline edit submits only the content field; preserve existing
+		// tags in that case so the partial-edit flow doesn't accidentally
+		// clear the article's tag list.
+		if existing, err := h.svc.GetArticle(r.Context(), title); err == nil && existing != nil {
+			tags = existing.Tags
+		}
+	}
+	if execErr := h.svc.UpdateArticleContent(r.Context(), title, content, tags, session.UserID); execErr != nil {
 		if isHTMXRequest(r) {
 			h.renderContentPanel(w, r, session, title, "", "Failed to update article content.", true)
 			return

@@ -18,11 +18,11 @@ import (
 // Service is the domain interface for wiki operations.
 // All database access goes through this interface, making handlers testable.
 type Service interface {
-	// Article CRUD
-	ListArticles(ctx context.Context) ([]Article, error)
+	// Article CRUD. ListArticles filters by tag when tag != "".
+	ListArticles(ctx context.Context, tag string) ([]Article, error)
 	GetArticle(ctx context.Context, title string) (*Article, error)
-	CreateArticle(ctx context.Context, title, content string, createdBy int) error
-	UpdateArticleContent(ctx context.Context, title, content string, modifiedBy int) error
+	CreateArticle(ctx context.Context, title, content string, tags []string, createdBy int) error
+	UpdateArticleContent(ctx context.Context, title, content string, tags []string, modifiedBy int) error
 	DeleteArticle(ctx context.Context, title string) (filePaths []string, err error)
 
 	// Access control
@@ -63,15 +63,83 @@ func isImage(contentType string) bool {
 	return strings.HasPrefix(contentType, "image/")
 }
 
+// KnownTags is the stable filter-chip vocabulary used on the wiki list page.
+// Authors may still set free-form tags on articles; those simply don't get a
+// dedicated chip but remain searchable via ?tag=.
+var KnownTags = []string{"Safety", "Equipment", "Protocols", "Admin"}
+
+// buildExcerpt strips common Markdown noise and returns a short, single-line
+// teaser (max ~160 chars) for use on article cards.
+func buildExcerpt(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	s := raw
+	// Drop leading heading markers on the first meaningful line.
+	lines := strings.Split(s, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Strip heading markers and common markdown symbols for a plain teaser.
+		line = strings.TrimLeft(line, "#> -*_`")
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if len(line) > 160 {
+			line = line[:157] + "…"
+		}
+		return line
+	}
+	return ""
+}
+
+// NormalizeTagsCSV parses a comma-separated tag input from a form field into a
+// de-duplicated slice, preserving the original ordering and stripping empty
+// entries. Returns an empty slice (never nil) so callers can pass it straight
+// to the service layer.
+func NormalizeTagsCSV(csv string) []string {
+	out := make([]string, 0)
+	seen := map[string]struct{}{}
+	for _, part := range strings.Split(csv, ",") {
+		t := strings.TrimSpace(part)
+		if t == "" {
+			continue
+		}
+		key := strings.ToLower(t)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}
+
 // ---------------------------------------------------------------------------
 // Article CRUD
 // ---------------------------------------------------------------------------
 
-// ListArticles returns all articles in reverse-chronological order (title +
-// creation time only, no content or attachments).
-func (s *DBService) ListArticles(ctx context.Context) ([]Article, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT article_id, title, created_at FROM articles ORDER BY created_at DESC`)
+// ListArticles returns articles (reverse-chronological) with tags, creator
+// username, and a short content excerpt suitable for card rendering. When
+// tag != "" only articles whose tags[] contains that tag are returned.
+func (s *DBService) ListArticles(ctx context.Context, tag string) ([]Article, error) {
+	baseQuery := `
+		SELECT a.article_id, a.title, a.created_at, a.tags,
+		       COALESCE(u.username, ''),
+		       COALESCE(substring(a.content from 1 for 240), '')
+		  FROM articles a
+		  LEFT JOIN users u ON u.user_id = a.created_by`
+	args := []any{}
+	if tag != "" {
+		baseQuery += ` WHERE $1 = ANY(a.tags)`
+		args = append(args, tag)
+	}
+	baseQuery += ` ORDER BY a.created_at DESC`
+
+	rows, err := s.db.Query(ctx, baseQuery, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,10 +147,14 @@ func (s *DBService) ListArticles(ctx context.Context) ([]Article, error) {
 
 	var articles []Article
 	for rows.Next() {
-		var a Article
-		if err := rows.Scan(&a.ID, &a.Title, &a.CreatedAt); err != nil {
+		var (
+			a       Article
+			rawBody string
+		)
+		if err := rows.Scan(&a.ID, &a.Title, &a.CreatedAt, &a.Tags, &a.CreatorName, &rawBody); err != nil {
 			return nil, err
 		}
+		a.Excerpt = buildExcerpt(rawBody)
 		articles = append(articles, a)
 	}
 	return articles, rows.Err()
@@ -94,11 +166,11 @@ func (s *DBService) GetArticle(ctx context.Context, title string) (*Article, err
 	var article Article
 	var rawContent string
 	err := s.db.QueryRow(ctx,
-		`SELECT article_id, title, content, created_at, created_by,
+		`SELECT article_id, title, content, tags, created_at, created_by,
 		        COALESCE(last_modified_at, created_at),
 		        COALESCE(last_modified_by, created_by)
 		   FROM articles WHERE title = $1`, title).Scan(
-		&article.ID, &article.Title, &rawContent, &article.CreatedAt, &article.CreatedBy,
+		&article.ID, &article.Title, &rawContent, &article.Tags, &article.CreatedAt, &article.CreatedBy,
 		&article.LastModifiedAt, &article.LastModifiedBy)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -134,21 +206,27 @@ func (s *DBService) GetArticle(ctx context.Context, title string) (*Article, err
 	return &article, nil
 }
 
-// CreateArticle inserts a new article.
-func (s *DBService) CreateArticle(ctx context.Context, title, content string, createdBy int) error {
+// CreateArticle inserts a new article. tags may be nil or empty.
+func (s *DBService) CreateArticle(ctx context.Context, title, content string, tags []string, createdBy int) error {
+	if tags == nil {
+		tags = []string{}
+	}
 	_, err := s.db.Exec(ctx,
-		`INSERT INTO articles (title, content, created_by, last_modified_by)
-		 VALUES ($1, $2, $3, $3)`,
-		title, content, createdBy)
+		`INSERT INTO articles (title, content, tags, created_by, last_modified_by)
+		 VALUES ($1, $2, $3, $4, $4)`,
+		title, content, tags, createdBy)
 	return err
 }
 
-// UpdateArticleContent replaces an article's Markdown content.
-func (s *DBService) UpdateArticleContent(ctx context.Context, title, content string, modifiedBy int) error {
+// UpdateArticleContent replaces an article's Markdown content and tags.
+func (s *DBService) UpdateArticleContent(ctx context.Context, title, content string, tags []string, modifiedBy int) error {
+	if tags == nil {
+		tags = []string{}
+	}
 	tag, err := s.db.Exec(ctx,
-		`UPDATE articles SET content = $1, last_modified_at = NOW(),
-		 last_modified_by = $2 WHERE title = $3`,
-		content, modifiedBy, title)
+		`UPDATE articles SET content = $1, tags = $2, last_modified_at = NOW(),
+		 last_modified_by = $3 WHERE title = $4`,
+		content, tags, modifiedBy, title)
 	if err != nil {
 		return err
 	}

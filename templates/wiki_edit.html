@@ -20,6 +20,12 @@
         </div>
 
         <div class="form-group">
+            <label for="tags">Tags</label>
+            <input type="text" id="tags" name="tags" value="{{.TagsCSV}}" placeholder="Safety, Equipment, Protocols">
+            <p class="form-hint muted" style="font-size:12px;margin-top:4px;">Comma-separated. Featured filters on the Wiki list: Safety, Equipment, Protocols, Admin.</p>
+        </div>
+
+        <div class="form-group">
             <label for="content">Content</label>
             <!-- Remove required attribute from textarea since EasyMDE will handle it -->
             <textarea id="content" name="content">{{if .Article}}{{.Article.Content.Raw}}{{end}}</textarea>

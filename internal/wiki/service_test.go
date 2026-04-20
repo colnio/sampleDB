@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
 
+	"sampleDB/internal/auth"
 	"sampleDB/internal/web"
 	"sampleDB/internal/wiki"
 )
@@ -38,12 +40,12 @@ func TestListArticles_ReturnsTwoRows(t *testing.T) {
 	svc, mock := newSvc(t)
 
 	now := time.Now()
-	mock.ExpectQuery(`SELECT article_id, title, created_at FROM articles`).
-		WillReturnRows(pgxmock.NewRows([]string{"article_id", "title", "created_at"}).
-			AddRow(1, "First", now).
-			AddRow(2, "Second", now))
+	mock.ExpectQuery(`SELECT a.article_id, a.title, a.created_at, a.tags`).
+		WillReturnRows(pgxmock.NewRows([]string{"article_id", "title", "created_at", "tags", "username", "excerpt"}).
+			AddRow(1, "First", now, []string{"Safety"}, "alice", "# First line").
+			AddRow(2, "Second", now, []string{}, "bob", "Just plain text."))
 
-	articles, err := svc.ListArticles(context.Background())
+	articles, err := svc.ListArticles(context.Background(), "")
 	if err != nil {
 		t.Fatalf("ListArticles: %v", err)
 	}
@@ -53,6 +55,15 @@ func TestListArticles_ReturnsTwoRows(t *testing.T) {
 	if articles[0].Title != "First" {
 		t.Errorf("expected first article title %q, got %q", "First", articles[0].Title)
 	}
+	if len(articles[0].Tags) != 1 || articles[0].Tags[0] != "Safety" {
+		t.Errorf("expected Tags=[Safety], got %v", articles[0].Tags)
+	}
+	if articles[0].CreatorName != "alice" {
+		t.Errorf("expected creator alice, got %q", articles[0].CreatorName)
+	}
+	if articles[0].Excerpt != "First line" {
+		t.Errorf("expected excerpt stripped of markdown heading, got %q", articles[0].Excerpt)
+	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
 	}
@@ -61,15 +72,36 @@ func TestListArticles_ReturnsTwoRows(t *testing.T) {
 func TestListArticles_EmptyResult(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT article_id, title, created_at FROM articles`).
-		WillReturnRows(pgxmock.NewRows([]string{"article_id", "title", "created_at"}))
+	mock.ExpectQuery(`SELECT a.article_id, a.title, a.created_at, a.tags`).
+		WillReturnRows(pgxmock.NewRows([]string{"article_id", "title", "created_at", "tags", "username", "excerpt"}))
 
-	articles, err := svc.ListArticles(context.Background())
+	articles, err := svc.ListArticles(context.Background(), "")
 	if err != nil {
 		t.Fatalf("ListArticles: %v", err)
 	}
 	if len(articles) != 0 {
 		t.Errorf("expected 0 articles, got %d", len(articles))
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestListArticles_TagFilterAppliesWhereClause(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	now := time.Now()
+	mock.ExpectQuery(`WHERE \$1 = ANY\(a\.tags\)`).
+		WithArgs("Safety").
+		WillReturnRows(pgxmock.NewRows([]string{"article_id", "title", "created_at", "tags", "username", "excerpt"}).
+			AddRow(3, "Lab Safety", now, []string{"Safety"}, "", ""))
+
+	articles, err := svc.ListArticles(context.Background(), "Safety")
+	if err != nil {
+		t.Fatalf("ListArticles(tag): %v", err)
+	}
+	if len(articles) != 1 {
+		t.Fatalf("expected 1 article, got %d", len(articles))
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -84,12 +116,12 @@ func TestGetArticle_Found(t *testing.T) {
 	svc, mock := newSvc(t)
 
 	now := time.Now()
-	mock.ExpectQuery(`SELECT article_id, title, content`).
+	mock.ExpectQuery(`SELECT article_id, title, content, tags`).
 		WithArgs("My Article").
 		WillReturnRows(pgxmock.NewRows([]string{
-			"article_id", "title", "content", "created_at", "created_by",
+			"article_id", "title", "content", "tags", "created_at", "created_by",
 			"last_modified_at", "last_modified_by",
-		}).AddRow(42, "My Article", "# Hello", now, 1, now, 1))
+		}).AddRow(42, "My Article", "# Hello", []string{"Safety"}, now, 1, now, 1))
 
 	mock.ExpectQuery(`SELECT attachment_id, original_name`).
 		WithArgs(42).
@@ -116,7 +148,7 @@ func TestGetArticle_Found(t *testing.T) {
 func TestGetArticle_NotFound(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT article_id, title, content`).
+	mock.ExpectQuery(`SELECT article_id, title, content, tags`).
 		WithArgs("Missing").
 		WillReturnError(pgx.ErrNoRows)
 
@@ -137,11 +169,26 @@ func TestCreateArticle_InsertsRow(t *testing.T) {
 	svc, mock := newSvc(t)
 
 	mock.ExpectExec(`INSERT INTO articles`).
-		WithArgs("New Title", "some content", 7).
+		WithArgs("New Title", "some content", []string{"Safety"}, 7).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
-	if err := svc.CreateArticle(context.Background(), "New Title", "some content", 7); err != nil {
+	if err := svc.CreateArticle(context.Background(), "New Title", "some content", []string{"Safety"}, 7); err != nil {
 		t.Fatalf("CreateArticle: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestCreateArticle_NilTagsCoercesToEmpty(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`INSERT INTO articles`).
+		WithArgs("New", "body", []string{}, 1).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	if err := svc.CreateArticle(context.Background(), "New", "body", nil, 1); err != nil {
+		t.Fatalf("CreateArticle(nil tags): %v", err)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -156,10 +203,10 @@ func TestUpdateArticleContent_UpdatesRow(t *testing.T) {
 	svc, mock := newSvc(t)
 
 	mock.ExpectExec(`UPDATE articles SET content`).
-		WithArgs("new body", 7, "My Article").
+		WithArgs("new body", []string{"Protocols"}, 7, "My Article").
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	if err := svc.UpdateArticleContent(context.Background(), "My Article", "new body", 7); err != nil {
+	if err := svc.UpdateArticleContent(context.Background(), "My Article", "new body", []string{"Protocols"}, 7); err != nil {
 		t.Fatalf("UpdateArticleContent: %v", err)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -578,6 +625,113 @@ func TestPreview_FormInput(t *testing.T) {
 
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rr.Code)
+	}
+}
+
+// listHandlerStub records arguments passed into Service methods relevant to
+// the /wiki HTML list handler.
+type listHandlerStub struct {
+	wiki.Service
+
+	capturedTag   string
+	listArticles  []wiki.Article
+	listArticlesE error
+}
+
+func (s *listHandlerStub) ListArticles(_ context.Context, tag string) ([]wiki.Article, error) {
+	s.capturedTag = tag
+	return s.listArticles, s.listArticlesE
+}
+
+func (s *listHandlerStub) IsAdmin(_ context.Context, _ int) (bool, error) { return false, nil }
+
+func newTestRenderer(t *testing.T) *web.Renderer {
+	t.Helper()
+	baseDir, err := filepath.Abs("../../templates")
+	if err != nil {
+		t.Fatalf("abs templates dir: %v", err)
+	}
+	r, err := web.NewRenderer(baseDir, nil, time.UTC)
+	if err != nil {
+		t.Fatalf("NewRenderer: %v", err)
+	}
+	return r
+}
+
+func TestHandleWiki_List_PassesTagFilter(t *testing.T) {
+	stub := &listHandlerStub{
+		listArticles: []wiki.Article{{
+			ID: 1, Title: "Lab Safety", Tags: []string{"Safety"},
+			CreatedAt: time.Now(), CreatorName: "alice", Excerpt: "Wear PPE.",
+		}},
+	}
+	h := wiki.NewHandlers(stub, newTestRenderer(t), wiki.HandlerConfig{})
+
+	req := httptest.NewRequest(http.MethodGet, "/wiki?tag=Safety", nil)
+	req = req.WithContext(auth.ContextWithSession(req.Context(), auth.Session{UserID: 1, Username: "tester"}))
+	rr := httptest.NewRecorder()
+	h.HandleWiki(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rr.Code, rr.Body.String())
+	}
+	if stub.capturedTag != "Safety" {
+		t.Errorf("service received tag = %q, want %q", stub.capturedTag, "Safety")
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Lab Safety") {
+		t.Errorf("response body missing article title: %s", body)
+	}
+	if !strings.Contains(body, `filter-chip--tag`) {
+		t.Errorf("response body missing tag filter chips")
+	}
+	// Active chip for the selected tag.
+	if !strings.Contains(body, `/wiki?tag=Safety" class="filter-chip filter-chip--tag is-active"`) {
+		t.Errorf("response body missing active filter chip for Safety: %s", body)
+	}
+}
+
+func TestHandleWiki_List_AllFilter(t *testing.T) {
+	stub := &listHandlerStub{}
+	h := wiki.NewHandlers(stub, newTestRenderer(t), wiki.HandlerConfig{})
+
+	req := httptest.NewRequest(http.MethodGet, "/wiki?tag=all", nil)
+	req = req.WithContext(auth.ContextWithSession(req.Context(), auth.Session{UserID: 1, Username: "tester"}))
+	rr := httptest.NewRecorder()
+	h.HandleWiki(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d", rr.Code)
+	}
+	if stub.capturedTag != "" {
+		t.Errorf("expected empty tag filter for ?tag=all, got %q", stub.capturedTag)
+	}
+}
+
+func TestNormalizeTagsCSV(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"empty", "", []string{}},
+		{"whitespace", "   ,  ,", []string{}},
+		{"simple", "Safety,Protocols", []string{"Safety", "Protocols"}},
+		{"dedupes case-insensitive", "Safety, safety ,SAFETY", []string{"Safety"}},
+		{"trims each entry", "  A ,B  ,  C", []string{"A", "B", "C"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := wiki.NormalizeTagsCSV(tc.in)
+			if len(got) != len(tc.want) {
+				t.Fatalf("NormalizeTagsCSV(%q) = %v, want %v", tc.in, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("NormalizeTagsCSV(%q)[%d] = %q, want %q", tc.in, i, got[i], tc.want[i])
+				}
+			}
+		})
 	}
 }
 
