@@ -327,6 +327,128 @@ func (h *Handlers) DeleteEquipment(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// SetEquipmentStatus handles POST /admin/equipment/{id}/status.
+// It accepts a form-encoded "status" field and redirects back to /admin.
+func (h *Handlers) SetEquipmentStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	equipmentID, err := extractIDFromPrefixAndSuffix(r.URL.Path, "/admin/equipment/", "/status")
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+	status := strings.TrimSpace(r.FormValue("status"))
+	if status == "" {
+		http.Redirect(w, r, "/admin?error=Status+is+required", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.svc.SetEquipmentStatus(r.Context(), equipmentID, status); err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			http.Redirect(w, r, "/admin?error=Equipment+not+found", http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, "/admin?error=Failed+to+update+status", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Equipment+status+updated", http.StatusSeeOther)
+}
+
+// AddEquipmentGroup handles POST /admin/equipment/{id}/groups/add.
+// Accepts a form-encoded "group_id" field.
+func (h *Handlers) AddEquipmentGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	equipmentID, err := extractIDFromPrefixAndSuffix(r.URL.Path, "/admin/equipment/", "/groups/add")
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+	groupID, err := strconv.Atoi(strings.TrimSpace(r.FormValue("group_id")))
+	if err != nil || groupID <= 0 {
+		http.Redirect(w, r, "/admin?error=Select+a+group", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.svc.AddEquipmentGroup(r.Context(), equipmentID, groupID); err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+grant+group+access", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Group+granted", http.StatusSeeOther)
+}
+
+// RemoveEquipmentGroup handles POST /admin/equipment/{id}/groups/remove.
+// Accepts a form-encoded "group_id" field.
+func (h *Handlers) RemoveEquipmentGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	equipmentID, err := extractIDFromPrefixAndSuffix(r.URL.Path, "/admin/equipment/", "/groups/remove")
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+	groupID, err := strconv.Atoi(strings.TrimSpace(r.FormValue("group_id")))
+	if err != nil || groupID <= 0 {
+		http.Redirect(w, r, "/admin?error=Select+a+group", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.svc.RemoveEquipmentGroup(r.Context(), equipmentID, groupID); err != nil {
+		http.Redirect(w, r, "/admin?error=Failed+to+revoke+group+access", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Group+revoked", http.StatusSeeOther)
+}
+
+// extractIDFromPrefixAndSuffix parses an integer ID from a URL path of the
+// form "<prefix><ID><suffix>". It returns an error when the path does not
+// match the expected shape or the ID is not numeric.
+func extractIDFromPrefixAndSuffix(path, prefix, suffix string) (int, error) {
+	if !strings.HasPrefix(path, prefix) {
+		return 0, fmt.Errorf("path %q missing prefix %q", path, prefix)
+	}
+	remainder := strings.TrimPrefix(path, prefix)
+	if !strings.HasSuffix(remainder, suffix) {
+		return 0, fmt.Errorf("path %q missing suffix %q", path, suffix)
+	}
+	idStr := strings.TrimSuffix(remainder, suffix)
+	if idStr == "" {
+		return 0, fmt.Errorf("empty id in path %q", path)
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid id %q: %w", idStr, err)
+	}
+	return id, nil
+}
+
 // AddGroup handles POST /admin/add-group.
 func (h *Handlers) AddGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

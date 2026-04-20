@@ -55,24 +55,32 @@ func newAuthenticatedRequest(method, target string, body url.Values) *http.Reque
 // ---------------------------------------------------------------------------
 
 type mockService struct {
-	equipment    []admin.Equipment
-	groups       []admin.Group
-	users        []admin.UserAccess
-	apiUsers     []admin.APIUser
-	isAdmin      bool
-	updateErr    error
-	setAdminErr  error
-	deleteRows   int64
-	deleteErr    error
-	resetPwd     string
-	resetErr     error
-	addEqErr     error
-	deleteEqErr  error
-	addGrpErr    error
-	deleteGrpErr error
-	reportRecs   []admin.BookingRecord
-	reportErr    error
-	listUsersErr error
+	equipment        []admin.Equipment
+	groups           []admin.Group
+	users            []admin.UserAccess
+	apiUsers         []admin.APIUser
+	isAdmin          bool
+	updateErr        error
+	setAdminErr      error
+	deleteRows       int64
+	deleteErr        error
+	resetPwd         string
+	resetErr         error
+	addEqErr         error
+	deleteEqErr      error
+	setEqStatusErr   error
+	addEqGroupErr    error
+	removeEqGroupErr error
+	addGrpErr        error
+	deleteGrpErr     error
+	reportRecs       []admin.BookingRecord
+	reportErr        error
+	listUsersErr     error
+
+	// captured args (handler tests assert on these)
+	lastEquipmentID    int
+	lastEquipmentStat  string
+	lastEquipmentGroup int
 }
 
 func (m *mockService) IsAdmin(_ context.Context, _ int) (bool, error) {
@@ -101,8 +109,23 @@ func (m *mockService) ResetPassword(_ context.Context, _ int) (string, error) {
 }
 func (m *mockService) AddEquipment(_ context.Context, _ string) error { return m.addEqErr }
 func (m *mockService) DeleteEquipment(_ context.Context, _ int) error { return m.deleteEqErr }
-func (m *mockService) AddGroup(_ context.Context, _ string) error     { return m.addGrpErr }
-func (m *mockService) DeleteGroup(_ context.Context, _ int) error     { return m.deleteGrpErr }
+func (m *mockService) SetEquipmentStatus(_ context.Context, id int, status string) error {
+	m.lastEquipmentID = id
+	m.lastEquipmentStat = status
+	return m.setEqStatusErr
+}
+func (m *mockService) AddEquipmentGroup(_ context.Context, equipmentID, groupID int) error {
+	m.lastEquipmentID = equipmentID
+	m.lastEquipmentGroup = groupID
+	return m.addEqGroupErr
+}
+func (m *mockService) RemoveEquipmentGroup(_ context.Context, equipmentID, groupID int) error {
+	m.lastEquipmentID = equipmentID
+	m.lastEquipmentGroup = groupID
+	return m.removeEqGroupErr
+}
+func (m *mockService) AddGroup(_ context.Context, _ string) error { return m.addGrpErr }
+func (m *mockService) DeleteGroup(_ context.Context, _ int) error { return m.deleteGrpErr }
 func (m *mockService) GetEquipmentReport(_ context.Context, _ int, _, _ string) ([]admin.BookingRecord, error) {
 	return m.reportRecs, m.reportErr
 }
@@ -117,10 +140,10 @@ func (m *mockService) ListAPIUsers(_ context.Context) ([]admin.APIUser, error) {
 func TestGetAllEquipment_ReturnsTwoRows(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT equipment_id, name`).
-		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location"}).
-			AddRow(1, "SEM", "Scanning electron microscope", "Lab A").
-			AddRow(2, "AFM", "Atomic force microscope", "Lab B"))
+	mock.ExpectQuery(`SELECT e\.equipment_id`).
+		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location", "status", "groups"}).
+			AddRow(1, "SEM", "Scanning electron microscope", "Lab A", "online", []string{"Barbaros"}).
+			AddRow(2, "AFM", "Atomic force microscope", "Lab B", "maintenance", []string{}))
 
 	equipment, err := svc.GetAllEquipment(context.Background())
 	if err != nil {
@@ -132,6 +155,18 @@ func TestGetAllEquipment_ReturnsTwoRows(t *testing.T) {
 	if equipment[0].Name != "SEM" {
 		t.Errorf("expected first equipment name %q, got %q", "SEM", equipment[0].Name)
 	}
+	if equipment[0].Status != "online" {
+		t.Errorf("expected first equipment status %q, got %q", "online", equipment[0].Status)
+	}
+	if len(equipment[0].Groups) != 1 || equipment[0].Groups[0] != "Barbaros" {
+		t.Errorf("expected first equipment groups [Barbaros], got %v", equipment[0].Groups)
+	}
+	if equipment[1].Status != "maintenance" {
+		t.Errorf("expected second equipment status %q, got %q", "maintenance", equipment[1].Status)
+	}
+	if len(equipment[1].Groups) != 0 {
+		t.Errorf("expected empty groups for AFM, got %v", equipment[1].Groups)
+	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
 	}
@@ -140,8 +175,8 @@ func TestGetAllEquipment_ReturnsTwoRows(t *testing.T) {
 func TestGetAllEquipment_EmptyResult(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectQuery(`SELECT equipment_id, name`).
-		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location"}))
+	mock.ExpectQuery(`SELECT e\.equipment_id`).
+		WillReturnRows(pgxmock.NewRows([]string{"equipment_id", "name", "description", "location", "status", "groups"}))
 
 	equipment, err := svc.GetAllEquipment(context.Background())
 	if err != nil {
@@ -929,5 +964,206 @@ func TestAPIEquipment_ReturnsJSON(t *testing.T) {
 	}
 	if first["location"] != "Lab A" {
 		t.Errorf("expected location=Lab A, got %v", first["location"])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Service tests — SetEquipmentStatus
+// ---------------------------------------------------------------------------
+
+func TestSetEquipmentStatus_Success(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`UPDATE equipment SET status`).
+		WithArgs("maintenance", 7).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	if err := svc.SetEquipmentStatus(context.Background(), 7, "maintenance"); err != nil {
+		t.Fatalf("SetEquipmentStatus: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestSetEquipmentStatus_NotFound(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`UPDATE equipment SET status`).
+		WithArgs("offline", 999).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+
+	err := svc.SetEquipmentStatus(context.Background(), 999, "offline")
+	if !errors.Is(err, web.ErrNotFound) {
+		t.Errorf("expected web.ErrNotFound, got %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestSetEquipmentStatus_InvalidStatus(t *testing.T) {
+	svc, _ := newSvc(t)
+
+	if err := svc.SetEquipmentStatus(context.Background(), 1, "bogus"); err == nil {
+		t.Fatal("expected error for invalid status")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Service tests — AddEquipmentGroup / RemoveEquipmentGroup
+// ---------------------------------------------------------------------------
+
+func TestAddEquipmentGroup_Success(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`INSERT INTO equipment_group_access`).
+		WithArgs(5, 9).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	if err := svc.AddEquipmentGroup(context.Background(), 5, 9); err != nil {
+		t.Fatalf("AddEquipmentGroup: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestRemoveEquipmentGroup_Success(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`DELETE FROM equipment_group_access`).
+		WithArgs(5, 9).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	if err := svc.RemoveEquipmentGroup(context.Background(), 5, 9); err != nil {
+		t.Fatalf("RemoveEquipmentGroup: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Handler tests — SetEquipmentStatus / AddEquipmentGroup / RemoveEquipmentGroup
+// ---------------------------------------------------------------------------
+
+func TestHandlerSetEquipmentStatus_MethodNotAllowed(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodGet, "/admin/equipment/5/status", nil)
+	rr := httptest.NewRecorder()
+	h.SetEquipmentStatus(rr, req)
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", rr.Code)
+	}
+}
+
+func TestHandlerSetEquipmentStatus_InvalidPath(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/abc/status", url.Values{"status": {"online"}})
+	rr := httptest.NewRecorder()
+	h.SetEquipmentStatus(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for non-numeric id, got %d", rr.Code)
+	}
+}
+
+func TestHandlerSetEquipmentStatus_EmptyStatus(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/5/status", url.Values{"status": {""}})
+	rr := httptest.NewRecorder()
+	h.SetEquipmentStatus(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
+	}
+}
+
+func TestHandlerSetEquipmentStatus_Success(t *testing.T) {
+	svc := &mockService{}
+	h := newHandlers(svc)
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/5/status", url.Values{"status": {"maintenance"}})
+	rr := httptest.NewRecorder()
+	h.SetEquipmentStatus(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "success") {
+		t.Errorf("expected success redirect, got %q", loc)
+	}
+	if svc.lastEquipmentID != 5 || svc.lastEquipmentStat != "maintenance" {
+		t.Errorf("service called with unexpected args: id=%d, status=%q", svc.lastEquipmentID, svc.lastEquipmentStat)
+	}
+}
+
+func TestHandlerSetEquipmentStatus_NotFound(t *testing.T) {
+	h := newHandlers(&mockService{setEqStatusErr: web.ErrNotFound})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/99/status", url.Values{"status": {"online"}})
+	rr := httptest.NewRecorder()
+	h.SetEquipmentStatus(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
+	}
+}
+
+func TestHandlerAddEquipmentGroup_Success(t *testing.T) {
+	svc := &mockService{}
+	h := newHandlers(svc)
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/5/groups/add", url.Values{"group_id": {"3"}})
+	rr := httptest.NewRecorder()
+	h.AddEquipmentGroup(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "success") {
+		t.Errorf("expected success redirect, got %q", loc)
+	}
+	if svc.lastEquipmentID != 5 || svc.lastEquipmentGroup != 3 {
+		t.Errorf("service called with unexpected args: eq=%d, group=%d", svc.lastEquipmentID, svc.lastEquipmentGroup)
+	}
+}
+
+func TestHandlerAddEquipmentGroup_MissingGroupID(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/5/groups/add", url.Values{"group_id": {""}})
+	rr := httptest.NewRecorder()
+	h.AddEquipmentGroup(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
+	}
+}
+
+func TestHandlerRemoveEquipmentGroup_Success(t *testing.T) {
+	svc := &mockService{}
+	h := newHandlers(svc)
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/5/groups/remove", url.Values{"group_id": {"3"}})
+	rr := httptest.NewRecorder()
+	h.RemoveEquipmentGroup(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if svc.lastEquipmentID != 5 || svc.lastEquipmentGroup != 3 {
+		t.Errorf("service called with unexpected args: eq=%d, group=%d", svc.lastEquipmentID, svc.lastEquipmentGroup)
+	}
+}
+
+func TestHandlerRemoveEquipmentGroup_ServiceError(t *testing.T) {
+	h := newHandlers(&mockService{removeEqGroupErr: errors.New("db error")})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/5/groups/remove", url.Values{"group_id": {"3"}})
+	rr := httptest.NewRecorder()
+	h.RemoveEquipmentGroup(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
 	}
 }

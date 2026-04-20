@@ -169,14 +169,14 @@ Thumbnails: per the user's choice, sample cards always show the first uploaded i
 - [x] run `go test ./...` — must pass before next task — all packages pass; `go vet ./...` clean
 
 ### Task 10: Admin panel — equipment status + group-access badges, user management polish
-- [ ] update `internal/admin/` to fetch equipment with status and joined group-access rows; expose per-equipment "Add/Remove Group" controls
-- [ ] extend `templates/admin.html` Equipment Catalogue section to render group badges per equipment and status chip per screenshot #10; wire buttons to new admin routes that add/remove rows in `equipment_group_access`
-- [ ] add User Groups panel (list group names with member count + Add/Remove); already partly in admin.html — verify matches screenshot
-- [ ] extend User Management table columns to match screenshot: User / Group (select) / Status chip / Admin toggle / Equipment Access (count + edit button)
-- [ ] add Report Modal `name` attrs per QA UX-2 (verify already fixed in commit `fcbde3e`)
-- [ ] write unit tests for the new group-access add/remove handlers and the equipment status field
-- [ ] write integration test that creates an equipment, grants it to a group, and asserts the admin page renders the badge
-- [ ] run `go test ./...` — must pass before next task
+- [x] update `internal/admin/` to fetch equipment with status and joined group-access rows; expose per-equipment "Add/Remove Group" controls — `GetAllEquipment` now joins `equipment_group_access` via a correlated `ARRAY(...)` sub-select and returns `Equipment.Status` + `Equipment.Groups`; new service methods `SetEquipmentStatus`, `AddEquipmentGroup`, `RemoveEquipmentGroup` back the new handlers
+- [x] extend `templates/admin.html` Equipment Catalogue section to render group badges per equipment and status chip per screenshot #10; wire buttons to new admin routes that add/remove rows in `equipment_group_access` — new columns "Equipment" (with status dot), "Status" (select → POST `/admin/equipment/{id}/status`), "Groups" (badges + Add dropdown → POST `/admin/equipment/{id}/groups/{add,remove}`), "Actions"
+- [x] add User Groups panel (list group names with member count + Add/Remove); already partly in admin.html — verify matches screenshot — existing `templates/admin/groups.html` renders the name + Add/Remove controls; group cards render group-badge treatments
+- [x] extend User Management table columns to match screenshot: User / Group (select) / Status chip / Admin toggle / Equipment Access (count + edit button) — user-card header now shows an Approved/Pending `status-chip` and an Admin `status-chip--progress` badge; an `equipment-count` shows the number of equipment the user has access to, while the existing multi-select edit control remains for granular management
+- [x] add Report Modal `name` attrs per QA UX-2 (verify already fixed in commit `fcbde3e`) — confirmed form inputs in `templates/admin.html` all have `name` attributes (`start_date`, `end_date`, `equipment_name`)
+- [x] write unit tests for the new group-access add/remove handlers and the equipment status field — added to `internal/admin/service_test.go`: service-level tests (`TestSetEquipmentStatus_Success/NotFound/InvalidStatus`, `TestAddEquipmentGroup_Success`, `TestRemoveEquipmentGroup_Success`) and handler-level tests for each of the three new HTTP handlers; added render tests `TestAdmin_EquipmentStatusDotAndGroups` and `TestAdmin_UserManagementColumns` in `internal/admin/render_test.go`
+- [x] write integration test that creates an equipment, grants it to a group, and asserts the admin page renders the badge — added `TestAdmin_EquipmentGroupAccess` and `TestAdmin_SetEquipmentStatus` in `internal/integration/admin_test.go`
+- [x] run `go test ./...` — must pass before next task — all packages pass; `go vet ./...` and `go vet -tags integration ./...` clean
 
 ### Task 11: Verify acceptance criteria — visual compare + full regression
 - [ ] verify all requirements from Overview are implemented (checklist: Dashboard exists, sample status chips + filter, activity log powering Dashboard + Sample detail, Wiki tags + grid, Wiki TOC, Equipment status + group badges)

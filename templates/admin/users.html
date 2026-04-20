@@ -23,6 +23,18 @@
                     <div class="user-meta">
                         <strong>{{$user.Username}}</strong>
                         {{if $user.GroupName}}<span class="badge">{{$user.GroupName}}</span>{{end}}
+                        {{if $user.Approved}}
+                        <span class="status-chip status-chip--active"><span class="status-chip__dot"></span>Approved</span>
+                        {{else}}
+                        <span class="status-chip status-chip--pending"><span class="status-chip__dot"></span>Pending</span>
+                        {{end}}
+                        {{if $user.Admin}}
+                        <span class="status-chip status-chip--progress"><span class="status-chip__dot"></span>Admin</span>
+                        {{end}}
+                    </div>
+                    <div class="user-card__equipment-count" aria-label="Equipment access count">
+                        <span class="equipment-count-label">Equipment</span>
+                        <span class="equipment-count-value">{{len $user.EquipmentAccess}}</span>
                     </div>
                 </header>
                 <div class="user-card__grid">

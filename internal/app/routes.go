@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"strings"
 
 	"sampleDB/internal/admin"
 	"sampleDB/internal/auth"
@@ -138,6 +139,23 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/reset-password", withAuth(adminMW(adminHdlrs.ResetPassword)))
 	mux.HandleFunc("/admin/add-equipment", withAuth(adminMW(adminHdlrs.AddEquipment)))
 	mux.HandleFunc("/admin/delete-equipment/", withAuth(adminMW(adminHdlrs.DeleteEquipment)))
+	mux.HandleFunc("/admin/equipment/", withAuth(adminMW(func(w http.ResponseWriter, r *http.Request) {
+		// Route equipment sub-paths:
+		//   /admin/equipment/{id}/status
+		//   /admin/equipment/{id}/groups/add
+		//   /admin/equipment/{id}/groups/remove
+		path := r.URL.Path
+		switch {
+		case strings.HasSuffix(path, "/status"):
+			adminHdlrs.SetEquipmentStatus(w, r)
+		case strings.HasSuffix(path, "/groups/add"):
+			adminHdlrs.AddEquipmentGroup(w, r)
+		case strings.HasSuffix(path, "/groups/remove"):
+			adminHdlrs.RemoveEquipmentGroup(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})))
 	mux.HandleFunc("/admin/add-group", withAuth(adminMW(adminHdlrs.AddGroup)))
 	mux.HandleFunc("/admin/delete-group/", withAuth(adminMW(adminHdlrs.DeleteGroup)))
 	mux.HandleFunc("/admin/equipment-report", withAuth(adminMW(adminHdlrs.EquipmentReport)))

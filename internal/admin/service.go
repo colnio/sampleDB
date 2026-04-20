@@ -34,6 +34,9 @@ type Service interface {
 	// Equipment management
 	AddEquipment(ctx context.Context, name string) error
 	DeleteEquipment(ctx context.Context, equipmentID int) error
+	SetEquipmentStatus(ctx context.Context, equipmentID int, status string) error
+	AddEquipmentGroup(ctx context.Context, equipmentID, groupID int) error
+	RemoveEquipmentGroup(ctx context.Context, equipmentID, groupID int) error
 
 	// Group management
 	AddGroup(ctx context.Context, name string) error
@@ -68,11 +71,27 @@ func (s *DBService) IsAdmin(ctx context.Context, userID int) (bool, error) {
 	return isAdmin, err
 }
 
-// GetAllEquipment returns all equipment ordered by name.
+// GetAllEquipment returns all equipment ordered by name, including status and
+// the names of groups with access via equipment_group_access.
 func (s *DBService) GetAllEquipment(ctx context.Context) ([]Equipment, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT equipment_id, name, coalesce(description, 'N/A'), coalesce(location, 'N/A')
-         FROM equipment ORDER BY name`)
+		`SELECT e.equipment_id,
+                e.name,
+                COALESCE(e.description, 'N/A'),
+                COALESCE(e.location, 'N/A'),
+                COALESCE(e.status, 'online'),
+                COALESCE(
+                    ARRAY(
+                        SELECT g.name
+                          FROM equipment_group_access ega
+                          JOIN groups g ON g.group_id = ega.group_id
+                         WHERE ega.equipment_id = e.equipment_id
+                         ORDER BY g.name
+                    ),
+                    '{}'::text[]
+                ) AS group_names
+         FROM equipment e
+         ORDER BY e.name`)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +100,11 @@ func (s *DBService) GetAllEquipment(ctx context.Context) ([]Equipment, error) {
 	var equipment []Equipment
 	for rows.Next() {
 		var eq Equipment
-		if err := rows.Scan(&eq.ID, &eq.Name, &eq.Description, &eq.Location); err != nil {
+		if err := rows.Scan(&eq.ID, &eq.Name, &eq.Description, &eq.Location, &eq.Status, &eq.Groups); err != nil {
 			return nil, err
+		}
+		if eq.Groups == nil {
+			eq.Groups = []string{}
 		}
 		equipment = append(equipment, eq)
 	}
@@ -298,6 +320,52 @@ func (s *DBService) DeleteEquipment(ctx context.Context, equipmentID int) error 
 		return web.ErrNotFound
 	}
 	return tx.Commit(ctx)
+}
+
+// validEquipmentStatuses matches the CHECK constraint in DDL.
+var validEquipmentStatuses = map[string]struct{}{
+	"online":      {},
+	"offline":     {},
+	"maintenance": {},
+}
+
+// SetEquipmentStatus updates an equipment row's status column.
+// Returns web.ErrNotFound if the equipment does not exist and an error if
+// status is not one of the allowed values.
+func (s *DBService) SetEquipmentStatus(ctx context.Context, equipmentID int, status string) error {
+	if _, ok := validEquipmentStatuses[status]; !ok {
+		return fmt.Errorf("invalid equipment status %q", status)
+	}
+	tag, err := s.db.Exec(ctx,
+		"UPDATE equipment SET status = $1 WHERE equipment_id = $2",
+		status, equipmentID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
+}
+
+// AddEquipmentGroup grants a group access to the given equipment. Duplicate
+// rows are silently ignored (ON CONFLICT DO NOTHING).
+func (s *DBService) AddEquipmentGroup(ctx context.Context, equipmentID, groupID int) error {
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO equipment_group_access (equipment_id, group_id)
+         VALUES ($1, $2)
+         ON CONFLICT (equipment_id, group_id) DO NOTHING`,
+		equipmentID, groupID)
+	return err
+}
+
+// RemoveEquipmentGroup revokes a group's access to the given equipment.
+// Returns nil even if no row existed (idempotent).
+func (s *DBService) RemoveEquipmentGroup(ctx context.Context, equipmentID, groupID int) error {
+	_, err := s.db.Exec(ctx,
+		`DELETE FROM equipment_group_access WHERE equipment_id = $1 AND group_id = $2`,
+		equipmentID, groupID)
+	return err
 }
 
 // AddGroup inserts a new group. If the name already exists the insert is silently

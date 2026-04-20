@@ -6,10 +6,12 @@ import "time"
 
 // Equipment represents a piece of lab equipment.
 type Equipment struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Location    string `json:"location"`
+	ID          int      `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Location    string   `json:"location"`
+	Status      string   `json:"status"`
+	Groups      []string `json:"groups"`
 }
 
 // Group represents a user group.

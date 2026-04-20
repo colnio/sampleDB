@@ -37,27 +37,79 @@
             </div>
             <div class="card-body card-body--flush">
                 <div class="table-scroll">
-                    <table class="data-table">
+                    <table class="data-table equipment-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
+                                <th>Equipment</th>
+                                <th>Status</th>
+                                <th>Groups</th>
                                 <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {{if .Equipment}}
+                                {{$groupsAll := .Groups}}
                                 {{range .Equipment}}
-                                <tr>
-                                    <td>{{.Name}}</td>
+                                {{$eq := .}}
+                                <tr data-equipment-id="{{$eq.ID}}">
+                                    <td>
+                                        <div class="equipment-cell">
+                                            <span class="equipment-status-dot equipment-status-dot--{{$eq.Status}}" aria-hidden="true"></span>
+                                            <span class="equipment-cell__name">{{$eq.Name}}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <form action="/admin/equipment/{{$eq.ID}}/status" method="POST" class="inline-form status-form">
+                                            <select name="status" class="status-select" onchange="this.form.submit()" aria-label="Equipment status">
+                                                <option value="online" {{if eq $eq.Status "online"}}selected{{end}}>online</option>
+                                                <option value="offline" {{if eq $eq.Status "offline"}}selected{{end}}>offline</option>
+                                                <option value="maintenance" {{if eq $eq.Status "maintenance"}}selected{{end}}>maintenance</option>
+                                            </select>
+                                            <noscript><button type="submit" class="button button--secondary button--small">Set</button></noscript>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <div class="equipment-groups">
+                                            {{if $eq.Groups}}
+                                                {{range $g := $eq.Groups}}
+                                                <form action="/admin/equipment/{{$eq.ID}}/groups/remove" method="POST" class="inline-form group-badge-form"
+                                                      onsubmit="return confirm('Revoke {{$g}} from {{$eq.Name}}?');">
+                                                    {{range $all := $groupsAll}}
+                                                        {{if eq $all.Name $g}}
+                                                        <input type="hidden" name="group_id" value="{{$all.ID}}">
+                                                        {{end}}
+                                                    {{end}}
+                                                    <button type="submit" class="group-badge" title="Revoke {{$g}} access">
+                                                        <span class="group-badge__name">{{$g}}</span>
+                                                        <span class="group-badge__remove" aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </form>
+                                                {{end}}
+                                            {{else}}
+                                                <span class="group-badge-empty">No groups</span>
+                                            {{end}}
+                                            {{if $groupsAll}}
+                                            <form action="/admin/equipment/{{$eq.ID}}/groups/add" method="POST" class="inline-form add-group-form">
+                                                <select name="group_id" class="group-add-select" aria-label="Add group">
+                                                    <option value="">Add group…</option>
+                                                    {{range $all := $groupsAll}}
+                                                    <option value="{{$all.ID}}">{{$all.Name}}</option>
+                                                    {{end}}
+                                                </select>
+                                                <button type="submit" class="button button--secondary button--small">+</button>
+                                            </form>
+                                            {{end}}
+                                        </div>
+                                    </td>
                                     <td class="col-actions">
-                                        <button onclick="showReportModal({{.ID}}, '{{.Name}}')" class="button button--secondary button--small">Usage</button>
-                                        <button onclick="confirmDeleteEquipment({{.ID}}, '{{.Name}}')" class="button button--destructive button--small">Remove</button>
+                                        <button onclick="showReportModal({{$eq.ID}}, '{{$eq.Name}}')" class="button button--secondary button--small">Usage</button>
+                                        <button onclick="confirmDeleteEquipment({{$eq.ID}}, '{{$eq.Name}}')" class="button button--destructive button--small">Remove</button>
                                     </td>
                                 </tr>
                                 {{end}}
                             {{else}}
                                 <tr>
-                                    <td colspan="2" class="empty-state">No equipment registered yet.</td>
+                                    <td colspan="4" class="empty-state">No equipment registered yet.</td>
                                 </tr>
                             {{end}}
                         </tbody>
@@ -203,6 +255,131 @@
 
 .data-table tbody tr:last-child td {
     border-bottom: none;
+}
+
+.equipment-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--space-sm) + var(--space-xs));
+}
+
+.equipment-cell__name {
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.equipment-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-success, #10b981);
+    display: inline-block;
+    flex: none;
+}
+
+.equipment-status-dot--offline {
+    background: var(--color-destructive, #ef4444);
+}
+
+.equipment-status-dot--maintenance {
+    background: #f59e0b;
+}
+
+.status-select {
+    width: auto;
+    min-width: 120px;
+    font-size: var(--font-size-sm);
+    padding: var(--space-xs) var(--space-sm);
+}
+
+.equipment-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+}
+
+.group-badge-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px calc(var(--space-sm) - 2px) 2px var(--space-sm);
+    border-radius: 9999px;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--color-primary-active);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.group-badge:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-destructive, #dc2626);
+}
+
+.group-badge__remove {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.group-badge-empty {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+.add-group-form {
+    display: inline-flex;
+    gap: var(--space-xs);
+    align-items: center;
+}
+
+.group-add-select {
+    min-width: 120px;
+    width: auto;
+    font-size: var(--font-size-sm);
+    padding: var(--space-xs) var(--space-sm);
+}
+
+.equipment-table .col-actions {
+    width: 180px;
+}
+
+.user-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.user-meta {
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.user-card__equipment-count {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-xs);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.equipment-count-value {
+    color: var(--text-strong);
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
 .col-actions {
