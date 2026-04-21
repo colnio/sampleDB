@@ -1,5 +1,5 @@
 {{define "step_add_form"}}
-<div class="step-add-form card card--nested">
+<div id="step-add-panel" class="step-add-form card card--nested" data-step-add-panel hidden>
     <h3>Add Step</h3>
     <form method="POST"
           action="/samples/{{.Sample.ID}}/steps"
@@ -41,6 +41,7 @@
         </div>
         <div class="form-actions">
             <button type="submit" class="button button--primary button--small">Add Step</button>
+            <button type="button" class="button button--ghost button--small" data-step-add-cancel>Cancel</button>
             <div id="step-add-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
                 <span class="spinner"></span>
             </div>

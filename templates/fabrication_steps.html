@@ -2,6 +2,16 @@
 <section id="fabrication-steps-panel" class="card fabrication-steps" style="padding:18px 22px;">
     <div class="flex-between" style="margin-bottom:8px;">
         <div class="eyebrow" style="margin:0;">Fabrication Steps</div>
+        <button type="button"
+                class="button button--ghost button--small"
+                data-step-add-toggle
+                aria-controls="step-add-panel"
+                aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+            </svg>
+            Add Step
+        </button>
     </div>
 
     {{with .Flash}}

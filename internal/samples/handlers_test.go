@@ -90,3 +90,49 @@ func TestEditSample_AdminPreservesOwnerWhenNotSubmitted(t *testing.T) {
 		t.Errorf("Owner = %q, want %q", capturedParams.Owner, existingOwnerName)
 	}
 }
+
+func TestEditSample_PreservesOmittedFields(t *testing.T) {
+	existingOwnerID := 42
+	var capturedParams samples.UpdateParams
+
+	svc := &editSampleStub{
+		checkOwner: func(_ context.Context, _, _ int) error { return nil },
+		isAdmin:    func(_ context.Context, _ int) (bool, error) { return true, nil },
+		getByID: func(_ context.Context, id int) (samples.Sample, error) {
+			return samples.Sample{
+				ID:          id,
+				Name:        "Old Name",
+				Description: "Existing description",
+				Keywords:    "diamond,NV",
+				OwnerUserID: &existingOwnerID,
+				Owner:       "alice",
+			}, nil
+		},
+		update: func(_ context.Context, _ int, p samples.UpdateParams) error {
+			capturedParams = p
+			return nil
+		},
+	}
+
+	h := samples.NewHandlers(svc, &web.Renderer{}, auth.NewManager(nil), samples.HandlerConfig{})
+
+	req := httptest.NewRequest(http.MethodPost, "/samples/edit/1", strings.NewReader("name=New+Name"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(auth.ContextWithSession(req.Context(), auth.Session{UserID: 99, Username: "admin"}))
+
+	rr := httptest.NewRecorder()
+	h.EditSample(rr, req)
+
+	if rr.Code != http.StatusSeeOther && rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status %d: %s", rr.Code, rr.Body.String())
+	}
+	if capturedParams.Name != "New Name" {
+		t.Errorf("Name = %q, want New Name", capturedParams.Name)
+	}
+	if capturedParams.Description != "Existing description" {
+		t.Errorf("Description = %q, want Existing description", capturedParams.Description)
+	}
+	if capturedParams.Keywords != "diamond,NV" {
+		t.Errorf("Keywords = %q, want diamond,NV", capturedParams.Keywords)
+	}
+}

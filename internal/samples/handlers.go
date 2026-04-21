@@ -278,6 +278,47 @@ func (h *Handlers) renderSampleEditSection(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// renderSampleTitleSection re-renders the inline editable title partial.
+func (h *Handlers) renderSampleTitleSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string) {
+	data, err := h.loadSampleDetailData(r.Context(), session, sampleID)
+	if err != nil {
+		http.Error(w, "Sample not found", http.StatusNotFound)
+		return
+	}
+	data.Flash = flash
+	data.Error = errMsg
+	data.IsPartial = true
+	if err := h.renderer.RenderSection(w, "sample_detail", "sample_title_inline", data); err != nil {
+		http.Error(w, "Error rendering sample title", http.StatusInternalServerError)
+	}
+}
+
+// renderSampleDescriptionSection re-renders the inline editable description card.
+func (h *Handlers) renderSampleDescriptionSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string) {
+	data, err := h.loadSampleDetailData(r.Context(), session, sampleID)
+	if err != nil {
+		http.Error(w, "Sample not found", http.StatusNotFound)
+		return
+	}
+	data.Flash = flash
+	data.Error = errMsg
+	data.IsPartial = true
+	if err := h.renderer.RenderSection(w, "sample_detail", "sample_description_card", data); err != nil {
+		http.Error(w, "Error rendering sample description", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handlers) renderSampleEditResponse(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string) {
+	switch r.Header.Get("HX-Target") {
+	case "sample-title-inline":
+		h.renderSampleTitleSection(w, r, session, sampleID, flash, errMsg)
+	case "sample-description-card":
+		h.renderSampleDescriptionSection(w, r, session, sampleID, flash, errMsg)
+	default:
+		h.renderSampleEditSection(w, r, session, sampleID, flash, errMsg)
+	}
+}
+
 // renderFabricationStepsSection re-renders the fabrication steps panel as an HTMX partial.
 func (h *Handlers) renderFabricationStepsSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleIDStr, flash, errMsg string, editingStep int) {
 	data, err := h.loadSampleDetailData(r.Context(), session, sampleIDStr)
@@ -518,7 +559,7 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.CheckOwner(r.Context(), sampleIDInt, session.UserID); err != nil {
 		if isHTMXRequest(r) {
-			h.renderSampleEditSection(w, r, session, sampleID, "", "You do not have permission to edit this sample.")
+			h.renderSampleEditResponse(w, r, session, sampleID, "", "You do not have permission to edit this sample.")
 			return
 		}
 		h.handleOwnerError(w, err)
@@ -527,16 +568,36 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 
 	if err := r.ParseForm(); err != nil {
 		if isHTMXRequest(r) {
-			h.renderSampleEditSection(w, r, session, sampleID, "", "Unable to read the form submission.")
+			h.renderSampleEditResponse(w, r, session, sampleID, "", "Unable to read the form submission.")
 			return
 		}
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
-	name := r.FormValue("name")
-	description := r.FormValue("description")
-	keywords := r.FormValue("keywords")
+	existing, err := h.svc.GetByID(r.Context(), sampleIDInt)
+	if err != nil {
+		if isHTMXRequest(r) {
+			h.renderSampleEditResponse(w, r, session, sampleID, "", "Failed to load the current sample.")
+			return
+		}
+		log.Printf("samples.EditSample: fetch existing sample error: %v", err)
+		http.Error(w, "Error loading sample", http.StatusInternalServerError)
+		return
+	}
+
+	name := existing.Name
+	if _, ok := r.Form["name"]; ok {
+		name = r.FormValue("name")
+	}
+	description := existing.Description
+	if _, ok := r.Form["description"]; ok {
+		description = r.FormValue("description")
+	}
+	keywords := existing.Keywords
+	if _, ok := r.Form["keywords"]; ok {
+		keywords = r.FormValue("keywords")
+	}
 
 	isAdmin, _ := h.svc.IsAdmin(r.Context(), session.UserID)
 
@@ -559,11 +620,8 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// No owner_user_id submitted — preserve the existing owner rather
 			// than silently wiping it by passing nil to Update.
-			existing, fetchErr := h.svc.GetByID(r.Context(), sampleIDInt)
-			if fetchErr == nil {
-				ownerUserID = existing.OwnerUserID
-				ownerName = existing.Owner
-			}
+			ownerUserID = existing.OwnerUserID
+			ownerName = existing.Owner
 		}
 	} else {
 		uid := session.UserID
@@ -585,7 +643,7 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		Status:      status,
 	}); err != nil {
 		if isHTMXRequest(r) {
-			h.renderSampleEditSection(w, r, session, sampleID, "", "Failed to update the sample.")
+			h.renderSampleEditResponse(w, r, session, sampleID, "", "Failed to update the sample.")
 			return
 		}
 		log.Printf("samples.EditSample: update error: %v", err)
@@ -595,7 +653,7 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), sampleIDInt, name)
 
 	if isHTMXRequest(r) {
-		h.renderSampleEditSection(w, r, session, sampleID, "Changes saved", "")
+		h.renderSampleEditResponse(w, r, session, sampleID, "Changes saved", "")
 		return
 	}
 	http.Redirect(w, r, "/samples/"+sampleID, http.StatusSeeOther)

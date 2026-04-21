@@ -246,6 +246,193 @@ body {
     flex-wrap: wrap;
 }
 
+/* ---------- Sample detail page ---------- */
+.sample-detail-topbar {
+    align-items: flex-start;
+}
+
+.sample-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.sample-description-card,
+.sample-attachments-card {
+    padding: 18px 22px;
+    margin: 0;
+}
+
+.sample-description-card__chips {
+    margin-top: 14px;
+}
+
+.inline-edit {
+    min-width: 0;
+}
+
+.inline-edit__heading {
+    margin: 0 0 4px;
+}
+
+.inline-edit__display {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-strong);
+    font: inherit;
+    text-align: left;
+    border-radius: 8px;
+    cursor: text;
+}
+
+.inline-edit__display:hover,
+.inline-edit__display:focus-visible {
+    background: var(--surface-subtle);
+    border-color: var(--border-subtle);
+    outline: none;
+}
+
+.inline-edit__display--title {
+    display: block;
+    padding: 2px 6px;
+    margin-left: -6px;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+}
+
+.inline-edit__display--description {
+    display: block;
+    padding: 8px 10px;
+    margin: -8px -10px 0;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.inline-edit__display--empty {
+    color: var(--text-muted);
+}
+
+.inline-edit__display[hidden] {
+    display: none !important;
+}
+
+.inline-edit__form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.inline-edit__form[hidden] {
+    display: none;
+}
+
+.inline-edit__form--title {
+    max-width: min(760px, 100%);
+}
+
+.inline-edit__form--title input {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.inline-edit__form textarea {
+    min-height: 118px;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.inline-edit__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.inline-edit__alert {
+    margin: 0 0 8px;
+}
+
+.fabrication-steps .flex-between .button svg,
+.attachment-upload-label svg,
+.attachment-drop-tile svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+}
+
+.step-add-form {
+    margin-top: 16px;
+}
+
+.step-add-form[hidden] {
+    display: none;
+}
+
+.sample-attachments-card .attachments-header {
+    align-items: center;
+}
+
+.sample-attachments-card .attachments-header .eyebrow {
+    margin: 0;
+}
+
+.sample-attachment-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.sample-attachment-grid .gallery-item {
+    border-color: var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-subtle);
+}
+
+.sample-attachment-grid .gallery-thumb {
+    aspect-ratio: 16 / 9;
+}
+
+.sample-attachment-grid .gallery-item__caption {
+    padding: 6px 8px;
+}
+
+.attachment-drop-tile {
+    min-height: 100px;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border-width: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.attachment-drop-tile svg {
+    width: 20px;
+    height: 20px;
+}
+
+.attachment-drop-tile .upload-progress {
+    width: min(120px, 80%);
+}
+
+.sample-attachments-card .attachment-file-list {
+    margin-top: 12px;
+}
+
+.attachment-file-list__icon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
 /* ---------- Dashboard stats ---------- */
 .stats-grid {
     display: grid;
@@ -1363,6 +1550,10 @@ body {
         flex-wrap: wrap;
     }
 
+    .sample-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
@@ -1412,6 +1603,20 @@ body {
 
     .page-topbar__left h1 {
         font-size: 20px;
+    }
+
+    .inline-edit__form--title input {
+        font-size: 20px;
+    }
+
+    .sample-description-card,
+    .sample-attachments-card,
+    .fabrication-steps {
+        padding: 16px;
+    }
+
+    .sample-attachment-grid {
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
     }
 
     .fab-step {

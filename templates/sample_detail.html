@@ -9,53 +9,26 @@
     Back to samples
 </a>
 
-<div class="page-topbar">
+<div class="page-topbar sample-detail-topbar">
     <div class="page-topbar__left">
         <div class="flex-center gap-sm" style="margin-bottom:6px;">
             <span class="mono muted" style="font-size:12px;">SMP-{{printf "%03d" .Sample.ID}}</span>
             <span class="status-chip status-chip--{{statusChipClass .Sample.Status}}"><span class="status-chip__dot"></span>{{statusLabel .Sample.Status}}</span>
             {{if .ShareURL}}<span class="status-chip status-chip--progress"><span class="status-chip__dot"></span>Shared</span>{{end}}
         </div>
-        <h1>{{.Sample.Name}}</h1>
+        {{template "sample_title_inline" .}}
         <div class="page-topbar__crumbs">
-            Created {{.Sample.CreatedAt.Format "Jan 2, 2006"}} · Owner <strong>{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unassigned{{end}}</strong> · {{len .Sample.Attachments}} file{{if ne (len .Sample.Attachments) 1}}s{{end}} · {{len .Steps}} step{{if ne (len .Steps) 1}}s{{end}}
+            Created {{.Sample.CreatedAt.Format "2006-01-02"}} · Owner <strong>{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unassigned{{end}}</strong> · {{len .Sample.Attachments}} file{{if ne (len .Sample.Attachments) 1}}s{{end}} · {{len .Steps}} fabrication step{{if ne (len .Steps) 1}}s{{end}}
         </div>
     </div>
 </div>
 
-<section class="sample-detail" style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
+<section class="sample-detail-grid">
     <div class="stack-md">
-        {{if .Sample.Description}}
-        <div class="card" style="padding:18px 22px;">
-            <div class="eyebrow">Description</div>
-            <p style="margin:0;line-height:1.7;white-space:pre-wrap;">{{.Sample.Description}}</p>
-            {{if .Sample.Keywords}}
-            <div class="chip-row" style="margin-top:14px;">
-                {{range split .Sample.Keywords ","}}{{with trim .}}<span class="chip">{{.}}</span>{{end}}{{end}}
-            </div>
-            {{end}}
-        </div>
-        {{end}}
+        {{template "sample_description_card" .}}
 
-        <details class="panel-details" open>
-            <summary>Fabrication Steps</summary>
-            {{template "fabrication_steps_panel" .}}
-        </details>
-
-        <details class="panel-details" open>
-            <summary>Attachments</summary>
-            {{template "sample_attachments" .}}
-        </details>
-
-        <details class="panel-details">
-            <summary>Share Link</summary>
-            {{template "sample_share_panel" .}}
-        </details>
-
-        <details class="panel-details">
-            <summary>Edit Sample Details</summary>
-            {{template "sample_edit_form" .}}
-        </details>
+        {{template "fabrication_steps_panel" .}}
+        {{template "sample_attachments" .}}
     </div>
 
     <aside class="stack-md">
@@ -76,6 +49,12 @@
                     <span class="kv-list__key">Created</span>
                     <span class="kv-list__value mono">{{.Sample.CreatedAt.Format "2006-01-02"}}</span>
                 </div>
+                {{if .Activity}}{{with index .Activity 0}}
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Last edit</span>
+                    <span class="kv-list__value">{{.CreatedAt.Format "Jan 02, 15:04"}} by {{.ActorUsername}}</span>
+                </div>
+                {{end}}{{end}}
                 <div class="kv-list__row">
                     <span class="kv-list__key">Steps</span>
                     <span class="kv-list__value">{{len .Steps}}</span>
@@ -83,10 +62,6 @@
                 <div class="kv-list__row">
                     <span class="kv-list__key">Files</span>
                     <span class="kv-list__value">{{len .Sample.Attachments}}</span>
-                </div>
-                <div class="kv-list__row">
-                    <span class="kv-list__key">Sharing</span>
-                    <span class="kv-list__value">{{if .ShareURL}}{{if eq .Sample.ShareVisibility "public"}}Public{{else}}Authenticated{{end}}{{else}}Private{{end}}</span>
                 </div>
             </div>
         </div>
@@ -117,8 +92,8 @@
         </div>
 
         {{if .IsAdmin}}
-        <div class="card" id="sample-danger-zone" style="padding:18px 22px;border-color:var(--danger-border, #5a2424);">
-            <div class="eyebrow" style="color:var(--danger-text, #f87171);">Danger Zone</div>
+        <div class="card danger-card" id="sample-danger-zone" style="padding:18px 22px;">
+            <div class="eyebrow">Danger Zone</div>
             <p class="muted" style="margin:8px 0 14px;font-size:13px;">Permanently delete this sample, its fabrication steps, and every attachment. This cannot be undone.</p>
             <form action="/samples/{{.Sample.ID}}/delete"
                   method="POST"
@@ -131,15 +106,203 @@
         {{end}}
     </aside>
 </section>
+<script>
+(function () {
+    if (window.sampleDetailEnhancementsLoaded) {
+        if (window.initSampleDetailEnhancements) window.initSampleDetailEnhancements(document);
+        return;
+    }
+    window.sampleDetailEnhancementsLoaded = true;
 
-<a href="/samples" class="back-link">← Back to samples</a>
+    function initInlineEdits(root) {
+        root = root || document;
+        root.querySelectorAll('[data-inline-edit]').forEach(function (wrap) {
+            if (wrap.dataset.inlineEditInit) return;
+            wrap.dataset.inlineEditInit = '1';
+            var display = wrap.querySelector('[data-inline-edit-display]');
+            var form = wrap.querySelector('[data-inline-edit-form]');
+            var field = wrap.querySelector('[data-inline-edit-field]');
+            if (!display || !form || !field) return;
+
+            function open() {
+                wrap.dataset.inlineEditOriginal = field.value;
+                display.hidden = true;
+                form.hidden = false;
+                window.setTimeout(function () {
+                    field.focus();
+                    if (field.tagName === 'TEXTAREA' && field.setSelectionRange) {
+                        var pos = field.value.length;
+                        field.setSelectionRange(pos, pos);
+                    } else if (field.select) {
+                        field.select();
+                    }
+                }, 0);
+            }
+
+            function close(reset) {
+                if (reset) field.value = wrap.dataset.inlineEditOriginal || field.defaultValue || '';
+                form.hidden = true;
+                display.hidden = false;
+                delete wrap.dataset.inlineEditSubmitting;
+            }
+
+            function submitIfChanged() {
+                if (wrap.dataset.inlineEditSubmitting) return;
+                if (field.value === (wrap.dataset.inlineEditOriginal || '')) {
+                    close(false);
+                    return;
+                }
+                wrap.dataset.inlineEditSubmitting = '1';
+                if (form.requestSubmit) form.requestSubmit();
+                else form.submit();
+            }
+
+            wrap.querySelectorAll('[data-inline-edit-open]').forEach(function (button) {
+                button.addEventListener('click', open);
+                if (button.tagName !== 'BUTTON' && button.tagName !== 'A') {
+                    button.addEventListener('keydown', function (evt) {
+                        if (evt.key === 'Enter' || evt.key === ' ') {
+                            evt.preventDefault();
+                            open();
+                        }
+                    });
+                }
+            });
+            wrap.querySelectorAll('[data-inline-edit-cancel]').forEach(function (button) {
+                button.addEventListener('click', function () { close(true); });
+            });
+            form.addEventListener('submit', function () {
+                wrap.dataset.inlineEditSubmitting = '1';
+            });
+            field.addEventListener('keydown', function (evt) {
+                if (evt.key === 'Escape') {
+                    evt.preventDefault();
+                    close(true);
+                }
+                if (field.tagName !== 'TEXTAREA' && evt.key === 'Enter') {
+                    evt.preventDefault();
+                    submitIfChanged();
+                }
+                if (field.tagName === 'TEXTAREA' && evt.key === 'Enter' && (evt.metaKey || evt.ctrlKey)) {
+                    evt.preventDefault();
+                    submitIfChanged();
+                }
+            });
+            field.addEventListener('focusout', function () {
+                window.setTimeout(function () {
+                    if (!form.hidden && !form.contains(document.activeElement)) submitIfChanged();
+                }, 0);
+            });
+        });
+
+        root.querySelectorAll('[data-step-add-toggle]').forEach(function (button) {
+            if (button.dataset.stepAddInit) return;
+            button.dataset.stepAddInit = '1';
+            button.addEventListener('click', function () {
+                var panel = document.getElementById(button.getAttribute('aria-controls'));
+                if (!panel) return;
+                var open = panel.hidden;
+                panel.hidden = !open;
+                button.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) {
+                    var first = panel.querySelector('input, textarea, select, button');
+                    if (first) first.focus();
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-step-add-cancel]').forEach(function (button) {
+            if (button.dataset.stepCancelInit) return;
+            button.dataset.stepCancelInit = '1';
+            button.addEventListener('click', function () {
+                var panel = button.closest('[data-step-add-panel]');
+                if (!panel) return;
+                panel.hidden = true;
+                var toggle = document.querySelector('[aria-controls="' + panel.id + '"]');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
+
+    window.initSampleDetailEnhancements = initInlineEdits;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { initInlineEdits(document); });
+    } else {
+        initInlineEdits(document);
+    }
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        initInlineEdits(evt.detail && evt.detail.target ? evt.detail.target : document);
+    });
+}());
+</script>
+{{end}}
+
+{{define "sample_title_inline"}}
+<div id="sample-title-inline" class="inline-edit inline-edit--title" data-inline-edit>
+    {{with .Error}}<div class="alert alert-error inline-edit__alert">{{.}}</div>{{end}}
+    {{with .Flash}}<div class="alert alert-success inline-edit__alert">{{.}}</div>{{end}}
+    <h1 class="inline-edit__heading" data-inline-edit-display>
+        <button type="button" class="inline-edit__display inline-edit__display--title" data-inline-edit-open title="Click to edit sample name">{{.Sample.Name}}</button>
+    </h1>
+    <form action="/samples/edit/{{.Sample.ID}}"
+          method="POST"
+          class="inline-edit__form inline-edit__form--title"
+          data-inline-edit-form
+          hidden
+          hx-post="/samples/edit/{{.Sample.ID}}"
+          hx-target="#sample-title-inline"
+          hx-select="#sample-title-inline"
+          hx-swap="outerHTML">
+        <label class="sr-only" for="sample-name-inline">Sample name</label>
+        <input id="sample-name-inline" type="text" name="name" value="{{.Sample.Name}}" maxlength="100" required data-inline-edit-field>
+        <div class="inline-edit__actions">
+            <button type="submit" class="button button--primary button--small">Save</button>
+            <button type="button" class="button button--ghost button--small" data-inline-edit-cancel>Cancel</button>
+        </div>
+    </form>
+</div>
+{{end}}
+
+{{define "sample_description_card"}}
+<section id="sample-description-card" class="card sample-description-card" data-inline-edit aria-labelledby="sample-description-heading">
+    <div class="eyebrow" id="sample-description-heading">Description</div>
+    {{with .Error}}<div class="alert alert-error inline-edit__alert">{{.}}</div>{{end}}
+    {{with .Flash}}<div class="alert alert-success inline-edit__alert">{{.}}</div>{{end}}
+    <div role="button"
+         tabindex="0"
+         class="inline-edit__display inline-edit__display--description{{if not .Sample.Description}} inline-edit__display--empty{{end}}"
+         data-inline-edit-display
+         data-inline-edit-open
+         title="Click to edit description">{{if .Sample.Description}}{{.Sample.Description}}{{else}}No description yet.{{end}}</div>
+    <form action="/samples/edit/{{.Sample.ID}}"
+          method="POST"
+          class="inline-edit__form"
+          data-inline-edit-form
+          hidden
+          hx-post="/samples/edit/{{.Sample.ID}}"
+          hx-target="#sample-description-card"
+          hx-select="#sample-description-card"
+          hx-swap="outerHTML">
+        <label class="sr-only" for="sample-description-inline">Description</label>
+        <textarea id="sample-description-inline" name="description" rows="5" data-inline-edit-field>{{.Sample.Description}}</textarea>
+        <div class="inline-edit__actions">
+            <button type="submit" class="button button--primary button--small">Save</button>
+            <button type="button" class="button button--ghost button--small" data-inline-edit-cancel>Cancel</button>
+        </div>
+    </form>
+    {{if .Sample.Keywords}}
+    <div class="chip-row sample-description-card__chips">
+        {{range split .Sample.Keywords ","}}{{with trim .}}<span class="chip">{{.}}</span>{{end}}{{end}}
+    </div>
+    {{end}}
+</section>
 {{end}}
 
 {{define "sample_attachments"}}
-<section id="attachments-panel" class="attachments-container card" aria-labelledby="attachments-heading">
+<section id="attachments-panel" class="attachments-container card sample-attachments-card" aria-labelledby="attachments-heading">
     <header class="attachments-header">
         <div>
-            <h2 id="attachments-heading">Attachments</h2>
+            <h2 id="attachments-heading" class="eyebrow">Attachments ({{len .Sample.Attachments}})</h2>
         </div>
         <form action="/samples/{{.Sample.ID}}/upload"
               method="POST"
@@ -152,26 +315,19 @@
               hx-encoding="multipart/form-data"
               hx-indicator="#attachment-upload-indicator">
             <label class="sr-only" for="attachment-file">Attachments</label>
-            <input id="attachment-file" type="file" name="files" multiple data-upload-input>
-            <button type="submit" class="button button--primary button--small">Upload</button>
+            <input id="attachment-file" class="sr-only" type="file" name="files" multiple data-upload-input onchange="if (this.files && this.files.length && this.form.requestSubmit) this.form.requestSubmit();">
+            <button type="button" class="button button--ghost button--small attachment-upload-label" onclick="document.getElementById('attachment-file').click()">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M12 21V9m0 0l-4 4m4-4l4 4M5 4h14" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Upload
+            </button>
+            <button type="submit" class="sr-only">Upload selected files</button>
             <div id="attachment-upload-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
                 <span class="spinner"></span>
             </div>
         </form>
     </header>
-
-    <div class="upload-drop-zone"
-         data-upload-zone
-         data-upload-endpoint="/samples/{{.Sample.ID}}/upload"
-         data-upload-target="#attachments-panel">
-        <p class="upload-drop-zone__hint">Drop files here or paste images (Ctrl+V / ⌘V)</p>
-        <div class="upload-progress" data-upload-progress style="display:none">
-            <div class="upload-progress__track">
-                <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
-            </div>
-            <span class="upload-progress__label" data-upload-progress-label></span>
-        </div>
-    </div>
 
     {{with .Flash}}
     <div class="alert alert-success">{{.}}</div>
@@ -180,9 +336,8 @@
     <div class="alert alert-error">{{.}}</div>
     {{end}}
 
-    {{if .Sample.Attachments}}
-    <!-- Image thumbnail gallery — gallery.js opens lightbox on click -->
-    <div class="gallery-set">
+    <div class="gallery-set sample-attachment-grid">
+        {{if .Sample.Attachments}}
         {{range .Sample.Attachments}}{{if .IsImage}}
         <figure class="gallery-item">
             <button type="button" class="gallery-thumb"
@@ -206,13 +361,35 @@
             </figcaption>
         </figure>
         {{end}}{{end}}
+        {{end}}
+        <div class="upload-drop-zone attachment-drop-tile"
+             data-upload-zone
+             data-upload-endpoint="/samples/{{.Sample.ID}}/upload"
+             data-upload-target="#attachments-panel">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 21V9m0 0l-4 4m4-4l4 4M5 4h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p class="upload-drop-zone__hint">Drop files</p>
+            <div class="upload-progress" data-upload-progress style="display:none">
+                <div class="upload-progress__track">
+                    <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
+                </div>
+                <span class="upload-progress__label" data-upload-progress-label></span>
+            </div>
+        </div>
     </div>
 
     <!-- Non-image file list -->
+    {{if .Sample.Attachments}}
     <ul class="attachment-file-list">
         {{range .Sample.Attachments}}{{if not .IsImage}}
         <li class="attachment-file-list__item">
-            <span class="attachment-file-list__icon">📄</span>
+            <span class="attachment-file-list__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7">
+                    <path d="M7 3h6l4 4v14H7z" stroke-linejoin="round"/>
+                    <path d="M13 3v5h5" stroke-linejoin="round"/>
+                </svg>
+            </span>
             <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
             <div class="attachment-file-list__actions">
                 <a href="/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
@@ -230,11 +407,6 @@
         </li>
         {{end}}{{end}}
     </ul>
-    {{else}}
-    <div class="empty-state">
-        <p>No attachments yet.</p>
-        <p class="empty-state__hint">Upload your first file to keep everything in one place.</p>
-    </div>
     {{end}}
 </section>
 {{end}}
@@ -300,19 +472,6 @@
             </div>
         </div>
     </form>
-    {{if .IsAdmin}}
-    <div class="form-danger-zone" role="group" aria-labelledby="sample-danger-heading-{{.Sample.ID}}">
-        <h3 id="sample-danger-heading-{{.Sample.ID}}" class="form-danger-zone__heading">Danger zone</h3>
-        <p class="form-danger-zone__hint">Permanently removes this sample, its fabrication steps, and every attachment. This cannot be undone.</p>
-        <form action="/samples/{{.Sample.ID}}/delete"
-              method="POST"
-              class="inline-form form-danger-zone__form"
-              hx-boost="false"
-              onsubmit="return confirm('Permanently delete sample \u201C{{.Sample.Name}}\u201D and all its attachments? This cannot be undone.');">
-            <button type="submit" class="button button--destructive">Delete sample</button>
-        </form>
-    </div>
-    {{end}}
 </section>
 {{end}}
 
