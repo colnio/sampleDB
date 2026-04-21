@@ -88,27 +88,27 @@
         </div>
     </div>
 
-    <div id="booking-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>New Booking</h3>
-                <span class="close" onclick="closeModal()">&times;</span>
+    <div id="booking-modal" class="booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
+        <div class="booking-modal__dialog">
+            <div class="booking-modal__header">
+                <h3 id="booking-modal-title">New Booking</h3>
+                <button type="button" class="booking-modal__close" onclick="closeModal()" aria-label="Close booking form">&times;</button>
             </div>
             <form id="booking-form" action="/booking" method="POST" class="stacked-form" autocomplete="off">
                 <input type="hidden" name="equipment_id" id="equipment_id" autocomplete="off">
-                <div class="form-group">
-                    <label for="start_time">Start Time:</label>
+                <div class="booking-field">
+                    <label for="start_time">Start time</label>
                     <input type="datetime-local" id="start_time" name="start_time" required autocomplete="off">
                 </div>
-                <div class="form-group">
-                    <label for="end_time">End Time:</label>
+                <div class="booking-field">
+                    <label for="end_time">End time</label>
                     <input type="datetime-local" id="end_time" name="end_time" required autocomplete="off">
                 </div>
-                <div class="form-group">
-                    <label for="purpose">Purpose:</label>
+                <div class="booking-field">
+                    <label for="purpose">Purpose</label>
                     <textarea id="purpose" name="purpose" required autocomplete="off"></textarea>
                 </div>
-                <div class="form-actions">
+                <div class="booking-modal__actions">
                     <button type="submit" class="button button--primary">Book</button>
                     <button type="button" class="button button--secondary" onclick="closeModal()">Cancel</button>
                 </div>
@@ -508,75 +508,131 @@
     background: var(--color-destructive);
 }
 
-.modal {
+.booking-modal {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(1, 4, 9, 0.62);
+    backdrop-filter: blur(3px);
     z-index: 1000;
 }
 
-.modal-content {
+.booking-modal.is-open {
+    display: flex;
+}
+
+.booking-modal__dialog {
     position: relative;
-    background-color: var(--surface-default);
-    margin: 8% auto;
-    padding: 20px;
-    width: 90%;
-    max-width: 520px;
+    width: min(100%, 460px);
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    background: var(--surface-default);
+    color: var(--text-strong);
+    border: 1px solid var(--grid-border);
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 24px 70px rgba(1, 4, 9, 0.45);
 }
 
-:root[data-theme="dark"] .modal-content {
-    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
+:root[data-theme="dark"] .booking-modal__dialog {
+    background: #151b23;
+    border-color: #30363d;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.7);
 }
 
-.modal-header {
+.booking-modal__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
+    gap: 16px;
+    padding: 18px 20px 14px;
     border-bottom: 1px solid var(--grid-border);
 }
 
-.modal-header h3 {
+.booking-modal__header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    line-height: 1.2;
+    letter-spacing: 0;
+}
+
+.booking-modal__close {
+    width: 34px;
+    height: 34px;
+    min-height: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    padding: 0;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.booking-modal__close:hover {
+    background: var(--surface-muted);
+    border-color: var(--grid-border);
+    color: var(--text-strong);
+}
+
+#booking-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 20px 20px;
+}
+
+.booking-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
     margin: 0;
 }
 
-.close {
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: color 0.2s ease;
+.booking-field label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-strong);
 }
 
-.close:hover {
-    color: var(--color-primary);
+.booking-field input,
+.booking-field textarea {
+    border-color: var(--grid-border);
+    border-radius: 8px;
+    background: var(--surface-default);
 }
 
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--space-sm) - 0.1rem);
-    margin-bottom: var(--space-md);
+:root[data-theme="dark"] .booking-field input,
+:root[data-theme="dark"] .booking-field textarea {
+    background: #0d1117;
+    border-color: #30363d;
 }
 
-.form-group textarea {
-    min-height: 140px;
+.booking-field textarea {
+    min-height: 112px;
     resize: vertical;
 }
 
-.form-actions {
+.booking-modal__actions {
     display: flex;
     justify-content: flex-end;
-    gap: var(--space-md);
+    gap: 10px;
     flex-wrap: wrap;
-    margin-top: var(--space-md);
+    margin-top: 4px;
+    padding-top: 2px;
+}
+
+.booking-modal__actions .button {
+    min-width: 112px;
 }
 
 @media (max-width: 1200px) {
@@ -648,6 +704,21 @@
         font-size: 0.85rem;
         padding: 8px 2px;
     }
+
+    .booking-modal {
+        align-items: flex-end;
+        padding: 12px;
+    }
+
+    .booking-modal__dialog {
+        width: 100%;
+        max-height: calc(100vh - 24px);
+    }
+
+    .booking-modal__actions .button {
+        flex: 1;
+        min-width: 0;
+    }
 }
 </style>
 
@@ -715,7 +786,7 @@
         equipmentInput.value = equipmentId;
         startInput.value = formatLocalInputValue(startDate);
         endInput.value = formatLocalInputValue(endDate);
-        modal.style.display = 'block';
+        modal.classList.add('is-open');
     }
 
     function confirmDeleteBooking(bookingId) {
@@ -738,7 +809,7 @@
     function closeModal() {
         const modal = document.getElementById('booking-modal');
         if (modal) {
-            modal.style.display = 'none';
+            modal.classList.remove('is-open');
             const form = document.getElementById('booking-form');
             if (form) {
                 form.reset();

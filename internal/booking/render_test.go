@@ -107,3 +107,19 @@ func TestBookingCalendar_RulesStubRemoved(t *testing.T) {
 		t.Errorf("booking page still contains a rules stub")
 	}
 }
+
+func TestBookingCalendar_UsesScopedModalClasses(t *testing.T) {
+	rr := renderBookingPage(t, []booking.Equipment{
+		{ID: 1, Name: "SEM", Status: "online"},
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("render status = %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, `id="booking-modal" class="booking-modal"`) {
+		t.Fatalf("booking modal is not using the scoped booking-modal class")
+	}
+	if strings.Contains(body, `id="booking-modal" class="modal"`) {
+		t.Fatalf("booking modal still uses the generic modal class")
+	}
+}
