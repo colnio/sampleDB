@@ -63,7 +63,7 @@
                 <div class="timeline-equipment">
                     <div class="equipment-title">
                         <span class="equipment-status-dot equipment-status-dot--{{$equipment.Status}}" aria-hidden="true"></span>
-                        <span>{{$equipment.Name}}</span>
+                        <span class="equipment-title__name" title="{{$equipment.Name}}">{{$equipment.Name}}</span>
                     </div>
                     <div class="equipment-status-label">{{$equipment.Status}}</div>
                 </div>
@@ -325,12 +325,14 @@
 
 .timeline-row {
     display: flex;
+    height: var(--lane-height);
     min-width: calc(var(--equipment-col-width) + var(--lane-width));
 }
 
 .timeline-equipment {
     width: var(--equipment-col-width);
     min-width: var(--equipment-col-width);
+    height: var(--lane-height);
     background: var(--surface-subtle);
     border-right: 1px solid var(--grid-border);
     border-bottom: 1px solid var(--grid-border);
@@ -339,16 +341,28 @@
     flex-direction: column;
     gap: 6px;
     justify-content: center;
+    overflow: hidden;
     text-align: center;
 }
 
 .equipment-title {
     font-weight: 700;
     color: var(--text-strong);
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 8px;
     justify-content: center;
+    line-height: 1.2;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.equipment-title__name {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .equipment-status-dot {
@@ -374,8 +388,12 @@
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.06em;
+    line-height: 1.1;
     text-transform: uppercase;
     color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .booking-book-slot {
