@@ -655,6 +655,7 @@ func (h *Handlers) CreateNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session := auth.MustSessionFromContext(r.Context())
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := r.ParseForm(); err != nil {
 		http.Redirect(w, r, "/admin?error=invalid+request", http.StatusSeeOther)
 		return

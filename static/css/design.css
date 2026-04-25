@@ -2208,6 +2208,17 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     resize: vertical;
 }
 
+.notif-composer select {
+    min-height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-default);
+    color: var(--text-strong);
+    font-family: inherit;
+    font-size: 13px;
+}
+
 .notif-composer-controls {
     display: flex;
     flex-direction: column;

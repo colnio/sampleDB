@@ -88,8 +88,8 @@ func buildExcerpt(raw string) string {
 		if line == "" {
 			continue
 		}
-		if len(line) > 160 {
-			line = line[:157] + "…"
+		if runes := []rune(line); len(runes) > 160 {
+			line = string(runes[:157]) + "…"
 		}
 		return line
 	}

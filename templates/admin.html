@@ -35,9 +35,9 @@
             <form action="/admin/notifications" method="POST" class="notif-admin" autocomplete="off">
                 {{csrfField .CSRFToken}}
                 <div class="notif-composer">
-                    <textarea name="message" placeholder="Notification message…" rows="2" style="flex:1;min-height:60px;resize:vertical;" required></textarea>
+                    <textarea name="message" placeholder="Notification message…" rows="2" required></textarea>
                     <div class="notif-composer-controls">
-                        <select name="level" style="min-height:38px;padding:0 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--surface-default);color:var(--text-strong);font-family:inherit;font-size:13px;">
+                        <select name="level">
                             <option value="info">Info</option>
                             <option value="warning">Warning</option>
                             <option value="critical">Critical</option>

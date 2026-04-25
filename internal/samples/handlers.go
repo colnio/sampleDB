@@ -618,6 +618,7 @@ func (h *Handlers) NewSample(w http.ResponseWriter, r *http.Request) {
 		session := auth.MustSessionFromContext(r.Context())
 		isAdmin, _ := h.svc.IsAdmin(r.Context(), session.UserID)
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Error parsing form", http.StatusBadRequest)
 			return
@@ -702,6 +703,7 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := r.ParseForm(); err != nil {
 		if isHTMXRequest(r) {
 			h.renderSampleEditResponse(w, r, session, sampleID, "", "Unable to read the form submission.")
