@@ -222,7 +222,7 @@
 </div>
 
 <script>
-const _csrf = "{{.CSRFToken}}";
+const _csrf = document.querySelector('meta[name="csrf-token"]').content;
 
 function updateAccess(userId) {
     const row = document.querySelector(`.user-card[data-user-id="${userId}"]`);
@@ -300,7 +300,7 @@ function closeEquipmentModal() {
 }
 
 function confirmDeleteEquipment(equipmentId, equipmentName) {
-    if (confirm(`Remove ${equipmentName}? This will also clear related bookings and permissions.`)) {
+    if (confirm('Remove ' + equipmentName + '? This will also clear related bookings and permissions.')) {
         fetch(`/admin/delete-equipment/${equipmentId}`, {
             method: 'POST',
             headers: {

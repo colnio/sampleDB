@@ -253,7 +253,7 @@ func (h *Handlers) listArticles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := WikiListPageData{
-		BasePageData: BasePageData{Username: session.Username, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
+		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Articles:     articles,
 		Tags:         KnownTags,
 		TagFilter:    tagFilter,

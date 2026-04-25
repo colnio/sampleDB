@@ -64,6 +64,7 @@ var schemaStatements = []string{
 var dataStatements = []string{
 	seedEquipment,
 	backfillGroups,
+	clearStaleCSRFSessions,
 }
 
 const createUsersTable = `
@@ -342,6 +343,12 @@ ALTER TABLE samples
 const addCSRFTokenToSessions = `
 ALTER TABLE sessions
     ADD COLUMN IF NOT EXISTS csrf_token TEXT NOT NULL DEFAULT '';`
+
+// clearStaleCSRFSessions removes sessions created before migration 011 that have
+// an empty csrf_token. Without this, those sessions would bypass CSRF protection
+// because RequireCSRF exempts sessions with an empty token.
+const clearStaleCSRFSessions = `
+DELETE FROM sessions WHERE csrf_token = '';`
 
 // seedEquipment inserts the default equipment rows when the database is blank
 // (no users, no samples, and no equipment present yet).  Matches the seed block
