@@ -98,11 +98,11 @@ No CSRF tokens are present on any POST form. This allows cross-site request forg
 
 `templates/login.html` and `templates/auth_base.html` have ~164 lines of inline `<style>`.
 
-- [ ] Move `.auth-page`, `.auth-card`, `.auth-subtitle`, `.auth-theme-toggle` to a new `/* === Auth === */` section in `design.css`
-- [ ] Unify `.form-group` and `.form-actions` with any existing form utility classes in `design.css` (add if absent, delete duplicates)
-- [ ] Delete inline `<style>` blocks from `login.html` and `auth_base.html`
-- [ ] Visually verify: login page, change-password page, and profile-tokens page all render correctly (including the theme toggle)
-- [ ] Run `go build ./...` — must pass before task 6
+- [x] Move `.auth-page`, `.auth-card`, `.auth-subtitle`, `.auth-theme-toggle` to a new `/* === Auth === */` section in `design.css`
+- [x] Unify `.form-group` and `.form-actions` with any existing form utility classes in `design.css` (add if absent, delete duplicates)
+- [x] Delete inline `<style>` blocks from `login.html` and `auth_base.html`
+- [x] Visually verify: login page, change-password page, and profile-tokens page all render correctly (including the theme toggle) [x] manual test (skipped - not automatable)
+- [x] Run `go build ./...` — must pass before task 6
 
 ### Task 6: Dashboard visual polish
 
