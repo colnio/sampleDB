@@ -65,6 +65,14 @@ func isHTMXRequest(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
 }
 
+func originalFilenameFromPath(path string) string {
+	base := filepath.Base(path)
+	if idx := strings.Index(base, "_"); idx >= 0 && idx+1 < len(base) {
+		return base[idx+1:]
+	}
+	return base
+}
+
 func sanitizeFilename(name string) string {
 	base := strings.TrimSpace(filepath.Base(name))
 	ext := filepath.Ext(base)
@@ -155,6 +163,8 @@ func (h *Handlers) saveUploadedFile(file io.Reader, originalName string) (string
 	defer dst.Close()
 
 	if _, err = io.Copy(dst, file); err != nil {
+		dst.Close()
+		os.Remove(fullPath)
 		return "", err
 	}
 
@@ -610,14 +620,14 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 			errMsgs = append(errMsgs, fmt.Sprintf("could not save %s", fh.Filename))
 			continue
 		}
-		if dbErr := h.svc.AddAttachment(r.Context(), articleID, fp, sanitizeFilename(fh.Filename), session.UserID); dbErr != nil {
+		attachmentID, dbErr := h.svc.AddAttachment(r.Context(), articleID, fp, sanitizeFilename(fh.Filename), session.UserID)
+		if dbErr != nil {
 			log.Printf("wiki: error storing attachment for article %s: %v", articleID, dbErr)
 			_ = os.Remove(h.resolveAppPath(fp))
 			errMsgs = append(errMsgs, fmt.Sprintf("could not store %s", fh.Filename))
 			continue
 		}
-		articleIDInt, _ := strconv.Atoi(articleID)
-		h.logActivity(r.Context(), session, activity.Verb("uploaded"), activity.TargetType("article_attachment"), articleIDInt, fh.Filename)
+		h.logActivity(r.Context(), session, activity.Verb("uploaded"), activity.TargetType("article_attachment"), attachmentID, fh.Filename)
 		uploaded++
 	}
 
@@ -706,7 +716,7 @@ func (h *Handlers) deleteAttachment(w http.ResponseWriter, r *http.Request, atta
 	}
 
 	if attachmentIDInt, convErr := strconv.Atoi(attachmentID); convErr == nil {
-		h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("article_attachment"), attachmentIDInt, filePath)
+		h.logActivity(r.Context(), session, activity.Verb("deleted"), activity.TargetType("article_attachment"), attachmentIDInt, originalFilenameFromPath(filePath))
 	}
 
 	if removeErr := os.Remove(h.resolveAppPath(filePath)); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {

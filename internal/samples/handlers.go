@@ -169,6 +169,8 @@ func (h *Handlers) saveUploadedFile(file io.Reader, originalName string) (string
 	}
 	defer dst.Close()
 	if _, err = io.Copy(dst, file); err != nil {
+		dst.Close()
+		os.Remove(fullPath)
 		return "", err
 	}
 	if h.cfg.BaseDir != "" {

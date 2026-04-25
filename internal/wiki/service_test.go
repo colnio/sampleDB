@@ -346,12 +346,16 @@ func TestIsAdmin_False(t *testing.T) {
 func TestAddAttachment_InsertsRow(t *testing.T) {
 	svc, mock := newSvc(t)
 
-	mock.ExpectExec(`INSERT INTO article_attachments`).
+	mock.ExpectQuery(`INSERT INTO article_attachments`).
 		WithArgs("42", "uploads/x.png", "original.png", 7).
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+		WillReturnRows(pgxmock.NewRows([]string{"attachment_id"}).AddRow(99))
 
-	if err := svc.AddAttachment(context.Background(), "42", "uploads/x.png", "original.png", 7); err != nil {
+	id, err := svc.AddAttachment(context.Background(), "42", "uploads/x.png", "original.png", 7)
+	if err != nil {
 		t.Fatalf("AddAttachment: %v", err)
+	}
+	if id != 99 {
+		t.Fatalf("AddAttachment: got id %d, want 99", id)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)

@@ -32,7 +32,7 @@ type Service interface {
 	IsAdmin(ctx context.Context, userID int) (bool, error)
 
 	// Attachments
-	AddAttachment(ctx context.Context, articleID, filePath, originalName string, uploadedBy int) error
+	AddAttachment(ctx context.Context, articleID, filePath, originalName string, uploadedBy int) (int, error)
 	GetAttachmentInfo(ctx context.Context, attachmentID string) (filePath, originalName string, err error)
 	// DeleteAttachment removes the DB row and returns (articleTitle, filePath) for
 	// caller-side cleanup.  It does NOT touch the filesystem.
@@ -360,14 +360,16 @@ func (s *DBService) IsAdmin(ctx context.Context, userID int) (bool, error) {
 // Attachments
 // ---------------------------------------------------------------------------
 
-// AddAttachment records an uploaded file in the database.
-func (s *DBService) AddAttachment(ctx context.Context, articleID, filePath, originalName string, uploadedBy int) error {
-	_, err := s.db.Exec(ctx,
+// AddAttachment records an uploaded file in the database and returns the new attachment ID.
+func (s *DBService) AddAttachment(ctx context.Context, articleID, filePath, originalName string, uploadedBy int) (int, error) {
+	var id int
+	err := s.db.QueryRow(ctx,
 		`INSERT INTO article_attachments
 		   (article_id, attachment_address, original_name, uploaded_by)
-		 VALUES ($1, $2, $3, $4)`,
-		articleID, filePath, originalName, uploadedBy)
-	return err
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING attachment_id`,
+		articleID, filePath, originalName, uploadedBy).Scan(&id)
+	return id, err
 }
 
 // GetAttachmentInfo returns the storage path and original filename for a given
