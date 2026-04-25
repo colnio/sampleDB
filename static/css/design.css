@@ -251,6 +251,24 @@ body {
     align-items: flex-start;
 }
 
+.sample-detail-actions .button svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+}
+
+.sample-detail-panel-slot[hidden] {
+    display: none;
+}
+
+.sample-edit-dialog {
+    max-width: 500px;
+}
+
+.sample-edit-modal .alert {
+    margin: 14px 22px 0;
+}
+
 .sample-detail-grid {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
@@ -355,6 +373,18 @@ body {
 
 .inline-edit__alert {
     margin: 0 0 8px;
+}
+
+.readonly-field {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-subtle);
+    color: var(--text-strong);
+    font-size: 13px;
 }
 
 .fabrication-steps .flex-between .button svg,

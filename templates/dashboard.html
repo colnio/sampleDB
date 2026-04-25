@@ -85,8 +85,7 @@
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:13px;color:var(--text-strong);">
                         <strong>{{.ActorUsername}}</strong>
-                        {{activityVerb .Verb}}
-                        {{if .TargetLabel}}{{.TargetLabel}}{{else}}{{.TargetType}}{{end}}
+                        {{activityPhrase .Verb .TargetType .TargetLabel}}
                     </div>
                     <div class="recent-item__meta" style="margin-top:2px;">{{.CreatedAt.Format "Jan 02, 15:04"}}</div>
                 </div>

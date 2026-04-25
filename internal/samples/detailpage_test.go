@@ -75,11 +75,12 @@ func TestSampleDetail_ActivityPanel_RendersEntries(t *testing.T) {
 	actorID := int64(99)
 	targetID := int64(1)
 	mock.ExpectQuery(`SELECT id, actor_user_id`).
-		WithArgs("sample", 1, 6).
+		WithArgs(1, 6).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "actor_user_id", "actor_username", "verb", "target_type", "target_id", "target_label", "created_at",
 		}).
-			AddRow(int64(2), actorID, "bob", "updated", "sample", targetID, "widget", now).
+			AddRow(int64(3), actorID, "bob", "edited_step", "fabrication_step", int64(20), "Etch", now).
+			AddRow(int64(2), actorID, "bob", "updated", "sample", targetID, "edited description", now.Add(-time.Minute)).
 			AddRow(int64(1), actorID, "bob", "created", "sample", targetID, "widget", now.Add(-time.Hour)))
 
 	logger := activity.NewLogger(mock)
@@ -105,9 +106,8 @@ func TestSampleDetail_ActivityPanel_RendersEntries(t *testing.T) {
 	if !strings.Contains(body, "bob") {
 		t.Errorf("Activity entry actor not rendered; body=%s", body)
 	}
-	// At least one of the activityVerb expansions should appear.
-	if !strings.Contains(body, "edited") && !strings.Contains(body, "created") {
-		t.Errorf("Activity entry verb not rendered")
+	if !strings.Contains(body, "edited fabrication step") {
+		t.Errorf("child fabrication-step activity not rendered clearly")
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet expectations: %v", err)
@@ -124,7 +124,7 @@ func TestSampleDetail_ActivityPanel_EmptyWhenNoEntries(t *testing.T) {
 	defer mock.Close()
 
 	mock.ExpectQuery(`SELECT id, actor_user_id`).
-		WithArgs("sample", 1, 6).
+		WithArgs(1, 6).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "actor_user_id", "actor_username", "verb", "target_type", "target_id", "target_label", "created_at",
 		}))
@@ -214,6 +214,46 @@ func TestSampleDetail_StatusChip_NonActive(t *testing.T) {
 				t.Errorf("missing label %s; body=%s", tc.wantLabel, body)
 			}
 		})
+	}
+}
+
+func TestSampleDetail_EditDetailsModal_OnlyMetadataFields(t *testing.T) {
+	stub := &detailStub{
+		sample: samples.Sample{
+			ID:        1,
+			Name:      "widget",
+			Keywords:  "alpha,beta",
+			Status:    "in_progress",
+			CreatedAt: time.Now().UTC(),
+		},
+		users:   []samples.User{{ID: 7, Username: "alice"}},
+		isAdmin: true,
+	}
+	h := newDetailHandlers(t, stub, nil)
+	rr := doSampleDetail(t, h)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d", rr.Code)
+	}
+	body := rr.Body.String()
+	for _, want := range []string{
+		`id="sample-edit-modal" class="modal-backdrop sample-edit-modal"`,
+		`data-sample-modal-open="sample-edit-modal"`,
+		`id="sample-owner"`,
+		`id="sample-keywords"`,
+		`id="sample-status"`,
+		`hx-boost="false"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %q in edit modal; body=%s", want, body)
+		}
+	}
+	for _, unwanted := range []string{
+		`id="sample-name"`,
+		`id="sample-description"`,
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("edit modal should not include %q", unwanted)
+		}
 	}
 }
 

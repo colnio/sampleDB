@@ -229,9 +229,9 @@ func (h *Handlers) loadSampleDetailData(ctx context.Context, session auth.Sessio
 	// slice so the page still renders.
 	var activityEntries []activity.Entry
 	if h.Activity != nil {
-		entries, err := h.Activity.ForTarget(ctx, "sample", sampleID, 6)
+		entries, err := h.Activity.ForSample(ctx, sampleID, 6)
 		if err != nil {
-			log.Printf("samples.loadSampleDetailData: activity.ForTarget(%d): %v", sampleID, err)
+			log.Printf("samples.loadSampleDetailData: activity.ForSample(%d): %v", sampleID, err)
 		} else {
 			activityEntries = entries
 		}
@@ -431,6 +431,78 @@ func normalizeStatusInput(s string) string {
 		return s
 	}
 	return ""
+}
+
+func sampleUpdateActivityLabel(existing Sample, name, description, keywords, samplePrep string, ownerUserID *int, ownerName, status string) string {
+	effectiveStatus := status
+	if effectiveStatus == "" {
+		effectiveStatus = existing.Status
+	}
+	if effectiveStatus != existing.Status {
+		return "moved sample to " + sampleStatusActivityName(effectiveStatus) + " state"
+	}
+
+	var changes []string
+	if name != existing.Name {
+		changes = append(changes, "name")
+	}
+	if description != existing.Description {
+		changes = append(changes, "description")
+	}
+	if keywords != existing.Keywords {
+		changes = append(changes, "keywords")
+	}
+	if samplePrep != existing.SamplePrep {
+		changes = append(changes, "preparation notes")
+	}
+	if !sameOptionalInt(ownerUserID, existing.OwnerUserID) || ownerName != existing.Owner {
+		changes = append(changes, "owner")
+	}
+
+	if len(changes) == 1 {
+		switch changes[0] {
+		case "name":
+			return "renamed sample to " + name
+		case "description":
+			return "edited description"
+		case "keywords":
+			return "edited keywords"
+		case "preparation notes":
+			return "edited preparation notes"
+		case "owner":
+			if strings.TrimSpace(ownerName) == "" {
+				return "changed owner to unassigned"
+			}
+			return "changed owner to " + ownerName
+		}
+	}
+	if len(changes) > 1 {
+		return "edited sample details"
+	}
+	return "edited sample details"
+}
+
+func sameOptionalInt(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}
+
+func sampleStatusActivityName(status string) string {
+	switch status {
+	case "active":
+		return "active"
+	case "in_progress":
+		return "in progress"
+	case "archived":
+		return "archived"
+	default:
+		if strings.TrimSpace(status) == "" {
+			return "unknown"
+		}
+		return status
+	}
 }
 
 // buildSamplesQuery produces the query string used by the Grid/Table view
@@ -650,7 +722,8 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error updating sample", http.StatusInternalServerError)
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), sampleIDInt, name)
+	activityLabel := sampleUpdateActivityLabel(existing, name, description, keywords, existing.SamplePrep, ownerUserID, ownerName, status)
+	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), sampleIDInt, activityLabel)
 
 	if isHTMXRequest(r) {
 		h.renderSampleEditResponse(w, r, session, sampleID, "Changes saved", "")

@@ -299,6 +299,17 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		return
 	}
 
+	existing, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "sample not found")
+			return
+		}
+		log.Printf("samples api: updateSample lookup error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+
 	// Non-admins cannot change owner_user_id or the displayed owner name;
 	// both are forced to the caller's own identity.
 	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
@@ -342,7 +353,8 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), id, req.Name)
+	activityLabel := sampleUpdateActivityLabel(existing, req.Name, req.Description, req.Keywords, req.SamplePrep, ownerUserID, ownerName, status)
+	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), id, activityLabel)
 
 	// Re-fetch and return the updated detail.
 	h.apiGetSample(w, r, sampleID)

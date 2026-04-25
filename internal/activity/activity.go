@@ -44,8 +44,9 @@ type Entry struct {
 
 // Logger writes rows to the activity_log table.
 //
-// A nil *Logger is safe: Log/Recent/ForTarget become no-ops, so tests and
-// alternative entry points that don't wire activity tracking still compile.
+// A nil *Logger is safe: Log/Recent/ForTarget/ForSample become no-ops, so
+// tests and alternative entry points that don't wire activity tracking still
+// compile.
 type Logger struct {
 	db dbiface.Pool
 }
@@ -125,6 +126,36 @@ func (l *Logger) ForTarget(ctx context.Context, targetType string, targetID, lim
 		 WHERE target_type = $1 AND target_id = $2
 		 ORDER BY created_at DESC, id DESC
 		 LIMIT $3`, targetType, targetID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanEntries(rows)
+}
+
+// ForSample returns the N most recent entries for a sample, including activity
+// on child fabrication steps and sample attachments that still belong to it.
+func (l *Logger) ForSample(ctx context.Context, sampleID, limit int) ([]Entry, error) {
+	if l == nil || l.db == nil {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	rows, err := l.db.Query(ctx, `
+		SELECT id, actor_user_id, actor_username, verb, target_type, target_id,
+		       COALESCE(target_label, ''), created_at
+		  FROM activity_log
+		 WHERE (target_type = 'sample' AND target_id = $1)
+		    OR (target_type = 'fabrication_step' AND target_id IN (
+		           SELECT step_id FROM fabrication_steps WHERE sample_id = $1
+		       ))
+		    OR (target_type = 'attachment' AND target_id IN (
+		           SELECT attachment_id FROM attachments
+		            WHERE source_type = 'sample' AND source_id = $1
+		       ))
+		 ORDER BY created_at DESC, id DESC
+		 LIMIT $2`, sampleID, limit)
 	if err != nil {
 		return nil, err
 	}

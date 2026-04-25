@@ -55,6 +55,7 @@ func buildRenderer(t *testing.T) *web.Renderer {
 		"statusChipClass": func(s string) string { return s },
 		"statusLabel":     func(s string) string { return s },
 		"activityVerb":    func(s string) string { return s },
+		"activityPhrase":  func(_, _, label string) string { return label },
 		"split":           func(s, _ string) []string { return strings.Split(s, ",") },
 		"trim":            strings.TrimSpace,
 		"formatDate":      func(t *time.Time) string { return "" },

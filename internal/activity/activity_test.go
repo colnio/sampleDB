@@ -25,6 +25,10 @@ func TestLogger_Nil_IsNoOp(t *testing.T) {
 	if err != nil || got != nil {
 		t.Fatalf("nil ForTarget = (%v, %v); want (nil, nil)", got, err)
 	}
+	got, err = l.ForSample(context.Background(), 1, 5)
+	if err != nil || got != nil {
+		t.Fatalf("nil ForSample = (%v, %v); want (nil, nil)", got, err)
+	}
 }
 
 func TestLogger_NewLogger_NilPool_ReturnsNil(t *testing.T) {
@@ -215,5 +219,41 @@ func TestLogger_ForTarget_QueryError(t *testing.T) {
 	_, err = l.ForTarget(context.Background(), "sample", 1, 10)
 	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v; want %v", err, boom)
+	}
+}
+
+func TestLogger_ForSample_IncludesChildTargets(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock: %v", err)
+	}
+	defer mock.Close()
+
+	l := activity.NewLogger(mock)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`fabrication_steps WHERE sample_id = \$1`).
+		WithArgs(42, 6).
+		WillReturnRows(pgxmock.NewRows([]string{
+			"id", "actor_user_id", "actor_username", "verb", "target_type", "target_id", "target_label", "created_at",
+		}).
+			AddRow(int64(12), int64(7), "alice", "edited_step", "fabrication_step", int64(9), "Etch", now).
+			AddRow(int64(11), int64(7), "alice", "uploaded", "attachment", int64(20), "image.png", now.Add(-time.Minute)))
+
+	entries, err := l.ForSample(context.Background(), 42, 6)
+	if err != nil {
+		t.Fatalf("ForSample: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("got %d entries; want 2", len(entries))
+	}
+	if entries[0].TargetType != "fabrication_step" || entries[0].Verb != "edited_step" {
+		t.Errorf("entries[0] = (%s, %s); want (fabrication_step, edited_step)", entries[0].TargetType, entries[0].Verb)
+	}
+	if entries[1].TargetType != "attachment" || entries[1].TargetLabel != "image.png" {
+		t.Errorf("entries[1] = (%s, %q); want (attachment, image.png)", entries[1].TargetType, entries[1].TargetLabel)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
 	}
 }

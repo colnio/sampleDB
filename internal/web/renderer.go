@@ -144,6 +144,7 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 		"statusChipClass": statusChipClass,
 		"statusLabel":     statusLabel,
 		"activityVerb":    activityVerb,
+		"activityPhrase":  activityPhrase,
 		"firstInitial":    firstInitial,
 	}
 	for k, v := range extraFuncs {
@@ -224,6 +225,97 @@ func activityVerb(verb string) string {
 		return "revoked access to"
 	default:
 		return verb
+	}
+}
+
+// activityPhrase renders one full action phrase after the actor name. It keeps
+// the feed specific enough to distinguish sample edits from child actions.
+func activityPhrase(verb, targetType, targetLabel string) string {
+	label := strings.TrimSpace(targetLabel)
+	withLabel := func(prefix string) string {
+		if label == "" {
+			return prefix
+		}
+		return prefix + " " + label
+	}
+	withColonLabel := func(prefix string) string {
+		if label == "" {
+			return prefix
+		}
+		return prefix + ": " + label
+	}
+
+	switch targetType {
+	case "sample":
+		switch verb {
+		case "created":
+			return withLabel("created sample")
+		case "updated":
+			if label == "" {
+				return "edited sample details"
+			}
+			if isCompleteActivityPhrase(label) {
+				return label
+			}
+			return "edited sample " + label
+		case "deleted":
+			return withLabel("deleted sample")
+		}
+	case "attachment":
+		switch verb {
+		case "uploaded":
+			return withLabel("added attachment")
+		case "deleted":
+			return withLabel("removed attachment")
+		}
+	case "fabrication_step":
+		switch verb {
+		case "added_step":
+			return withColonLabel("added fabrication step")
+		case "edited_step":
+			return withColonLabel("edited fabrication step")
+		case "deleted":
+			return withColonLabel("deleted fabrication step")
+		}
+	case "article":
+		switch verb {
+		case "created", "published":
+			return withLabel("published article")
+		case "updated":
+			return withLabel("edited article")
+		case "deleted":
+			return withLabel("deleted article")
+		}
+	case "article_attachment":
+		switch verb {
+		case "uploaded":
+			return withLabel("added article attachment")
+		case "deleted":
+			return withLabel("removed article attachment")
+		}
+	}
+
+	fallback := strings.TrimSpace(activityVerb(verb) + " " + label)
+	if fallback != "" {
+		return fallback
+	}
+	return activityVerb(verb)
+}
+
+func isCompleteActivityPhrase(label string) bool {
+	switch {
+	case strings.HasPrefix(label, "edited "):
+		return true
+	case strings.HasPrefix(label, "renamed "):
+		return true
+	case strings.HasPrefix(label, "changed "):
+		return true
+	case strings.HasPrefix(label, "moved "):
+		return true
+	case strings.HasPrefix(label, "updated "):
+		return true
+	default:
+		return false
 	}
 }
 

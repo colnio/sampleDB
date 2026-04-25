@@ -21,6 +21,36 @@
             Created {{.Sample.CreatedAt.Format "2006-01-02"}} · Owner <strong>{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unassigned{{end}}</strong> · {{len .Sample.Attachments}} file{{if ne (len .Sample.Attachments) 1}}s{{end}} · {{len .Steps}} fabrication step{{if ne (len .Steps) 1}}s{{end}}
         </div>
     </div>
+    <div class="page-topbar__actions sample-detail-actions">
+        <a class="button button--ghost" href="/api/v1/samples/{{.Sample.ID}}" download="sample-{{printf "%03d" .Sample.ID}}.json" hx-boost="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Export
+        </a>
+        <button type="button"
+                class="button button--secondary"
+                data-sample-modal-open="sample-edit-modal"
+                aria-controls="sample-edit-modal"
+                aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" stroke-linejoin="round"/>
+                <path d="M14.5 6.5l3 3" stroke-linecap="round"/>
+            </svg>
+            Edit
+        </button>
+        <button type="button"
+                class="button button--primary"
+                data-sample-panel-toggle="sample-share-panel-slot"
+                aria-controls="sample-share-panel-slot"
+                aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 3l1.6 5.2L19 10l-5.4 1.8L12 17l-1.6-5.2L5 10l5.4-1.8L12 3z" stroke-linejoin="round"/>
+                <path d="M18 15l.8 2.5L21 18l-2.2.5L18 21l-.8-2.5L15 18l2.2-.5L18 15z" stroke-linejoin="round"/>
+            </svg>
+            Share
+        </button>
+    </div>
 </div>
 
 <section class="sample-detail-grid">
@@ -66,6 +96,10 @@
             </div>
         </div>
 
+        <div id="sample-share-panel-slot" class="sample-detail-panel-slot" hidden>
+            {{template "sample_share_panel" .}}
+        </div>
+
         <div class="card" id="sample-activity-panel" style="padding:18px 22px;">
             <div class="panel-head">
                 <h2 style="font-size:14px;margin:0;">Activity</h2>
@@ -78,8 +112,7 @@
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:13px;color:var(--text-strong);">
                             <strong>{{.ActorUsername}}</strong>
-                            {{activityVerb .Verb}}
-                            {{if .TargetLabel}}{{.TargetLabel}}{{else}}{{.TargetType}}{{end}}
+                            {{activityPhrase .Verb .TargetType .TargetLabel}}
                         </div>
                         <div class="recent-item__meta" style="margin-top:2px;">{{.CreatedAt.Format "Jan 02, 15:04"}}</div>
                     </div>
@@ -106,6 +139,9 @@
         {{end}}
     </aside>
 </section>
+
+{{template "sample_edit_form" .}}
+
 <script>
 (function () {
     if (window.sampleDetailEnhancementsLoaded) {
@@ -222,6 +258,81 @@
                 if (toggle) toggle.setAttribute('aria-expanded', 'false');
             });
         });
+
+        root.querySelectorAll('[data-sample-panel-toggle]').forEach(function (button) {
+            if (button.dataset.samplePanelInit) return;
+            button.dataset.samplePanelInit = '1';
+            button.addEventListener('click', function () {
+                var target = document.getElementById(button.dataset.samplePanelToggle);
+                if (!target) return;
+                var willOpen = target.hidden;
+
+                document.querySelectorAll('.sample-detail-panel-slot').forEach(function (panel) {
+                    if (panel !== target) panel.hidden = true;
+                });
+                document.querySelectorAll('[data-sample-panel-toggle]').forEach(function (other) {
+                    if (other !== button) other.setAttribute('aria-expanded', 'false');
+                });
+
+                target.hidden = !willOpen;
+                button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                if (willOpen) {
+                    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    window.setTimeout(function () {
+                        var first = target.querySelector('input, textarea, select, button, a[href]');
+                        if (first) first.focus();
+                    }, 160);
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-sample-modal-open]').forEach(function (button) {
+            if (button.dataset.sampleModalInit) return;
+            button.dataset.sampleModalInit = '1';
+            button.addEventListener('click', function () {
+                var modal = document.getElementById(button.dataset.sampleModalOpen);
+                if (!modal) return;
+
+                document.querySelectorAll('.sample-detail-panel-slot').forEach(function (panel) {
+                    panel.hidden = true;
+                });
+                document.querySelectorAll('[data-sample-panel-toggle]').forEach(function (other) {
+                    other.setAttribute('aria-expanded', 'false');
+                });
+
+                modal.hidden = false;
+                button.setAttribute('aria-expanded', 'true');
+                window.setTimeout(function () {
+                    var first = modal.querySelector('input, textarea, select, button');
+                    if (first) first.focus();
+                }, 0);
+            });
+        });
+
+        root.querySelectorAll('[data-sample-modal-close]').forEach(function (button) {
+            if (button.dataset.sampleModalCloseInit) return;
+            button.dataset.sampleModalCloseInit = '1';
+            button.addEventListener('click', function () {
+                closeSampleModal(button.closest('.modal-backdrop'));
+            });
+        });
+
+        root.querySelectorAll('.sample-edit-modal').forEach(function (modal) {
+            if (modal.dataset.sampleModalBackdropInit) return;
+            modal.dataset.sampleModalBackdropInit = '1';
+            modal.addEventListener('click', function (evt) {
+                if (evt.target === modal) closeSampleModal(modal);
+            });
+        });
+    }
+
+    function closeSampleModal(modal) {
+        if (!modal) return;
+        modal.hidden = true;
+        document.querySelectorAll('[data-sample-modal-open="' + modal.id + '"]').forEach(function (button) {
+            button.setAttribute('aria-expanded', 'false');
+            button.focus();
+        });
     }
 
     window.initSampleDetailEnhancements = initInlineEdits;
@@ -232,6 +343,10 @@
     }
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         initInlineEdits(evt.detail && evt.detail.target ? evt.detail.target : document);
+    });
+    document.addEventListener('keydown', function (evt) {
+        if (evt.key !== 'Escape') return;
+        document.querySelectorAll('.sample-edit-modal:not([hidden])').forEach(closeSampleModal);
     });
 }());
 </script>
@@ -412,11 +527,15 @@
 {{end}}
 
 {{define "sample_edit_form"}}
-<section class="form-container card" id="sample-form-wrapper">
-    <header>
-        <h2>Edit Sample Details</h2>
-        <!-- <p class="section-hint">Changes save instantly and the list view updates on refresh.</p> -->
-    </header>
+<div id="sample-edit-modal" class="modal-backdrop sample-edit-modal" role="dialog" aria-modal="true" aria-labelledby="sample-edit-modal-title" hidden>
+    <section class="modal sample-edit-dialog" id="sample-form-wrapper">
+        <header class="modal__head">
+            <div>
+                <h3 id="sample-edit-modal-title">Edit Sample Details</h3>
+                <p class="modal__sub">Update ownership, keywords, and lifecycle state.</p>
+            </div>
+            <button type="button" class="modal__close" data-sample-modal-close aria-label="Close sample details form">&times;</button>
+        </header>
     {{with .Flash}}
     <div class="alert alert-success">{{.}}</div>
     {{end}}
@@ -426,53 +545,56 @@
     <form action="/samples/edit/{{.Sample.ID}}"
           method="POST"
           class="stacked-form"
-          hx-post="/samples/edit/{{.Sample.ID}}"
-          hx-target="#sample-form-wrapper"
-          hx-select="#sample-form-wrapper"
-          hx-swap="outerHTML"
-          hx-indicator="#sample-edit-indicator">
-        <div class="form-group">
-            <label for="sample-name">Name</label>
-            <input id="sample-name" type="text" name="name" value="{{.Sample.Name}}" required>
-        </div>
-        <div class="form-group">
-            <label for="sample-description">Description</label>
-            <textarea id="sample-description" name="description">{{.Sample.Description}}</textarea>
-        </div>
-        <div class="form-group">
-            <label for="sample-keywords">Keywords</label>
-            <input id="sample-keywords" type="text" name="keywords" value="{{.Sample.Keywords}}">
-        </div>
-        <div class="form-group">
-            <label for="sample-owner">Owner</label>
-            <select id="sample-owner" name="owner_user_id">
-                <option value="">-- Unassigned --</option>
-                {{range .Users}}
-                <option value="{{.ID}}" {{if ownerSelected $.Sample.OwnerUserID .ID}}selected{{end}}>{{.Username}}</option>
+          hx-boost="false">
+            <div class="modal__body">
+                {{if .IsAdmin}}
+                <div class="form-group">
+                    <label for="sample-owner">Owner</label>
+                    <select id="sample-owner" name="owner_user_id">
+                        <option value="">-- Unassigned --</option>
+                        {{range .Users}}
+                        <option value="{{.ID}}" {{if ownerSelected $.Sample.OwnerUserID .ID}}selected{{end}}>{{.Username}}</option>
+                        {{end}}
+                    </select>
+                    {{if and (not .Sample.OwnerUserID) .Sample.Owner}}
+                    <p class="form-hint">Legacy owner text: {{.Sample.Owner}}</p>
+                    {{end}}
+                </div>
+                {{else}}
+                <div class="form-group">
+                    <label>Owner</label>
+                    <div class="readonly-field">{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}{{.Username}}{{end}}</div>
+                </div>
                 {{end}}
-            </select>
-            {{if and (not .Sample.OwnerUserID) .Sample.Owner}}
-            <p class="form-hint">Legacy owner text: {{.Sample.Owner}}</p>
-            {{end}}
-        </div>
-        {{if .IsAdmin}}
-        <div class="form-group">
-            <label for="sample-status">Status</label>
-            <select id="sample-status" name="status">
-                <option value="active" {{if eq .Sample.Status "active"}}selected{{end}}>Active</option>
-                <option value="in_progress" {{if eq .Sample.Status "in_progress"}}selected{{end}}>In Progress</option>
-                <option value="archived" {{if eq .Sample.Status "archived"}}selected{{end}}>Archived</option>
-            </select>
-        </div>
-        {{end}}
-        <div class="form-actions">
-            <button type="submit" class="button button--primary button--block">Save Changes</button>
-            <div id="sample-edit-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
-                <span class="spinner"></span>
+                <div class="form-group">
+                    <label for="sample-keywords">Keywords</label>
+                    <input id="sample-keywords" type="text" name="keywords" value="{{.Sample.Keywords}}">
+                </div>
+                {{if .IsAdmin}}
+                <div class="form-group">
+                    <label for="sample-status">Status</label>
+                    <select id="sample-status" name="status">
+                        <option value="active" {{if eq .Sample.Status "active"}}selected{{end}}>Active</option>
+                        <option value="in_progress" {{if eq .Sample.Status "in_progress"}}selected{{end}}>In Progress</option>
+                        <option value="archived" {{if eq .Sample.Status "archived"}}selected{{end}}>Archived</option>
+                    </select>
+                </div>
+                {{else}}
+                <div class="form-group">
+                    <label>Status</label>
+                    <div class="readonly-field">
+                        <span class="status-chip status-chip--{{statusChipClass .Sample.Status}}"><span class="status-chip__dot"></span>{{statusLabel .Sample.Status}}</span>
+                    </div>
+                </div>
+                {{end}}
             </div>
-        </div>
-    </form>
-</section>
+            <div class="modal__foot">
+                <button type="button" class="button button--secondary" data-sample-modal-close>Cancel</button>
+                <button type="submit" class="button button--primary">Save Changes</button>
+            </div>
+        </form>
+    </section>
+</div>
 {{end}}
 
 {{define "sample_share_panel"}}
