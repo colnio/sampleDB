@@ -366,6 +366,7 @@
           hx-target="#sample-title-inline"
           hx-select="#sample-title-inline"
           hx-swap="outerHTML">
+        {{csrfField .CSRFToken}}
         <label class="sr-only" for="sample-name-inline">Sample name</label>
         <input id="sample-name-inline" type="text" name="name" value="{{.Sample.Name}}" maxlength="100" required data-inline-edit-field>
         <div class="inline-edit__actions">
@@ -396,6 +397,7 @@
           hx-target="#sample-description-card"
           hx-select="#sample-description-card"
           hx-swap="outerHTML">
+        {{csrfField .CSRFToken}}
         <label class="sr-only" for="sample-description-inline">Description</label>
         <textarea id="sample-description-inline" name="description" rows="5" data-inline-edit-field>{{.Sample.Description}}</textarea>
         <div class="inline-edit__actions">
@@ -427,6 +429,7 @@
               hx-swap="outerHTML"
               hx-encoding="multipart/form-data"
               hx-indicator="#attachment-upload-indicator">
+            {{csrfField .CSRFToken}}
             <label class="sr-only" for="attachment-file">Attachments</label>
             <input id="attachment-file" class="sr-only" type="file" name="files" multiple data-upload-input onchange="if (this.files && this.files.length && this.form.requestSubmit) this.form.requestSubmit();">
             <button type="button" class="button button--ghost button--small attachment-upload-label" onclick="document.getElementById('attachment-file').click()">
@@ -609,6 +612,7 @@
               hx-target="#share-modal-body"
               hx-select="#share-modal-body"
               hx-swap="outerHTML">
+            {{csrfField .CSRFToken}}
             <div class="share-option-cards">
                 <label class="share-option-card{{if eq .Sample.ShareVisibility "public"}} share-option-card--active{{end}}">
                     <input type="radio" name="visibility" value="public" {{if eq .Sample.ShareVisibility "public"}}checked{{end}}>
@@ -630,6 +634,7 @@
                       hx-select="#share-modal-body"
                       hx-swap="outerHTML"
                       hx-confirm="Revoke this share link? Anyone with the old URL will lose access.">
+                    {{csrfField .CSRFToken}}
                     <button type="submit" class="button button--ghost button--small" style="color:var(--color-destructive);">Revoke link</button>
                 </form>
                 <div style="display:flex;gap:8px;">
@@ -647,6 +652,7 @@
               hx-target="#share-modal-body"
               hx-select="#share-modal-body"
               hx-swap="outerHTML">
+            {{csrfField .CSRFToken}}
             <div class="share-option-cards">
                 <label class="share-option-card share-option-card--active">
                     <input type="radio" name="visibility" value="public" checked>

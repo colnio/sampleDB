@@ -651,7 +651,9 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 
 	redirect := ""
 	if ref := r.Header.Get("Referer"); ref != "" {
-		if u, err := url.Parse(ref); err == nil && u.Path != "" && !strings.HasPrefix(u.Path, "//") {
+		if u, err := url.Parse(ref); err == nil &&
+			u.Scheme == "" && u.Host == "" && u.User == nil && u.Opaque == "" &&
+			len(u.Path) > 0 && u.Path[0] == '/' {
 			redirect = u.Path
 		}
 	}
@@ -702,7 +704,9 @@ func (h *Handlers) deleteAttachment(w http.ResponseWriter, r *http.Request, atta
 
 	redirect := ""
 	if ref := r.Header.Get("Referer"); ref != "" {
-		if u, err := url.Parse(ref); err == nil && u.Path != "" && !strings.HasPrefix(u.Path, "//") {
+		if u, err := url.Parse(ref); err == nil &&
+			u.Scheme == "" && u.Host == "" && u.User == nil && u.Opaque == "" &&
+			len(u.Path) > 0 && u.Path[0] == '/' {
 			redirect = u.Path
 		}
 	}

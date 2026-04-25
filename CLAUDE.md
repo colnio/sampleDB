@@ -14,11 +14,13 @@ DATABASE_URL="postgres://..." go test -tags=integration ./internal/integration/.
 
 ### Package layout
 
-- `internal/activity/` — append-only activity log; every mutating handler calls `Logger.Log`. Two query shapes: `Recent(ctx, limit)` for the dashboard feed, `ForSample(ctx, id, limit)` for per-sample panels.
+- `internal/activity/` — append-only activity log; every mutating handler calls `Logger.Log`. Three query shapes: `Recent(ctx, limit)` for the dashboard feed, `ForSample(ctx, id, limit)` for per-sample panels, `ForTarget(ctx, targetType, targetID, limit)` for non-sample domains (wiki, booking) — use this instead of adding new `For*` wrappers.
 - `internal/app/` — HTTP router (`routes.go`), middleware (`csrf_middleware.go`, `RequireAdmin`), and app wiring (`app.go`).
 - `internal/dbiface/` — minimal `Pool` interface that wraps `pgxpool.Pool`; all services accept this interface so tests can inject `pgxmock`.
 - `internal/dbschema/` — idempotent schema bootstrap run on every startup; matches `DDL/init.sql`.
 - Domain packages: `internal/admin`, `internal/booking`, `internal/dashboard`, `internal/samples`, `internal/wiki`, `internal/profile`, `internal/auth` — each owns its types, service interface + DB implementation, and HTTP handlers.
+- `internal/wiki/toc.go` exports `BuildTOC(html template.HTML) []TOCEntry` — parses h2/h3 headings from rendered Markdown HTML and returns entries for the "On this page" sidebar. Call this in any handler rendering a full wiki article page.
+- `wiki.KnownTags` in `internal/wiki/service.go` is the hard-coded vocabulary for the filter-chip row on `/wiki`. To add a new filterable tag, append to this slice — there is no DB backing table for the tag list.
 
 ### CSRF protection
 

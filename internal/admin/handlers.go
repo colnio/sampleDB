@@ -503,7 +503,7 @@ func (h *Handlers) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	groupID, err := strconv.Atoi(parts[len(parts)-1])
-	if err != nil {
+	if err != nil || groupID <= 0 {
 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
 		return
 	}

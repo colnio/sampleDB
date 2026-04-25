@@ -74,7 +74,7 @@ List samples with optional filtering.
 | --- | --- |
 | `q` | Keyword search across name, owner, and keywords fields |
 | `owner` | Filter by owner name (partial match) |
-| `status` | Filter by status: `active`, `in_progress`, or `archived` |
+| `status` | Filter by status: `active`, `in_progress`, `planned`, or `archived` |
 | `from` | Filter by creation date ≥ value (YYYY-MM-DD) |
 | `to` | Filter by creation date ≤ value (YYYY-MM-DD) |
 | `limit` | Max results (default 100, max 1000) |
@@ -103,7 +103,7 @@ List samples with optional filtering.
 }
 ```
 
-Note: `owner_user_id` and `owner_username` are omitted when `owner_user_id` is NULL (legacy samples with free-text owner only). `status` is one of `active`, `in_progress`, or `archived`.
+Note: `owner_user_id` and `owner_username` are omitted when `owner_user_id` is NULL (legacy samples with free-text owner only). `status` is one of `active`, `in_progress`, `planned`, or `archived`.
 
 ---
 
@@ -179,7 +179,7 @@ Create a new sample.
 | `name` | Yes | Sample name |
 | `description` | No | Short description |
 | `keywords` | No | Space- or comma-separated keywords |
-| `status` | No | Initial status: `active` (default), `in_progress`, or `archived` (admin only) |
+| `status` | No | Initial status: `active` (default), `in_progress`, `planned`, or `archived` |
 | `owner` | No | Free-text owner name |
 | `sample_prep` | No | Markdown preparation notes |
 | `owner_user_id` | No | Admin only — assign sample to this user ID; overrides the `owner` text field |

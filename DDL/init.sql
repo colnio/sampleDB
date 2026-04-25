@@ -192,7 +192,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     id         TEXT PRIMARY KEY,
     user_id    INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     username   TEXT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL
+    expires_at TIMESTAMPTZ NOT NULL,
+    csrf_token TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
@@ -246,3 +247,19 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_created_at
 
 CREATE INDEX IF NOT EXISTS idx_activity_log_target
     ON activity_log (target_type, target_id);
+
+-- Migration 010: admin notification banners
+CREATE TABLE IF NOT EXISTS notifications (
+    id         BIGSERIAL PRIMARY KEY,
+    message    TEXT NOT NULL,
+    level      VARCHAR(20) NOT NULL DEFAULT 'info'
+                   CHECK (level IN ('info', 'warning', 'critical')),
+    author     TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Migration 011: add 'planned' to sample status values
+ALTER TABLE samples DROP CONSTRAINT IF EXISTS chk_sample_status;
+ALTER TABLE samples
+    ADD CONSTRAINT chk_sample_status
+    CHECK (status IN ('active', 'in_progress', 'archived', 'planned'));

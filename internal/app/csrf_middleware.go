@@ -1,6 +1,7 @@
 package app
 
 import (
+	"mime"
 	"net/http"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 // are exempt. Checks X-CSRF-Token header first (for AJAX), then the csrf_token form field.
 func RequireCSRF(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost && r.Method != http.MethodPut && r.Method != http.MethodDelete {
+		if r.Method != http.MethodPost && r.Method != http.MethodPut && r.Method != http.MethodDelete && r.Method != http.MethodPatch {
 			next(w, r)
 			return
 		}
@@ -26,7 +27,10 @@ func RequireCSRF(next http.HandlerFunc) http.HandlerFunc {
 
 		submitted := r.Header.Get("X-CSRF-Token")
 		if submitted == "" {
-			submitted = r.FormValue("csrf_token")
+			ct, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			if ct != "application/json" {
+				submitted = r.FormValue("csrf_token")
+			}
 		}
 
 		if !auth.ValidateCSRFToken(session, submitted) {

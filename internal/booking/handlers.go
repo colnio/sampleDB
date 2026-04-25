@@ -279,6 +279,12 @@ func (h *Handlers) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/booking?error=Invalid+request", http.StatusSeeOther)
+		return
+	}
+
 	session := auth.MustSessionFromContext(r.Context())
 	bookingID, err := strconv.Atoi(r.FormValue("booking_id"))
 	if err != nil {

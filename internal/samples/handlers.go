@@ -390,7 +390,7 @@ func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 	users, _ := h.svc.GetApprovedUsers(r.Context())
 
 	data := MainPageData{
-		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Samples:      samples,
 		Query:        query,
 		DateFrom:     dateFrom,
@@ -559,6 +559,8 @@ func sampleStatusActivityName(status string) string {
 		return "in progress"
 	case "archived":
 		return "archived"
+	case "planned":
+		return "planned"
 	default:
 		if strings.TrimSpace(status) == "" {
 			return "unknown"

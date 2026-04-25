@@ -469,7 +469,10 @@ func TestService_Steps_CRUD_Integration(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpdateStep: %v", err)
 	}
-	fetched, _ = svc.GetStepByID(context.Background(), created.ID)
+	fetched, err = svc.GetStepByID(context.Background(), created.ID)
+	if err != nil {
+		t.Fatalf("GetStepByID after UpdateStep: %v", err)
+	}
 	if fetched.Description != "updated description" {
 		t.Errorf("after update: Description = %q, want updated description", fetched.Description)
 	}
