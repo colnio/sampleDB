@@ -335,10 +335,17 @@ CREATE TABLE IF NOT EXISTS notifications (
 );`
 
 const addPlannedStatusConstraint = `
-ALTER TABLE samples DROP CONSTRAINT IF EXISTS chk_sample_status;
-ALTER TABLE samples
-    ADD CONSTRAINT chk_sample_status
-    CHECK (status IN ('active', 'in_progress', 'archived', 'planned'));`
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.check_constraints
+        WHERE constraint_name = 'chk_sample_status'
+        AND check_clause LIKE '%planned%'
+    ) THEN
+        ALTER TABLE samples DROP CONSTRAINT IF EXISTS chk_sample_status;
+        ALTER TABLE samples ADD CONSTRAINT chk_sample_status
+            CHECK (status IN ('active', 'in_progress', 'archived', 'planned'));
+    END IF;
+END $$;`
 
 const addCSRFTokenToSessions = `
 ALTER TABLE sessions

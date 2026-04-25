@@ -365,6 +365,10 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
+	}
 	title := r.FormValue("title")
 	if strings.TrimSpace(title) == "" {
 		http.Error(w, "Article title is required", http.StatusBadRequest)
@@ -655,6 +659,9 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 			u.Scheme == "" && u.Host == "" && u.User == nil && u.Opaque == "" &&
 			len(u.Path) > 0 && u.Path[0] == '/' {
 			redirect = u.Path
+			if u.RawQuery != "" {
+				redirect += "?" + u.RawQuery
+			}
 		}
 	}
 	if redirect == "" {
@@ -665,7 +672,11 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if errMsg != "" {
-		redirect += "?error=" + url.QueryEscape(errMsg)
+		if strings.Contains(redirect, "?") {
+			redirect += "&error=" + url.QueryEscape(errMsg)
+		} else {
+			redirect += "?error=" + url.QueryEscape(errMsg)
+		}
 	}
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
@@ -708,6 +719,9 @@ func (h *Handlers) deleteAttachment(w http.ResponseWriter, r *http.Request, atta
 			u.Scheme == "" && u.Host == "" && u.User == nil && u.Opaque == "" &&
 			len(u.Path) > 0 && u.Path[0] == '/' {
 			redirect = u.Path
+			if u.RawQuery != "" {
+				redirect += "?" + u.RawQuery
+			}
 		}
 	}
 	if redirect == "" {
