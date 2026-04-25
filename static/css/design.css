@@ -529,6 +529,10 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     color: var(--color-destructive);
 }
 
+.stat-card__delta.primary {
+    color: var(--color-primary);
+}
+
 /* ---------- Status chips ---------- */
 .status-chip {
     display: inline-flex;
@@ -1596,6 +1600,20 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     flex: none;
 }
 
+.recent-item__thumb--color-0 { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+.recent-item__thumb--color-1 { background: linear-gradient(135deg, #065f46, #10b981); }
+.recent-item__thumb--color-2 { background: linear-gradient(135deg, #4c1d95, #8b5cf6); }
+.recent-item__thumb--color-3 { background: linear-gradient(135deg, #78350f, #f59e0b); }
+.recent-item__thumb--color-4 { background: linear-gradient(135deg, #1e3a5f, #0ea5e9); }
+.recent-item__thumb--color-5 { background: linear-gradient(135deg, #881337, #f43f5e); }
+
+:root[data-theme="dark"] .recent-item__thumb--color-0 { background: linear-gradient(135deg, #0c2461, #1d4ed8); }
+:root[data-theme="dark"] .recent-item__thumb--color-1 { background: linear-gradient(135deg, #064e3b, #059669); }
+:root[data-theme="dark"] .recent-item__thumb--color-2 { background: linear-gradient(135deg, #3b0764, #7c3aed); }
+:root[data-theme="dark"] .recent-item__thumb--color-3 { background: linear-gradient(135deg, #451a03, #d97706); }
+:root[data-theme="dark"] .recent-item__thumb--color-4 { background: linear-gradient(135deg, #0c1e38, #0284c7); }
+:root[data-theme="dark"] .recent-item__thumb--color-5 { background: linear-gradient(135deg, #4c0519, #e11d48); }
+
 .recent-item__thumb img {
     width: 100%;
     height: 100%;
@@ -2012,6 +2030,16 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     font-family: var(--font-family-mono);
     flex: none;
     padding-top: 1px;
+}
+
+.activity-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.activity-link:hover {
+    text-decoration: underline;
 }
 
 /* ---------- Admin notification banner ---------- */

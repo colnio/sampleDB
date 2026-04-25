@@ -159,9 +159,11 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 		"urlEscape":       url.PathEscape,
 		"statusChipClass": statusChipClass,
 		"statusLabel":     statusLabel,
-		"activityVerb":    activityVerb,
-		"activityPhrase":  activityPhrase,
-		"firstInitial":    firstInitial,
+		"activityVerb":       activityVerb,
+		"activityPhrase":     activityPhrase,
+		"activityPhraseHTML": activityPhraseHTML,
+		"firstInitial":       firstInitial,
+		"timeAgo":            timeAgo,
 	}
 	for k, v := range extraFuncs {
 		fm[k] = v
@@ -337,6 +339,121 @@ func isCompleteActivityPhrase(label string) bool {
 	default:
 		return false
 	}
+}
+
+// timeAgo converts a past time to a human-readable relative string.
+func timeAgo(t time.Time) string {
+	diff := time.Since(t)
+	switch {
+	case diff < 2*time.Minute:
+		return "just now"
+	case diff < time.Hour:
+		return fmt.Sprintf("%dm ago", int(diff.Minutes()))
+	case diff < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(diff.Hours()))
+	default:
+		return fmt.Sprintf("%dd ago", int(diff.Hours()/24))
+	}
+}
+
+// activityTargetURLHelper returns the canonical URL for an activity target, or
+// an empty string when no deep-link exists.
+func activityTargetURLHelper(targetType string, targetID *int) string {
+	if targetID == nil {
+		return ""
+	}
+	switch targetType {
+	case "sample":
+		return fmt.Sprintf("/samples/%d", *targetID)
+	case "article":
+		return fmt.Sprintf("/wiki/%d", *targetID)
+	case "booking":
+		return "/booking"
+	}
+	return ""
+}
+
+// activityPhrasePrefixHelper returns the verb phrase that precedes the target
+// label in the activity feed, without the label itself.
+func activityPhrasePrefixHelper(verb, targetType string) string {
+	switch targetType {
+	case "sample":
+		switch verb {
+		case "created":
+			return "created sample"
+		case "updated":
+			return "edited sample"
+		case "deleted":
+			return "deleted sample"
+		}
+	case "attachment":
+		switch verb {
+		case "uploaded":
+			return "added attachment"
+		case "deleted":
+			return "removed attachment"
+		}
+	case "fabrication_step":
+		switch verb {
+		case "added_step":
+			return "added fabrication step"
+		case "edited_step":
+			return "edited fabrication step"
+		case "deleted":
+			return "deleted fabrication step"
+		}
+	case "article", "article_attachment":
+		switch verb {
+		case "created", "published":
+			return "published wiki article"
+		case "updated":
+			return "edited article"
+		case "deleted":
+			return "deleted article"
+		}
+	case "booking":
+		return "booked"
+	}
+	return activityVerb(verb)
+}
+
+// activityPhraseHTML returns a safe HTML snippet for one activity feed item.
+// When a URL can be derived from targetType+targetID the label is rendered as
+// an anchor; otherwise plain-text escaping is applied.
+//
+// Sample "updated" entries are a special case: the label stores the change
+// description ("changed owner to alice", "edited description") rather than the
+// sample name. We render "[change description] SMP-NNN" so both the action and
+// the specific entity are visible in the feed.
+func activityPhraseHTML(verb, targetType, targetLabel string, targetID *int) template.HTML {
+	url := activityTargetURLHelper(targetType, targetID)
+	label := strings.TrimSpace(targetLabel)
+
+	if verb == "updated" && targetType == "sample" {
+		desc := label
+		if desc == "" {
+			desc = "edited sample details"
+		}
+		if url == "" || targetID == nil {
+			return template.HTML(template.HTMLEscapeString(desc))
+		}
+		smpRef := fmt.Sprintf("SMP-%03d", *targetID)
+		return template.HTML(
+			template.HTMLEscapeString(desc) +
+				` <a href="` + url + `" class="activity-link">` + smpRef + `</a>`,
+		)
+	}
+
+	if url == "" || label == "" {
+		return template.HTML(template.HTMLEscapeString(activityPhrase(verb, targetType, targetLabel)))
+	}
+	prefix := activityPhrasePrefixHelper(verb, targetType)
+	return template.HTML(
+		template.HTMLEscapeString(prefix) +
+			` <a href="` + url + `" class="activity-link">` +
+			template.HTMLEscapeString(label) +
+			`</a>`,
+	)
 }
 
 // buildBookingFuncMap returns the template.FuncMap used by the booking group.

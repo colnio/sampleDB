@@ -3,10 +3,16 @@
 {{define "content"}}
 <div class="page-topbar">
     <div class="page-topbar__left">
-        <h1>{{if lt .Now.Hour 12}}Good morning{{else if lt .Now.Hour 17}}Good afternoon{{else}}Good evening{{end}}, {{.Username}}</h1>
+        <h1>Welcome back, {{.Username}}</h1>
         <div class="page-topbar__crumbs">{{.Now.Format "Monday · January 2, 2006"}}</div>
     </div>
     <div class="page-topbar__actions">
+        <button type="button" class="button button--secondary" onclick="exportDashboard()">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Export</span>
+        </button>
         <a href="/samples/new" class="button button--primary">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -18,25 +24,25 @@
 
 <section class="stats-grid" aria-label="Workspace statistics">
     <div class="stat-card">
-        <div class="stat-card__label">Total samples</div>
+        <div class="stat-card__label">Total Samples</div>
         <div class="stat-card__value">{{.KPIs.TotalSamples}}</div>
-        <div class="stat-card__delta muted">In the catalog</div>
+        <div class="stat-card__delta">In the catalog</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card__label">Active bookings</div>
+        <div class="stat-card__label">Active Bookings</div>
         <div class="stat-card__value">{{.KPIs.ActiveBookings}}</div>
-        <div class="stat-card__delta muted">Running right now</div>
+        <div class="stat-card__delta primary">{{len .TodayBookings}} today</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card__label">Wiki articles</div>
+        <div class="stat-card__label">Wiki Articles</div>
         <div class="stat-card__value">{{.KPIs.WikiArticles}}</div>
-        <div class="stat-card__delta muted">Published</div>
+        <div class="stat-card__delta">Published</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card__label">Pending approvals</div>
+        <div class="stat-card__label">Pending Approvals</div>
         <div class="stat-card__value">{{.KPIs.PendingApprovals}}</div>
         <div class="stat-card__delta {{if gt .KPIs.PendingApprovals 0}}down{{end}}">
-            {{if gt .KPIs.PendingApprovals 0}}Require action{{else}}All clear{{end}}
+            {{if gt .KPIs.PendingApprovals 0}}Requires action{{else}}All clear{{end}}
         </div>
     </div>
 </section>
@@ -51,7 +57,7 @@
         <div class="recent-list">
             {{range .RecentSamples}}
             <a class="recent-item" href="/samples/{{.ID}}">
-                <div class="recent-item__thumb">
+                <div class="recent-item__thumb recent-item__thumb--color-{{mod .ID 6}}">
                     {{if .FirstImageID}}
                     <img src="/attachment/{{.FirstImageID}}" alt="" loading="lazy">
                     {{end}}
@@ -64,7 +70,7 @@
                     <span class="status-chip__dot" aria-hidden="true"></span>
                     {{statusLabel .Status}}
                 </span>
-                <span class="recent-item__time">{{.CreatedAt.Format "Jan 02"}}</span>
+                <span class="recent-item__time">{{.CreatedAt.Format "2006-01-02"}}</span>
             </a>
             {{end}}
         </div>
@@ -83,9 +89,9 @@
             <div class="activity-item">
                 <div class="activity-item__dot-col" aria-hidden="true"></div>
                 <div class="activity-item__body">
-                    <div class="activity-item__text"><strong>{{.ActorUsername}}</strong> {{activityPhrase .Verb .TargetType .TargetLabel}}</div>
-                    <div class="activity-item__meta">{{.CreatedAt.Format "Jan 02, 15:04"}}</div>
+                    <div class="activity-item__text"><strong>{{.ActorUsername}}</strong> {{activityPhraseHTML .Verb .TargetType .TargetLabel .TargetID}}</div>
                 </div>
+                <span class="activity-item__time">{{timeAgo .CreatedAt}}</span>
             </div>
             {{end}}
         </div>
@@ -130,7 +136,6 @@
         var scrollEl = document.getElementById('dashboard-mini-scroll');
         if (!hoursEl || !bodyEl) return;
 
-        // Build hour headers
         for (var h = 0; h < HOURS; h++) {
             var d = document.createElement('div');
             d.className = 'tline-hour';
@@ -138,7 +143,6 @@
             hoursEl.appendChild(d);
         }
 
-        // Group rows by equipment name, render lanes
         var seen = {};
         var rows = bodyEl.querySelectorAll('[data-equipment-name]');
         rows.forEach(function(r) { bodyEl.removeChild(r); });
@@ -168,8 +172,6 @@
             }
         });
 
-        // Place booking blocks — use full UTC timestamps so cross-midnight
-        // bookings are displayed correctly instead of being silently dropped.
         var todayISO = '{{.Now.Format "2006-01-02"}}';
         var todayP   = todayISO.split('-');
         var todayStart   = new Date(+todayP[0], +todayP[1] - 1, +todayP[2], 0, 0, 0, 0);
@@ -213,6 +215,13 @@
     <p class="muted" style="margin:0;">No bookings scheduled for today.</p>
     {{end}}
 </article>
+
+<script>
+function exportDashboard() {
+    var params = new URLSearchParams({ format: 'csv' });
+    window.location.href = '/samples?' + params.toString();
+}
+</script>
 {{end}}
 
 {{template "base" .}}

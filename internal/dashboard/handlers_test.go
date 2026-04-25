@@ -52,17 +52,24 @@ func buildRenderer(t *testing.T) *web.Renderer {
 	t.Helper()
 	r := &web.Renderer{}
 	tmpl, err := template.New("").Funcs(template.FuncMap{
-		"statusChipClass": func(s string) string { return s },
-		"statusLabel":     func(s string) string { return s },
-		"activityVerb":    func(s string) string { return s },
-		"activityPhrase":  func(_, _, label string) string { return label },
-		"split":           func(s, _ string) []string { return strings.Split(s, ",") },
-		"trim":            strings.TrimSpace,
-		"formatDate":      func(t *time.Time) string { return "" },
-		"add":             func(a, b int) int { return a + b },
-		"ownerSelected":   func(*int, int) bool { return false },
-		"markdown":        func(s string) template.HTML { return template.HTML(s) },
-		"firstInitial":    func(s string) string { return s },
+		"statusChipClass":    func(s string) string { return s },
+		"statusLabel":        func(s string) string { return s },
+		"activityVerb":       func(s string) string { return s },
+		"activityPhrase":     func(_, _, label string) string { return label },
+		"activityPhraseHTML": func(_, _, label string, _ *int) template.HTML { return template.HTML(label) },
+		"timeAgo":            func(t time.Time) string { return t.Format("Jan 02, 15:04") },
+		"split":              func(s, _ string) []string { return strings.Split(s, ",") },
+		"trim":               strings.TrimSpace,
+		"formatDate":         func(t *time.Time) string { return "" },
+		"add":                func(a, b int) int { return a + b },
+		"mod":                func(a, b int) int { return a % b },
+		"urlEscape":          func(s string) string { return s },
+		"ownerSelected":      func(*int, int) bool { return false },
+		"markdown":           func(s string) template.HTML { return template.HTML(s) },
+		"firstInitial":       func(s string) string { return s },
+		"formatDateChip":     func(s string) string { return s },
+		"today":              func() string { return "" },
+		"toJSON":             func(v interface{}) template.JS { return template.JS("null") },
 	}).ParseFiles("../../templates/base.html", "../../templates/header.html", "../../templates/dashboard.html")
 	if err != nil {
 		t.Fatalf("parse templates: %v", err)
@@ -105,7 +112,7 @@ func TestDashboardPage_RendersAggregatedData(t *testing.T) {
 		">42<",           // total samples
 		">3<",            // active bookings
 		">8<",            // wiki articles
-		"Require action", // PendingApprovals > 0
+		"Requires action", // PendingApprovals > 0
 		"Widget",
 		"AFM",
 		"alice",
