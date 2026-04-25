@@ -79,7 +79,7 @@ func TestActivityPhraseHTML_OtherVerbs(t *testing.T) {
 	}{
 		{"created", "sample", "GaAs Wafer", &id5, []string{"created sample", "GaAs Wafer", `href="/samples/5"`}},
 		{"deleted", "sample", "Old Sample", &id5, []string{"deleted sample", "Old Sample"}},
-		{"created", "article", "Cleanroom Safety", &id5, []string{"published wiki article", "Cleanroom Safety", `href="/wiki/5"`}},
+		{"created", "article", "Cleanroom Safety", &id5, []string{"published wiki article", "Cleanroom Safety", `href="/wiki/view/Cleanroom%20Safety"`}},
 		{"updated", "article", "Cleanroom Safety", &id5, []string{"edited article", "Cleanroom Safety"}},
 	}
 

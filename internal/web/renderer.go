@@ -362,7 +362,7 @@ func timeAgo(t time.Time) string {
 
 // activityTargetURLHelper returns the canonical URL for an activity target, or
 // an empty string when no deep-link exists.
-func activityTargetURLHelper(targetType string, targetID *int) string {
+func activityTargetURLHelper(targetType string, targetID *int, label string) string {
 	if targetID == nil {
 		return ""
 	}
@@ -370,7 +370,10 @@ func activityTargetURLHelper(targetType string, targetID *int) string {
 	case "sample":
 		return fmt.Sprintf("/samples/%d", *targetID)
 	case "article":
-		return fmt.Sprintf("/wiki/%d", *targetID)
+		if label != "" {
+			return "/wiki/view/" + url.PathEscape(label)
+		}
+		return ""
 	case "booking":
 		return "/booking"
 	}
@@ -430,31 +433,31 @@ func activityPhrasePrefixHelper(verb, targetType string) string {
 // sample name. We render "[change description] SMP-NNN" so both the action and
 // the specific entity are visible in the feed.
 func activityPhraseHTML(verb, targetType, targetLabel string, targetID *int) template.HTML {
-	url := activityTargetURLHelper(targetType, targetID)
 	label := strings.TrimSpace(targetLabel)
+	targetURL := activityTargetURLHelper(targetType, targetID, label)
 
 	if verb == "updated" && targetType == "sample" {
 		desc := label
 		if desc == "" {
 			desc = "edited sample details"
 		}
-		if url == "" || targetID == nil {
+		if targetURL == "" || targetID == nil {
 			return template.HTML(template.HTMLEscapeString(desc))
 		}
 		smpRef := fmt.Sprintf("SMP-%03d", *targetID)
 		return template.HTML(
 			template.HTMLEscapeString(desc) +
-				` <a href="` + url + `" class="activity-link">` + smpRef + `</a>`,
+				` <a href="` + targetURL + `" class="activity-link">` + smpRef + `</a>`,
 		)
 	}
 
-	if url == "" || label == "" {
+	if targetURL == "" || label == "" {
 		return template.HTML(template.HTMLEscapeString(activityPhrase(verb, targetType, targetLabel)))
 	}
 	prefix := activityPhrasePrefixHelper(verb, targetType)
 	return template.HTML(
 		template.HTMLEscapeString(prefix) +
-			` <a href="` + url + `" class="activity-link">` +
+			` <a href="` + targetURL + `" class="activity-link">` +
 			template.HTMLEscapeString(label) +
 			`</a>`,
 	)

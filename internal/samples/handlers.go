@@ -417,9 +417,6 @@ func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 
 // ExportCSV serves GET /samples/export.csv — downloads all visible samples as CSV.
 func (h *Handlers) ExportCSV(w http.ResponseWriter, r *http.Request) {
-	session := auth.MustSessionFromContext(r.Context())
-	_ = session
-
 	statusFilter := normalizeStatusFilter(r.URL.Query().Get("status"))
 	ownerFilter := normalizeOwnerFilter(r.URL.Query().Get("owner"))
 	dateFrom := r.URL.Query().Get("date_from")
@@ -506,7 +503,7 @@ func normalizeStatusInput(s string) string {
 	return ""
 }
 
-func sampleUpdateActivityLabel(existing Sample, name, description, keywords, samplePrep string, ownerUserID *int, ownerName, status string) string {
+func sampleUpdateActivityLabel(existing Sample, name, description, keywords string, ownerUserID *int, ownerName, status string) string {
 	effectiveStatus := status
 	if effectiveStatus == "" {
 		effectiveStatus = existing.Status
@@ -525,9 +522,6 @@ func sampleUpdateActivityLabel(existing Sample, name, description, keywords, sam
 	if keywords != existing.Keywords {
 		changes = append(changes, "keywords")
 	}
-	if samplePrep != existing.SamplePrep {
-		changes = append(changes, "preparation notes")
-	}
 	if !sameOptionalInt(ownerUserID, existing.OwnerUserID) || ownerName != existing.Owner {
 		changes = append(changes, "owner")
 	}
@@ -540,17 +534,12 @@ func sampleUpdateActivityLabel(existing Sample, name, description, keywords, sam
 			return "edited description"
 		case "keywords":
 			return "edited keywords"
-		case "preparation notes":
-			return "edited preparation notes"
 		case "owner":
 			if strings.TrimSpace(ownerName) == "" {
 				return "changed owner to unassigned"
 			}
 			return "changed owner to " + ownerName
 		}
-	}
-	if len(changes) > 1 {
-		return "edited sample details"
 	}
 	return "edited sample details"
 }
@@ -769,9 +758,9 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 			ownerName = existing.Owner
 		}
 	} else {
-		uid := session.UserID
-		ownerUserID = &uid
-		ownerName, _ = h.svc.GetUsernameByID(r.Context(), session.UserID)
+		// Non-admin edits preserve the existing owner; they cannot reassign it.
+		ownerUserID = existing.OwnerUserID
+		ownerName = existing.Owner
 	}
 
 	var status string
@@ -795,7 +784,7 @@ func (h *Handlers) EditSample(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error updating sample", http.StatusInternalServerError)
 		return
 	}
-	activityLabel := sampleUpdateActivityLabel(existing, name, description, keywords, existing.SamplePrep, ownerUserID, ownerName, status)
+	activityLabel := sampleUpdateActivityLabel(existing, name, description, keywords, ownerUserID, ownerName, status)
 	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), sampleIDInt, activityLabel)
 
 	if isHTMXRequest(r) {

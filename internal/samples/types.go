@@ -101,7 +101,7 @@ type NewSamplePageData struct {
 // Statuses is the ordered set of sample statuses used for filter chips and
 // select controls. Keeping it here makes the vocabulary authoritative and
 // easy to render in templates.
-var Statuses = []string{"active", "in_progress", "archived"}
+var Statuses = []string{"active", "in_progress", "planned", "archived"}
 
 // SampleDetailPageData is the template data for the sample detail page.
 type SampleDetailPageData struct {

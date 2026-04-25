@@ -353,7 +353,7 @@ func (h *Handlers) apiUpdateSample(w http.ResponseWriter, r *http.Request, sampl
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	activityLabel := sampleUpdateActivityLabel(existing, req.Name, req.Description, req.Keywords, req.SamplePrep, ownerUserID, ownerName, status)
+	activityLabel := sampleUpdateActivityLabel(existing, req.Name, req.Description, req.Keywords, ownerUserID, ownerName, status)
 	h.logActivity(r.Context(), session, activity.Verb("updated"), activity.TargetType("sample"), id, activityLabel)
 
 	// Re-fetch and return the updated detail.
