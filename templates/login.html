@@ -198,6 +198,7 @@ html[data-theme="light"] .auth-theme-toggle__icon--moon {
 
         <form method="POST" action="{{if .IsRegister}}/register{{else}}/login{{end}}">
             {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" autocomplete="username" required>

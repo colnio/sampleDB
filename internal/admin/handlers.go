@@ -57,9 +57,10 @@ func (h *Handlers) AdminPage(w http.ResponseWriter, r *http.Request) {
 
 	data := AdminPageData{
 		BasePageData: BasePageData{
-			Username: session.Username,
-			UserID:   session.UserID,
-			IsAdmin:  true, // guaranteed by RequireAdmin middleware
+			Username:  session.Username,
+			UserID:    session.UserID,
+			IsAdmin:   true, // guaranteed by RequireAdmin middleware
+			CSRFToken: session.CSRFToken,
 		},
 		Users:         users,
 		Equipment:     equipment,

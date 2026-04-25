@@ -33,6 +33,7 @@
         </div>
         <div class="card-body" style="padding:20px 24px;">
             <form action="/admin/notifications" method="POST" class="notif-admin" autocomplete="off">
+                {{csrfField .CSRFToken}}
                 <div class="notif-composer">
                     <textarea name="message" placeholder="Notification message…" rows="2" style="flex:1;min-height:60px;resize:vertical;" required></textarea>
                     <div class="notif-composer-controls">
@@ -53,6 +54,7 @@
                     <span class="notif-list__msg" title="{{.Message}}">{{.Message}}</span>
                     <span class="notif-list__meta">{{.Author}} · {{.CreatedAt.Format "Jan 02, 15:04"}}</span>
                     <form action="/admin/notifications/{{.ID}}/delete" method="POST" class="inline-form">
+                        {{csrfField $.CSRFToken}}
                         <button type="submit" class="button button--destructive button--small">Remove</button>
                     </form>
                 </div>
@@ -107,6 +109,7 @@
                                     </td>
                                     <td>
                                         <form action="/admin/equipment/{{$eq.ID}}/status" method="POST" class="inline-form status-form">
+                                            {{csrfField $.CSRFToken}}
                                             <select name="status" class="status-select" onchange="this.form.submit()" aria-label="Equipment status">
                                                 <option value="online" {{if eq $eq.Status "online"}}selected{{end}}>online</option>
                                                 <option value="offline" {{if eq $eq.Status "offline"}}selected{{end}}>offline</option>
@@ -121,6 +124,7 @@
                                                 {{range $g := $eq.Groups}}
                                                 <form action="/admin/equipment/{{$eq.ID}}/groups/remove" method="POST" class="inline-form group-badge-form js-revoke-group"
                                                       data-group="{{$g}}" data-equip="{{$eq.Name}}">
+                                                    {{csrfField $.CSRFToken}}
                                                     {{range $all := $groupsAll}}
                                                         {{if eq $all.Name $g}}
                                                         <input type="hidden" name="group_id" value="{{$all.ID}}">
@@ -137,6 +141,7 @@
                                             {{end}}
                                             {{if $groupsAll}}
                                             <form action="/admin/equipment/{{$eq.ID}}/groups/add" method="POST" class="inline-form add-group-form">
+                                                {{csrfField $.CSRFToken}}
                                                 <select name="group_id" class="group-add-select" aria-label="Add group">
                                                     <option value="">Add group…</option>
                                                     {{range $all := $groupsAll}}
@@ -176,6 +181,7 @@
                 <button type="button" class="modal__close" onclick="closeEquipmentModal()" aria-label="Close">&times;</button>
             </div>
             <form action="/admin/add-equipment" method="POST">
+                {{csrfField .CSRFToken}}
                 <div class="modal__body">
                     <div class="form-group">
                         <label for="equipment_name">Equipment Name</label>
@@ -651,6 +657,8 @@ select:focus {
 </style>
 
 <script>
+const _csrf = "{{.CSRFToken}}";
+
 function updateAccess(userId) {
     const row = document.querySelector(`.user-card[data-user-id="${userId}"]`);
     if (!row) {
@@ -687,6 +695,7 @@ function updateAccess(userId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-Token': _csrf,
         },
         body: JSON.stringify({
             user_id: userId,
@@ -731,6 +740,7 @@ function confirmDeleteEquipment(equipmentId, equipmentName) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRF-Token': _csrf,
             },
         })
         .then(response => {
@@ -760,6 +770,7 @@ function resetPassword(userId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-Token': _csrf,
         },
         body: JSON.stringify({ user_id: userId }),
     })
@@ -820,6 +831,7 @@ function confirmRemoveUser(userId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-Token': _csrf,
         },
         body: JSON.stringify({ user_id: userId }),
     })

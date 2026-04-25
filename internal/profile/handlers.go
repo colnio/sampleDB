@@ -38,9 +38,10 @@ func (h *Handlers) baseData(w http.ResponseWriter, r *http.Request, session auth
 		return BasePageData{}, false
 	}
 	return BasePageData{
-		Username: session.Username,
-		UserID:   session.UserID,
-		IsAdmin:  isAdmin,
+		Username:  session.Username,
+		UserID:    session.UserID,
+		IsAdmin:   isAdmin,
+		CSRFToken: session.CSRFToken,
 	}, true
 }
 

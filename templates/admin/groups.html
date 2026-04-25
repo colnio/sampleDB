@@ -14,6 +14,7 @@
             <!-- <p class="card-subtitle">Organise users into research teams or labs for quick filtering.</p> -->
         </div>
         <form action="/admin/add-group" method="POST" class="inline-form add-inline">
+            {{csrfField .CSRFToken}}
             <input type="text" name="name" placeholder="New group name" required>
             <button type="submit" class="button button--primary button--small">Add</button>
         </form>
@@ -26,6 +27,7 @@
                 <span class="group-name">{{.Name}}</span>
                 <form action="/admin/delete-group/{{.ID}}" method="POST" class="inline-form"
                       onsubmit="return confirm('Remove group {{.Name}}? Users will be unassigned.');">
+                    {{csrfField $.CSRFToken}}
                     <button type="submit" class="button button--destructive button--small">Remove</button>
                 </form>
             </div>

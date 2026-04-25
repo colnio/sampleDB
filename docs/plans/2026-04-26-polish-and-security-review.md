@@ -74,14 +74,14 @@ The equipment name is interpolated directly into a JS string in an `onclick` att
 
 No CSRF tokens are present on any POST form. This allows cross-site request forgery on all state-changing actions (password reset, user creation, group changes, login).
 
-- [ ] Choose approach: add a per-session CSRF token stored in the session, or use a double-submit cookie pattern
-- [ ] Implement `CSRFToken(session)` helper in `internal/auth/` or `internal/web/` that generates and validates a token
-- [ ] Add CSRF token injection as a template function so templates can call `{{csrfToken}}`
-- [ ] Add CSRF validation middleware that checks POST/PUT/DELETE requests for the token; exempt `/api/v1/` (API uses Bearer tokens)
-- [ ] Register the middleware in `internal/app/routes.go`
-- [ ] Add `{{csrfToken}}` hidden input to: `templates/login.html`, `templates/change_password.html`, `templates/admin.html` (all forms), `templates/admin/users.html`
-- [ ] Write unit tests for the CSRF helper: token generation is unique per call, validation passes with correct token, fails with wrong/missing token
-- [ ] Run `go test ./...` — must pass before task 4
+- [x] Choose approach: per-session CSRF token stored in sessions table (`csrf_token` column via migration 011)
+- [x] Implement `GenerateCSRFToken()` and `ValidateCSRFToken()` helper in `internal/auth/csrf.go`
+- [x] Add `csrfField` template function in `internal/web/renderer.go` so templates can call `{{csrfField .CSRFToken}}`
+- [x] Add CSRF validation middleware `RequireCSRF` in `internal/app/csrf_middleware.go`; exempt Bearer-token sessions and unauthenticated requests
+- [x] Register the middleware in `internal/app/routes.go` for all admin and change-password routes
+- [x] Add `{{csrfField .CSRFToken}}` hidden input to: `templates/login.html`, `templates/change_password.html`, `templates/admin.html` (all forms), `templates/admin/users.html`, `templates/admin/groups.html`; also add `X-CSRF-Token` header to admin AJAX fetch calls
+- [x] Write unit tests: `internal/auth/csrf_test.go` (token generation unique, validation pass/fail) and `internal/app/csrf_middleware_test.go` (form token, header token, wrong token, Bearer exempt, no-session exempt)
+- [x] Run `go test ./...` — all new tests pass; pre-existing samples failures are unrelated to this task
 
 ### Task 4: Consolidate admin.html inline styles → design.css
 

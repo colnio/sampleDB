@@ -33,7 +33,7 @@ func TestLoginHandlerSuccess(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("DELETE", 0))
 
 	mock.ExpectExec(`INSERT INTO sessions`).
-		WithArgs(pgxmock.AnyArg(), 7, "alice", pgxmock.AnyArg()).
+		WithArgs(pgxmock.AnyArg(), 7, "alice", pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	manager := NewManager(mock)
@@ -339,10 +339,10 @@ func TestTryAuth_ValidCookie(t *testing.T) {
 	defer mock.Close()
 
 	expiresAt := time.Now().Add(24 * time.Hour)
-	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, s\.csrf_token`).
 		WithArgs(HashToken("valid-token")).
-		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
-			AddRow(5, "alice", expiresAt))
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at", "csrf_token"}).
+			AddRow(5, "alice", expiresAt, "test-csrf-abc"))
 
 	m := NewManager(mock)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -378,7 +378,7 @@ func TestSessionSurvivesManagerRestart(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("DELETE", 0))
 
 	mock.ExpectExec(`INSERT INTO sessions`).
-		WithArgs(pgxmock.AnyArg(), 42, "alice", pgxmock.AnyArg()).
+		WithArgs(pgxmock.AnyArg(), 42, "alice", pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	m1 := NewManager(mock)
@@ -389,10 +389,10 @@ func TestSessionSurvivesManagerRestart(t *testing.T) {
 
 	// Manager2 uses the same DB pool — simulates a restart with no in-memory state.
 	expiresAt := time.Now().Add(24 * time.Hour)
-	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, s\.csrf_token`).
 		WithArgs(HashToken(session.Token)).
-		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
-			AddRow(42, "alice", expiresAt))
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at", "csrf_token"}).
+			AddRow(42, "alice", expiresAt, "test-csrf-token"))
 
 	m2 := NewManager(mock)
 	found, ok, err := m2.getSession(context.Background(), session.Token)

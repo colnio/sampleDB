@@ -4,6 +4,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -157,6 +158,9 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 			return t.Format("Jan 02")
 		},
 		"urlEscape":       url.PathEscape,
+		"csrfField": func(token string) template.HTML {
+			return template.HTML(`<input type="hidden" name="csrf_token" value="` + html.EscapeString(token) + `">`)
+		},
 		"statusChipClass": statusChipClass,
 		"statusLabel":     statusLabel,
 		"activityVerb":       activityVerb,

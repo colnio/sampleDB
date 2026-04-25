@@ -42,9 +42,10 @@ type UserAccess struct {
 
 // BasePageData holds session-derived fields shared by all page templates.
 type BasePageData struct {
-	Username string
-	UserID   int
-	IsAdmin  bool
+	Username  string
+	UserID    int
+	IsAdmin   bool
+	CSRFToken string
 }
 
 // AdminPageData is the template data for the admin page.

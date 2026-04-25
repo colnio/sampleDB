@@ -55,6 +55,7 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	withAuth := a.Auth.RequireAuth
 	adminMW := a.RequireAdmin
+	withCSRF := RequireCSRF
 
 	// Static files — served with Cache-Control: no-cache so the browser always
 	// revalidates. Go's http.FileServer already supports If-Modified-Since /
@@ -134,13 +135,13 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	// --- Admin domain routes (wired via admin.Handlers) ---
 	adminSvc := admin.NewService(a.DB)
 	adminHdlrs := admin.NewHandlers(adminSvc, a.Renderer, a.Auth)
-	mux.HandleFunc("/admin", withAuth(adminMW(adminHdlrs.AdminPage)))
-	mux.HandleFunc("/admin/update-access", withAuth(adminMW(adminHdlrs.UpdateAccess)))
-	mux.HandleFunc("/admin/set-admin", withAuth(adminMW(adminHdlrs.SetAdmin)))
-	mux.HandleFunc("/admin/reset-password", withAuth(adminMW(adminHdlrs.ResetPassword)))
-	mux.HandleFunc("/admin/add-equipment", withAuth(adminMW(adminHdlrs.AddEquipment)))
-	mux.HandleFunc("/admin/delete-equipment/", withAuth(adminMW(adminHdlrs.DeleteEquipment)))
-	mux.HandleFunc("/admin/equipment/", withAuth(adminMW(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/admin", withAuth(adminMW(withCSRF(adminHdlrs.AdminPage))))
+	mux.HandleFunc("/admin/update-access", withAuth(adminMW(withCSRF(adminHdlrs.UpdateAccess))))
+	mux.HandleFunc("/admin/set-admin", withAuth(adminMW(withCSRF(adminHdlrs.SetAdmin))))
+	mux.HandleFunc("/admin/reset-password", withAuth(adminMW(withCSRF(adminHdlrs.ResetPassword))))
+	mux.HandleFunc("/admin/add-equipment", withAuth(adminMW(withCSRF(adminHdlrs.AddEquipment))))
+	mux.HandleFunc("/admin/delete-equipment/", withAuth(adminMW(withCSRF(adminHdlrs.DeleteEquipment))))
+	mux.HandleFunc("/admin/equipment/", withAuth(adminMW(withCSRF(func(w http.ResponseWriter, r *http.Request) {
 		// Route equipment sub-paths:
 		//   /admin/equipment/{id}/status
 		//   /admin/equipment/{id}/groups/add
@@ -156,13 +157,13 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 		default:
 			http.NotFound(w, r)
 		}
-	})))
-	mux.HandleFunc("/admin/add-group", withAuth(adminMW(adminHdlrs.AddGroup)))
-	mux.HandleFunc("/admin/delete-group/", withAuth(adminMW(adminHdlrs.DeleteGroup)))
+	}))))
+	mux.HandleFunc("/admin/add-group", withAuth(adminMW(withCSRF(adminHdlrs.AddGroup))))
+	mux.HandleFunc("/admin/delete-group/", withAuth(adminMW(withCSRF(adminHdlrs.DeleteGroup))))
 	mux.HandleFunc("/admin/equipment-report", withAuth(adminMW(adminHdlrs.EquipmentReport)))
-	mux.HandleFunc("/admin/delete-user", withAuth(adminMW(adminHdlrs.DeleteUser)))
-	mux.HandleFunc("/admin/notifications", withAuth(adminMW(adminHdlrs.CreateNotification)))
-	mux.HandleFunc("/admin/notifications/", withAuth(adminMW(adminHdlrs.DeleteNotification)))
+	mux.HandleFunc("/admin/delete-user", withAuth(adminMW(withCSRF(adminHdlrs.DeleteUser))))
+	mux.HandleFunc("/admin/notifications", withAuth(adminMW(withCSRF(adminHdlrs.CreateNotification))))
+	mux.HandleFunc("/admin/notifications/", withAuth(adminMW(withCSRF(adminHdlrs.DeleteNotification))))
 
 	// REST API v1 — users / equipment (any authenticated user, matching original contract)
 	mux.HandleFunc("/api/v1/users", withAuth(adminHdlrs.APIUsers))
@@ -177,7 +178,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	// --- Profile domain routes (wired via profile.Handlers) ---
 	profileSvc := profile.NewService(a.DB)
 	profileHdlrs := profile.NewHandlers(profileSvc, a.Renderer, a.Auth)
-	mux.HandleFunc("/change-password", withAuth(profileHdlrs.ChangePassword))
+	mux.HandleFunc("/change-password", withAuth(withCSRF(profileHdlrs.ChangePassword)))
 	mux.HandleFunc("/profile/tokens", withAuth(profileHdlrs.ProfileTokens))
 	mux.HandleFunc("/profile/tokens/", withAuth(profileHdlrs.ProfileTokenRevoke))
 

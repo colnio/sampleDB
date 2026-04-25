@@ -257,7 +257,7 @@ func TestRequireAuth_CookiePath(t *testing.T) {
 	mock.ExpectExec(`DELETE FROM sessions WHERE expires_at`).
 		WillReturnResult(pgxmock.NewResult("DELETE", 0))
 	mock.ExpectExec(`INSERT INTO sessions`).
-		WithArgs(pgxmock.AnyArg(), 1, "alice", pgxmock.AnyArg()).
+		WithArgs(pgxmock.AnyArg(), 1, "alice", pgxmock.AnyArg(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	m := NewManager(mock)
@@ -268,10 +268,10 @@ func TestRequireAuth_CookiePath(t *testing.T) {
 	}
 
 	// RequireAuth will SELECT the session from DB (joined with users) using the hash.
-	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, s\.csrf_token`).
 		WithArgs(HashToken(session.Token)).
-		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at"}).
-			AddRow(1, "alice", time.Now().Add(24*time.Hour)))
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at", "csrf_token"}).
+			AddRow(1, "alice", time.Now().Add(24*time.Hour), "test-csrf"))
 
 	reached := false
 	handler := m.RequireAuth(func(w http.ResponseWriter, r *http.Request) {

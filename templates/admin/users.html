@@ -78,6 +78,7 @@
                         <span class="field-label">Account</span>
                         <div class="account-actions">
                             <form action="/admin/set-admin" method="POST" class="inline-form">
+                                {{csrfField $.CSRFToken}}
                                 <input type="hidden" name="user_id" value="{{$user.UserID}}">
                                 {{if not $user.Admin}}
                                     <button type="submit" name="is_admin" value="true"

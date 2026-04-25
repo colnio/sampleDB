@@ -57,6 +57,8 @@ var schemaStatements = []string{
 	createNotificationsTable,
 	// Migration 011 – add 'planned' sample status
 	addPlannedStatusConstraint,
+	// Migration 011 (addon) – add csrf_token to sessions
+	addCSRFTokenToSessions,
 }
 
 var dataStatements = []string{
@@ -255,7 +257,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     id         TEXT PRIMARY KEY,
     user_id    INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     username   TEXT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL
+    expires_at TIMESTAMPTZ NOT NULL,
+    csrf_token TEXT NOT NULL DEFAULT ''
 );`
 
 const createSessionsExpiresAtIndex = `
@@ -335,6 +338,10 @@ ALTER TABLE samples DROP CONSTRAINT IF EXISTS chk_sample_status;
 ALTER TABLE samples
     ADD CONSTRAINT chk_sample_status
     CHECK (status IN ('active', 'in_progress', 'archived', 'planned'));`
+
+const addCSRFTokenToSessions = `
+ALTER TABLE sessions
+    ADD COLUMN IF NOT EXISTS csrf_token TEXT NOT NULL DEFAULT '';`
 
 // seedEquipment inserts the default equipment rows when the database is blank
 // (no users, no samples, and no equipment present yet).  Matches the seed block

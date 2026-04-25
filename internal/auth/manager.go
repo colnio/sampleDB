@@ -27,6 +27,7 @@ type Session struct {
 	UserID    int
 	Username  string
 	ExpiresAt time.Time
+	CSRFToken string
 }
 
 type Manager struct {
@@ -506,10 +507,14 @@ func (m *Manager) newSession(ctx context.Context, username string, userID int) (
 	if err != nil {
 		return Session{}, err
 	}
+	csrfToken, err := GenerateCSRFToken()
+	if err != nil {
+		return Session{}, err
+	}
 	expiresAt := time.Now().Add(24 * time.Hour)
 	_, err = m.db.Exec(ctx,
-		"INSERT INTO sessions (id, user_id, username, expires_at) VALUES ($1, $2, $3, $4)",
-		HashToken(token), userID, username, expiresAt)
+		"INSERT INTO sessions (id, user_id, username, expires_at, csrf_token) VALUES ($1, $2, $3, $4, $5)",
+		HashToken(token), userID, username, expiresAt, csrfToken)
 	if err != nil {
 		return Session{}, fmt.Errorf("create session: %w", err)
 	}
@@ -518,6 +523,7 @@ func (m *Manager) newSession(ctx context.Context, username string, userID int) (
 		UserID:    userID,
 		Username:  username,
 		ExpiresAt: expiresAt,
+		CSRFToken: csrfToken,
 	}, nil
 }
 
@@ -525,12 +531,12 @@ func (m *Manager) getSession(ctx context.Context, token string) (Session, bool, 
 	var s Session
 	s.Token = token
 	err := m.db.QueryRow(ctx,
-		`SELECT s.user_id, s.username, s.expires_at
+		`SELECT s.user_id, s.username, s.expires_at, s.csrf_token
 		   FROM sessions s
 		   JOIN users u ON u.user_id = s.user_id
 		  WHERE s.id = $1 AND s.expires_at > NOW()
 		    AND u.is_approved = true AND COALESCE(u.deleted, false) = false`,
-		HashToken(token)).Scan(&s.UserID, &s.Username, &s.ExpiresAt)
+		HashToken(token)).Scan(&s.UserID, &s.Username, &s.ExpiresAt, &s.CSRFToken)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Session{}, false, nil
@@ -562,4 +568,5 @@ type authPageData struct {
 	Username   string
 	IsAdmin    bool
 	Next       string
+	CSRFToken  string
 }
