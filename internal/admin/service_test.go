@@ -542,6 +542,48 @@ func TestUpdateAccess_RollbackOnInsertFailure(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Service tests — ResetPassword
+// ---------------------------------------------------------------------------
+
+func TestResetPassword_ServiceReturnsMinEntropyPassword(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`UPDATE users SET password_hash`).
+		WithArgs(pgxmock.AnyArg(), 7).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	pw, err := svc.ResetPassword(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("ResetPassword: %v", err)
+	}
+	if len(pw) < 12 {
+		t.Errorf("expected password length >= 12, got %d (%q)", len(pw), pw)
+	}
+	if pw == "" {
+		t.Error("expected non-empty password")
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestResetPassword_ServiceNotFound(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`UPDATE users SET password_hash`).
+		WithArgs(pgxmock.AnyArg(), 999).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+
+	_, err := svc.ResetPassword(context.Background(), 999)
+	if !errors.Is(err, web.ErrNotFound) {
+		t.Errorf("expected web.ErrNotFound, got %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Service tests — ListAPIUsers
 // ---------------------------------------------------------------------------
 
@@ -725,7 +767,7 @@ func TestResetPassword_UserNotFound(t *testing.T) {
 }
 
 func TestResetPassword_Success(t *testing.T) {
-	h := newHandlers(&mockService{resetPwd: "12345678"})
+	h := newHandlers(&mockService{resetPwd: "123456789012"})
 	payload := `{"user_id":5}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/reset-password", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
@@ -740,8 +782,11 @@ func TestResetPassword_Success(t *testing.T) {
 	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if resp["password"] != "12345678" {
-		t.Errorf("expected password %q, got %q", "12345678", resp["password"])
+	if resp["password"] != "123456789012" {
+		t.Errorf("expected password %q, got %q", "123456789012", resp["password"])
+	}
+	if resp["note"] == "" {
+		t.Error("expected non-empty note field in response")
 	}
 }
 

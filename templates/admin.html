@@ -771,17 +771,18 @@ function resetPassword(userId) {
     })
     .then(data => {
         const password = data?.password;
+        const note = data?.note ?? 'User must change password on next login';
         if (!password) {
             throw new Error('Server did not provide a new password');
         }
 
         const showPrompt = () => {
-            window.prompt('Temporary password generated. Copy it now:', password);
+            window.prompt(`Temporary password (${note}). Copy it now:`, password);
         };
 
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(password).then(() => {
-                alert(`Temporary password for ${username}: ${password}`);
+                alert(`Temporary password for ${username}: ${password}\n\n${note}`);
             }).catch(() => {
                 showPrompt();
             });

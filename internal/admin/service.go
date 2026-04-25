@@ -272,11 +272,12 @@ func (s *DBService) DeleteUser(ctx context.Context, userID int) (int64, error) {
 	return cmdTag.RowsAffected(), nil
 }
 
-// ResetPassword generates a new random 8-digit numeric password, hashes it, and
-// stores it for the given user. Returns the plaintext password so the caller can
-// display it to the admin. Returns web.ErrNotFound if the user does not exist.
+// ResetPassword generates a new random 12-character alphanumeric password, hashes
+// it, and stores it for the given user. Returns the plaintext password so the
+// caller can display it to the admin. Returns web.ErrNotFound if the user does
+// not exist.
 func (s *DBService) ResetPassword(ctx context.Context, userID int) (string, error) {
-	password, err := generateNumericPassword(8)
+	password, err := generatePassword(12)
 	if err != nil {
 		return "", fmt.Errorf("generate password: %w", err)
 	}
@@ -514,20 +515,20 @@ func (s *DBService) DeleteNotification(ctx context.Context, id int64) error {
 	return err
 }
 
-// generateNumericPassword returns a cryptographically random numeric string of
-// the given length.
-func generateNumericPassword(length int) (string, error) {
+// generatePassword returns a cryptographically random alphanumeric string of
+// the given length using crypto/rand.
+func generatePassword(length int) (string, error) {
 	if length <= 0 {
 		return "", fmt.Errorf("invalid password length: %d", length)
 	}
-	const digits = "0123456789"
+	const charset = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 	result := make([]byte, length)
 	for i := range result {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(digits))))
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
 			return "", err
 		}
-		result[i] = digits[n.Int64()]
+		result[i] = charset[n.Int64()]
 	}
 	return string(result), nil
 }

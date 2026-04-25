@@ -276,7 +276,10 @@ func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"password": password})
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"password": password,
+		"note":     "User must change password on next login",
+	})
 }
 
 // AddEquipment handles POST /admin/add-equipment.

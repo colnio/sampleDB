@@ -63,12 +63,12 @@ The equipment name is interpolated directly into a JS string in an `onclick` att
 
 `internal/admin/handlers.go` returns a plaintext temporary password in a JSON response. This is low-risk over HTTPS but the password should be clearly marked as one-time and short-lived. The plaintext return itself is acceptable; what's missing is the enforcement.
 
-- [ ] In `internal/admin/service.go` (or wherever `ResetUserPassword` is implemented), confirm the generated password is a random one-time value (not permanent)
-- [ ] If not already: generate a random 12-character temporary password (use `crypto/rand`), force `must_change_password` flag in DB or document that next login requires a change
-- [ ] Update the JSON response to include a `"note"` field: `"User must change password on next login"`
-- [ ] Update `templates/admin/users.html` reset-password modal to display the note alongside the temporary password
-- [ ] Write a unit test in `internal/admin/` that asserts the reset response includes the note field and that the password meets minimum entropy (12+ chars, random)
-- [ ] Run `go test ./internal/admin/...` — must pass before task 3
+- [x] In `internal/admin/service.go` (or wherever `ResetUserPassword` is implemented), confirm the generated password is a random one-time value (not permanent)
+- [x] If not already: generate a random 12-character temporary password (use `crypto/rand`), force `must_change_password` flag in DB or document that next login requires a change
+- [x] Update the JSON response to include a `"note"` field: `"User must change password on next login"`
+- [x] Update `templates/admin/users.html` reset-password modal to display the note alongside the temporary password
+- [x] Write a unit test in `internal/admin/` that asserts the reset response includes the note field and that the password meets minimum entropy (12+ chars, random)
+- [x] Run `go test ./internal/admin/...` — must pass before task 3
 
 ### Task 3: Add CSRF protection to admin and auth forms
 
