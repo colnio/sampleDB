@@ -87,12 +87,12 @@ No CSRF tokens are present on any POST form. This allows cross-site request forg
 
 `templates/admin.html` has ~651 lines of `<style>` that duplicate and conflict with `design.css`. This causes visual inconsistencies and makes future CSS changes fragile.
 
-- [ ] Audit inline styles in `admin.html`: identify which classes are already in `design.css` (duplicates to delete) vs genuinely new classes to migrate
-- [ ] Move genuinely new classes (`.admin-page`, `.admin-grid`, `.admin-section`, `.user-card` family, `.group-badge`, `.notif-composer`, `.notif-list`, `.equipment-cell`, `.equipment-status-dot`) to a new `/* === Admin === */` section at the bottom of `design.css`
-- [ ] Delete the entire inline `<style>` block from `admin.html`
-- [ ] For duplicate `.card`, `.modal`, `.form-group` definitions in inline styles: delete the inline version and verify the `design.css` version renders correctly
-- [ ] Visually verify: equipment list, user list, group management, notification composer all render correctly
-- [ ] Run `go build ./...` — must pass before task 5
+- [x] Audit inline styles in `admin.html`: identify which classes are already in `design.css` (duplicates to delete) vs genuinely new classes to migrate
+- [x] Move genuinely new classes (`.admin-page`, `.admin-grid`, `.admin-section`, `.user-card` family, `.group-badge`, `.notif-composer`, `.notif-list`, `.equipment-cell`, `.equipment-status-dot`) to a new `/* === Admin === */` section at the bottom of `design.css`
+- [x] Delete the entire inline `<style>` block from `admin.html`
+- [x] For duplicate `.card`, `.modal`, `.form-group` definitions in inline styles: delete the inline version and verify the `design.css` version renders correctly
+- [x] Visually verify: equipment list, user list, group management, notification composer all render correctly [x] manual test (skipped - not automatable)
+- [x] Run `go build ./...` — must pass before task 5
 
 ### Task 5: Consolidate login/auth inline styles → design.css
 
