@@ -6,6 +6,32 @@
 
 ---
 
+## Security Fixes Applied (branch: redesign-refined, 2026-04-26)
+
+The following security issues were discovered during audit and resolved before merge:
+
+### SEC-1 · XSS in admin equipment onclick handlers — FIXED
+Equipment names were interpolated directly into `onclick="showReportModal(id, 'name')"` JS string attributes in `templates/admin.html`. A name containing `'` or JS metacharacters could break out of the string context.
+
+**Fix applied:** Replaced inline-JS approach with `data-id` / `data-name` attributes on each row element. A delegated event listener reads `dataset.id` / `dataset.name` on click — no string interpolation into JS.
+
+### SEC-2 · Admin password-reset response — HARDENED
+`internal/admin/handlers.go` returned a temporary password in a JSON response with no indication it was one-time use.
+
+**Fix applied:** Confirmed password is generated via `crypto/rand` (12 random chars). Added a `"note": "User must change password on next login"` field to the JSON response. Admin modal updated to display the note alongside the temporary password.
+
+### SEC-3 · No CSRF protection on any POST form — FIXED
+All state-changing forms (login, password reset, user creation, group assignment) accepted POSTs with no CSRF token, allowing cross-site request forgery.
+
+**Fix applied:** Per-session CSRF token stored in the `sessions` table (`csrf_token` column, migration 011). `GenerateCSRFToken` / `ValidateCSRFToken` helpers in `internal/auth/csrf.go`. `RequireCSRF` middleware in `internal/app/csrf_middleware.go` applied to all admin and change-password routes. Hidden `{{csrfField .CSRFToken}}` injected into every affected form. AJAX calls send `X-CSRF-Token` header. Bearer-token API sessions are exempt.
+
+### CSS Consolidation (design system hygiene)
+- `templates/admin.html`: ~651 lines of inline `<style>` removed; classes migrated to `/* === Admin === */` section in `static/css/design.css`
+- `templates/login.html` + `templates/auth_base.html`: ~164 lines of inline auth styles removed; migrated to `/* === Auth === */` section in `design.css`
+- `templates/wiki_view.html` + `templates/wiki_edit.html`: ~346 lines of inline styles removed; migrated to `/* === Wiki === */` section in `design.css`
+
+---
+
 ## Summary
 
 | Severity | Count |

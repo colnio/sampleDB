@@ -139,8 +139,8 @@ The dashboard is mostly done but may have minor inconsistencies flagged during Q
 
 ### Task 9: [Final] Update documentation
 
-- [ ] Update `docs/QA_report.md` or add a note with security fixes applied
-- [ ] If CLAUDE.md exists, update any design system notes to reflect CSS consolidation
+- [x] Update `docs/QA_report.md` or add a note with security fixes applied
+- [x] If CLAUDE.md exists, update any design system notes to reflect CSS consolidation — no CLAUDE.md present; skipped
 
 ---
 
