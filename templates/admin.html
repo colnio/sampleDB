@@ -119,8 +119,8 @@
                                         <div class="equipment-groups">
                                             {{if $eq.Groups}}
                                                 {{range $g := $eq.Groups}}
-                                                <form action="/admin/equipment/{{$eq.ID}}/groups/remove" method="POST" class="inline-form group-badge-form"
-                                                      onsubmit="return confirm('Revoke {{$g}} from {{$eq.Name}}?');">
+                                                <form action="/admin/equipment/{{$eq.ID}}/groups/remove" method="POST" class="inline-form group-badge-form js-revoke-group"
+                                                      data-group="{{$g}}" data-equip="{{$eq.Name}}">
                                                     {{range $all := $groupsAll}}
                                                         {{if eq $all.Name $g}}
                                                         <input type="hidden" name="group_id" value="{{$all.ID}}">
@@ -149,8 +149,8 @@
                                         </div>
                                     </td>
                                     <td class="col-actions">
-                                        <button onclick="showReportModal({{$eq.ID}}, '{{$eq.Name}}')" class="button button--secondary button--small">Usage</button>
-                                        <button onclick="confirmDeleteEquipment({{$eq.ID}}, '{{$eq.Name}}')" class="button button--destructive button--small">Remove</button>
+                                        <button class="button button--secondary button--small js-show-report" data-id="{{$eq.ID}}" data-name="{{$eq.Name}}">Usage</button>
+                                        <button class="button button--destructive button--small js-delete-equipment" data-id="{{$eq.ID}}" data-name="{{$eq.Name}}">Remove</button>
                                     </td>
                                 </tr>
                                 {{end}}
@@ -877,6 +877,29 @@ function downloadReport() {
     window.location.href = `/admin/equipment-report?id=${currentEquipmentId}&start=${startDate}&end=${endDate}`;
     closeReportModal();
 }
+
+document.addEventListener('click', function(e) {
+    const reportBtn = e.target.closest('.js-show-report');
+    if (reportBtn) {
+        showReportModal(reportBtn.dataset.id);
+        return;
+    }
+    const deleteBtn = e.target.closest('.js-delete-equipment');
+    if (deleteBtn) {
+        confirmDeleteEquipment(deleteBtn.dataset.id, deleteBtn.dataset.name);
+    }
+});
+
+document.addEventListener('submit', function(e) {
+    const form = e.target.closest('.js-revoke-group');
+    if (form) {
+        const group = form.dataset.group;
+        const equip = form.dataset.equip;
+        if (!confirm('Revoke ' + group + ' from ' + equip + '?')) {
+            e.preventDefault();
+        }
+    }
+});
 
 window.onclick = function(event) {
     const modals = document.querySelectorAll('.modal-backdrop');
