@@ -37,6 +37,7 @@
         <span>Status</span>
         <select id="status-filter" name="status" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;">
             <option value="all" {{if eq .StatusFilter ""}}selected{{end}}>All</option>
+            <option value="planned" {{if eq .StatusFilter "planned"}}selected{{end}}>Planned</option>
             <option value="active" {{if eq .StatusFilter "active"}}selected{{end}}>Active</option>
             <option value="in_progress" {{if eq .StatusFilter "in_progress"}}selected{{end}}>In Progress</option>
             <option value="archived" {{if eq .StatusFilter "archived"}}selected{{end}}>Archived</option>

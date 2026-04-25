@@ -146,6 +146,7 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 			}
 			return t.Format("2006-01-02")
 		},
+		"today":           func() string { return time.Now().Format("2006-01-02") },
 		"add":             func(a, b int) int { return a + b },
 		"urlEscape":       url.PathEscape,
 		"statusChipClass": statusChipClass,
@@ -171,6 +172,8 @@ func statusChipClass(status string) string {
 		return "progress"
 	case "archived":
 		return "archived"
+	case "planned":
+		return "planned"
 	default:
 		return "archived"
 	}
@@ -185,6 +188,8 @@ func statusLabel(status string) string {
 		return "In Progress"
 	case "archived":
 		return "Archived"
+	case "planned":
+		return "Planned"
 	default:
 		// Capitalize the first letter so templates never show an empty chip.
 		if status == "" {

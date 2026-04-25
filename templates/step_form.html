@@ -1,51 +1,63 @@
 {{define "step_add_form"}}
-<div id="step-add-panel" class="step-add-form card card--nested" data-step-add-panel hidden>
-    <h3>Add Step</h3>
-    <form method="POST"
-          action="/samples/{{.Sample.ID}}/steps"
-          class="stacked-form"
-          hx-post="/samples/{{.Sample.ID}}/steps"
-          hx-target="#fabrication-steps-panel"
-          hx-select="#fabrication-steps-panel"
-          hx-swap="outerHTML"
-          hx-indicator="#step-add-indicator">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="step-date">Date</label>
-                <input id="step-date" type="date" name="step_date">
+<div id="step-add-modal" class="modal-backdrop step-modal" role="dialog" aria-modal="true" aria-labelledby="step-add-modal-title" hidden>
+    <section class="modal">
+        <header class="modal__head">
+            <div>
+                <h3 id="step-add-modal-title">Add Fabrication Step</h3>
+                <p class="modal__sub">Record a new step in the fabrication recipe.</p>
             </div>
-            <div class="form-group">
-                <label for="step-order">Order</label>
-                <input id="step-order" type="number" name="step_order"
-                       value="{{add (len .Steps) 1}}" min="1">
+            <button type="button" class="modal__close" data-sample-modal-close aria-label="Close">&times;</button>
+        </header>
+        <form method="POST"
+              action="/samples/{{.Sample.ID}}/steps"
+              class="stacked-form"
+              hx-post="/samples/{{.Sample.ID}}/steps"
+              hx-target="#fabrication-steps-panel"
+              hx-select="#fabrication-steps-panel"
+              hx-swap="outerHTML"
+              hx-indicator="#step-add-indicator">
+            <div class="modal__body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="step-date">Date</label>
+                        <input id="step-date" type="date" name="step_date" value="{{today}}">
+                    </div>
+                    <div class="form-group">
+                        <label for="step-order">Order</label>
+                        <input id="step-order" type="number" name="step_order"
+                               value="{{add (len .Steps) 1}}" min="1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="step-person">Person</label>
+                        <select id="step-person" name="person_user_id">
+                            <option value="">— None —</option>
+                            {{range .Users}}
+                            <option value="{{.ID}}" {{if eq $.UserID .ID}}selected{{end}}>{{.Username}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="step-equipment">Equipment</label>
+                        <input id="step-equipment" type="text" name="equipment_text"
+                               placeholder="e.g. SEM, TEM, custom rig…">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="step-description">Description</label>
+                    <textarea id="step-description" name="description" rows="3"
+                              placeholder="Describe this fabrication step..."></textarea>
+                </div>
             </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="step-person">Person</label>
-                <select id="step-person" name="person_user_id">
-                    <option value="">-- None --</option>
-                    {{range .Users}}
-                    <option value="{{.ID}}">{{.Username}}</option>
-                    {{end}}
-                </select>
+            <div class="modal__foot">
+                <button type="button" class="button button--secondary" data-sample-modal-close>Cancel</button>
+                <button type="submit" class="button button--primary">Add Step</button>
+                <div id="step-add-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
+                    <span class="spinner"></span>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="step-equipment">Equipment</label>
-                <input id="step-equipment" type="text" name="equipment_text" placeholder="e.g. SEM, TEM, custom rig…">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="step-description">Description</label>
-            <textarea id="step-description" name="description" rows="3" placeholder="Describe this fabrication step..."></textarea>
-        </div>
-        <div class="form-actions">
-            <button type="submit" class="button button--primary button--small">Add Step</button>
-            <button type="button" class="button button--ghost button--small" data-step-add-cancel>Cancel</button>
-            <div id="step-add-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
-                <span class="spinner"></span>
-            </div>
-        </div>
-    </form>
+        </form>
+    </section>
 </div>
 {{end}}

@@ -2214,6 +2214,79 @@ html[data-theme="dark"] body .markdown-body table th {
     margin-top: var(--space-md);
 }
 
+/* ---------- Share modal ---------- */
+.share-url-copy {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.share-url-copy .share-url-input {
+    flex: 1;
+    font-family: var(--font-family-mono);
+    font-size: 12.5px;
+    background: var(--surface-muted);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    padding: 8px 12px;
+    color: var(--text-strong);
+    min-width: 0;
+}
+
+.share-option-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.share-option-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+}
+
+.share-option-card input[type="radio"] {
+    display: none;
+}
+
+.share-option-card svg {
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+    flex: none;
+    transition: color 0.15s;
+}
+
+.share-option-card__title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-strong);
+    line-height: 1.3;
+}
+
+.share-option-card__desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.share-option-card--active {
+    border-color: var(--color-primary);
+    background: var(--color-secondary-bg);
+}
+
+.share-option-card--active svg {
+    color: var(--color-primary);
+}
+
 /* ============================================================
    Sample card — uniform height when some cards lack thumbnails
    ============================================================ */

@@ -470,27 +470,16 @@ func (s *DBService) AttachmentInfo(ctx context.Context, attachmentID int) (int, 
 // ------------------------------------------------------------ CheckOwner ---
 
 func (s *DBService) CheckOwner(ctx context.Context, sampleID, userID int) error {
-	var ownerUserID *int
+	// Verify the sample exists; any authenticated user may edit.
+	var exists bool
 	err := s.db.QueryRow(ctx,
-		"SELECT owner_user_id FROM samples WHERE sample_id = $1", sampleID).Scan(&ownerUserID)
+		"SELECT EXISTS(SELECT 1 FROM samples WHERE sample_id = $1)", sampleID).Scan(&exists)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return web.ErrNotFound
-		}
 		log.Printf("samples.CheckOwner: db error: %v", err)
 		return fmt.Errorf("database error: %w", err)
 	}
-	if ownerUserID != nil && *ownerUserID == userID {
-		return nil
-	}
-	var isAdmin bool
-	if err := s.db.QueryRow(ctx,
-		"SELECT COALESCE(admin, false) FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false", userID).Scan(&isAdmin); err != nil {
-		log.Printf("samples.CheckOwner: admin check error: %v", err)
-		return fmt.Errorf("database error: %w", err)
-	}
-	if !isAdmin {
-		return web.ErrForbidden
+	if !exists {
+		return web.ErrNotFound
 	}
 	return nil
 }

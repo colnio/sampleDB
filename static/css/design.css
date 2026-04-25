@@ -402,12 +402,27 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     flex: none;
 }
 
-.step-add-form {
-    margin-top: 16px;
+/* Compact icon-only action buttons inside fab steps */
+.fab-step__action-btn {
+    min-height: 28px;
+    width: 28px;
+    padding: 0;
+    border-radius: 6px;
 }
 
-.step-add-form[hidden] {
-    display: none;
+.fab-step__action-btn svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+}
+
+.fab-step__action-btn--delete {
+    color: var(--color-destructive);
+}
+
+.fab-step__action-btn--delete:hover {
+    background: var(--color-destructive-bg);
+    border-color: var(--color-destructive);
 }
 
 .sample-attachments-card .attachments-header {
@@ -570,6 +585,18 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     background: rgba(251, 191, 36, 0.12);
     color: #fbbf24;
     border-color: rgba(251, 191, 36, 0.3);
+}
+
+.status-chip--planned {
+    background: rgba(139, 92, 246, 0.08);
+    color: #7c3aed;
+    border-color: rgba(139, 92, 246, 0.2);
+}
+
+:root[data-theme="dark"] .status-chip--planned {
+    background: rgba(167, 139, 250, 0.12);
+    color: #a78bfa;
+    border-color: rgba(167, 139, 250, 0.3);
 }
 
 .status-chip--danger {
@@ -1230,7 +1257,7 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
 .fab-step {
     display: grid;
     grid-template-columns: 44px 1fr;
-    gap: 14px;
+    column-gap: 14px;
     padding: 14px 0;
     border-bottom: 1px dashed var(--border-subtle);
     align-items: flex-start;
@@ -1265,10 +1292,7 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     font-size: 14px;
     margin: 0 0 4px;
     color: var(--text-strong);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    line-height: 1.45;
 }
 
 .fab-step__meta {
@@ -1277,7 +1301,8 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     display: flex;
     gap: 14px;
     flex-wrap: wrap;
-    margin-bottom: 6px;
+    align-items: center;
+    margin-bottom: 2px;
 }
 
 .fab-step__meta-item {
@@ -1289,14 +1314,7 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
 .fab-step__meta-item svg {
     width: 13px;
     height: 13px;
-}
-
-.fab-step__description {
-    font-size: 13.5px;
-    color: var(--text-strong);
-    margin: 4px 0 0;
-    line-height: 1.55;
-    white-space: pre-wrap;
+    flex: none;
 }
 
 .fab-step__actions {
@@ -1304,21 +1322,12 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     gap: 6px;
     opacity: 0;
     transition: opacity 0.15s ease;
-    margin-top: 6px;
+    margin-top: 8px;
 }
 
 .fab-step:hover .fab-step__actions,
 .fab-step:focus-within .fab-step__actions {
     opacity: 1;
-}
-
-/* Inline edit form inside a fab step — keep full width */
-.fab-step.fab-step--editing {
-    grid-template-columns: 1fr;
-}
-
-.fab-step.fab-step--editing > .fab-step__num {
-    display: none;
 }
 
 /* ---------- Page details panel (collapsible section wrapper) ---------- */

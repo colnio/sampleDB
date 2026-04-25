@@ -1,101 +1,162 @@
 {{define "title"}}{{.Sample.Name}} · Sample Tracker{{end}}
 
 {{define "content"}}
-<section class="sample-detail">
-    <header class="sample-detail__header">
-        <div>
-            <h1>{{.Sample.Name}}</h1>
-            <p class="sample-detail__created">Created {{.Sample.CreatedAt.Format "2006-01-02"}}</p>
-            <p class="sample-detail__meta">
-                <span><strong>Owner:</strong> {{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unknown{{end}}</span>
-                <span><strong>Keywords:</strong> {{if .Sample.Keywords}}{{.Sample.Keywords}}{{else}}—{{end}}</span>
-            </p>
-            <p class="sample-detail__shared-badge">
-                <span class="badge badge--shared">Shared view</span>
-                {{if .IsAuthenticated}}
-                <a href="/samples/{{.Sample.ID}}" class="button button--ghost button--small">Open full view</a>
-                {{end}}
-            </p>
+<div class="page-topbar sample-detail-topbar">
+    <div class="page-topbar__left">
+        <div class="flex-center gap-sm" style="margin-bottom:6px;">
+            <span class="mono muted" style="font-size:12px;">SMP-{{printf "%03d" .Sample.ID}}</span>
+            <span class="status-chip status-chip--{{statusChipClass .Sample.Status}}"><span class="status-chip__dot"></span>{{statusLabel .Sample.Status}}</span>
+            <span class="status-chip status-chip--pending"><span class="status-chip__dot"></span>Shared view</span>
         </div>
-    </header>
-
-    {{/* Description */}}
-    {{if .Sample.Description}}
-    <section class="card" aria-labelledby="description-heading-shared">
-        <header>
-            <h2 id="description-heading-shared">Description</h2>
-        </header>
-        <p>{{.Sample.Description}}</p>
-    </section>
-    {{end}}
-
-    {{/* Attachments — read-only gallery */}}
-    {{if .Sample.Attachments}}
-    <section class="attachments-container card" aria-labelledby="attachments-heading-shared">
-        <header class="attachments-header">
-            <h2 id="attachments-heading-shared">Attachments</h2>
-        </header>
-
-        <div class="gallery-set">
-            {{range .Sample.Attachments}}{{if .IsImage}}
-            <figure class="gallery-item">
-                <button type="button" class="gallery-thumb"
-                        data-gallery-src="/s/{{$.ShareToken}}/attachment/{{.ID}}"
-                        data-gallery-name="{{.OriginalName}}"
-                        aria-label="View {{.OriginalName}}">
-                    <img src="/s/{{$.ShareToken}}/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
-                </button>
-                <figcaption class="gallery-item__caption">
-                    <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
-                </figcaption>
-            </figure>
-            {{end}}{{end}}
+        <h1 style="margin:0 0 6px;font-size:clamp(18px,3vw,26px);font-weight:700;color:var(--text-strong);letter-spacing:-0.02em;">{{.Sample.Name}}</h1>
+        <div class="page-topbar__crumbs">
+            Created {{.Sample.CreatedAt.Format "2006-01-02"}} · Owner <strong>{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}Unknown{{end}}</strong>
+            {{if .Sample.Keywords}} · {{.Sample.Keywords}}{{end}}
         </div>
-
-        <ul class="attachment-file-list">
-            {{range .Sample.Attachments}}{{if not .IsImage}}
-            <li class="attachment-file-list__item">
-                <span class="attachment-file-list__icon">📄</span>
-                <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
-                <div class="attachment-file-list__actions">
-                    <a href="/s/{{$.ShareToken}}/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
-                </div>
-            </li>
-            {{end}}{{end}}
-        </ul>
-    </section>
-    {{end}}
-
-    {{/* Fabrication steps — read-only list */}}
-    <section class="card fabrication-steps" aria-labelledby="steps-heading-shared">
-        <header class="fabrication-steps__header">
-            <h2 id="steps-heading-shared">Fabrication Steps</h2>
-        </header>
-        {{if .Steps}}
-        <ol class="step-list">
-            {{range .Steps}}
-            <li class="step-item">
-                <div class="step-meta">
-                    {{if .StepDate}}<span class="step-date">{{formatDate .StepDate}}</span>{{end}}
-                    {{if .PersonUsername}}<span class="step-person">{{.PersonUsername}}</span>{{end}}
-                    {{if .EquipmentText}}<span class="step-equipment">{{.EquipmentText}}</span>{{else if .EquipmentName}}<span class="step-equipment">{{.EquipmentName}}</span>{{end}}
-                </div>
-                {{if .Description}}<p class="step-description">{{.Description}}</p>{{end}}
-            </li>
-            {{end}}
-        </ol>
+    </div>
+    <div class="page-topbar__actions">
+        {{if .IsAuthenticated}}
+        <a href="/samples/{{.Sample.ID}}" class="button button--primary">Open full view</a>
         {{else}}
-        <div class="empty-state">
-            <p>No fabrication steps recorded.</p>
+        <a href="/login" class="button button--ghost">Log in</a>
+        {{end}}
+    </div>
+</div>
+
+<section class="sample-detail-grid">
+    <div class="stack-md">
+        {{/* Description */}}
+        <section class="card sample-description-card" style="padding:18px 22px;">
+            <div class="eyebrow">Description</div>
+            {{if .Sample.Description}}
+            <p style="margin:10px 0 0;line-height:1.7;color:var(--text-strong);">{{.Sample.Description}}</p>
+            {{else}}
+            <p style="margin:10px 0 0;color:var(--text-muted);font-style:italic;">No description.</p>
+            {{end}}
+        </section>
+
+        {{/* Fabrication Steps — read-only */}}
+        <section class="card fabrication-steps" style="padding:18px 22px;">
+            <div class="eyebrow" style="margin-bottom:14px;">Fabrication Steps</div>
+            {{if .Steps}}
+            <ol class="fab-timeline">
+                {{range .Steps}}
+                <li class="fab-step">
+                    <div class="fab-step__num">{{printf "%02d" .StepOrder}}</div>
+                    <div class="fab-step__body">
+                        <div class="fab-step__title">
+                            {{if .Description}}{{.Description}}{{else}}Step {{.StepOrder}}{{end}}
+                        </div>
+                        <div class="fab-step__meta">
+                            {{if .StepDate}}
+                            <span class="fab-step__meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span class="mono">{{formatDate .StepDate}}</span>
+                            </span>
+                            {{end}}
+                            {{if .PersonUsername}}
+                            <span class="fab-step__meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                {{.PersonUsername}}
+                            </span>
+                            {{end}}
+                            {{if .EquipmentText}}
+                            <span class="fab-step__meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                {{.EquipmentText}}
+                            </span>
+                            {{else if .EquipmentName}}
+                            <span class="fab-step__meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                {{.EquipmentName}}
+                            </span>
+                            {{end}}
+                        </div>
+                    </div>
+                </li>
+                {{end}}
+            </ol>
+            {{else}}
+            <div class="empty-state">
+                <p>No fabrication steps recorded.</p>
+            </div>
+            {{end}}
+        </section>
+
+        {{/* Attachments */}}
+        {{if .Sample.Attachments}}
+        <section class="card sample-attachments-card" style="padding:18px 22px;">
+            <div class="eyebrow" style="margin-bottom:14px;">Attachments ({{len .Sample.Attachments}})</div>
+            {{$images := 0}}
+            {{range .Sample.Attachments}}{{if .IsImage}}{{$images = add $images 1}}{{end}}{{end}}
+            {{if gt $images 0}}
+            <div class="gallery-set" style="margin-bottom:14px;">
+                {{range .Sample.Attachments}}{{if .IsImage}}
+                <figure class="gallery-item">
+                    <button type="button" class="gallery-thumb"
+                            data-gallery-src="/s/{{$.ShareToken}}/attachment/{{.ID}}"
+                            data-gallery-name="{{.OriginalName}}"
+                            aria-label="View {{.OriginalName}}">
+                        <img src="/s/{{$.ShareToken}}/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
+                    </button>
+                    <figcaption class="gallery-item__caption">
+                        <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                    </figcaption>
+                </figure>
+                {{end}}{{end}}
+            </div>
+            {{end}}
+            <ul class="attachment-file-list">
+                {{range .Sample.Attachments}}{{if not .IsImage}}
+                <li class="attachment-file-list__item">
+                    <svg class="attachment-file-list__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
+                    <div class="attachment-file-list__actions">
+                        <a href="/s/{{$.ShareToken}}/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
+                    </div>
+                </li>
+                {{end}}{{end}}
+            </ul>
+        </section>
+        {{end}}
+    </div>
+
+    <aside class="stack-md">
+        <div class="card" style="padding:18px 22px;">
+            <div class="eyebrow">Details</div>
+            <div class="kv-list">
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Owner</span>
+                    <span class="kv-list__value">{{if .Sample.OwnerUsername}}{{.Sample.OwnerUsername}}{{else if .Sample.Owner}}{{.Sample.Owner}}{{else}}—{{end}}</span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Status</span>
+                    <span class="kv-list__value">
+                        <span class="status-chip status-chip--{{statusChipClass .Sample.Status}}"><span class="status-chip__dot"></span>{{statusLabel .Sample.Status}}</span>
+                    </span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Created</span>
+                    <span class="kv-list__value mono">{{.Sample.CreatedAt.Format "2006-01-02"}}</span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Steps</span>
+                    <span class="kv-list__value">{{len .Steps}}</span>
+                </div>
+                <div class="kv-list__row">
+                    <span class="kv-list__key">Files</span>
+                    <span class="kv-list__value">{{len .Sample.Attachments}}</span>
+                </div>
+            </div>
+        </div>
+        {{if not .IsAuthenticated}}
+        <div class="card" style="padding:18px 22px;">
+            <div class="eyebrow" style="margin-bottom:8px;">Want to contribute?</div>
+            <p class="muted" style="font-size:13px;margin:0 0 12px;">Log in to access the full sample database, add steps, and upload files.</p>
+            <a href="/login" class="button button--primary button--block">Log in</a>
         </div>
         {{end}}
-    </section>
-
-    {{if not .IsAuthenticated}}
-    <div class="card shared-login-prompt">
-        <p>Want to see more or contribute? <a href="/login">Log in</a> to access the full sample database.</p>
-    </div>
-    {{end}}
+    </aside>
 </section>
 {{end}}
 

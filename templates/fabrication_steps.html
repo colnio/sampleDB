@@ -1,11 +1,11 @@
 {{define "fabrication_steps_panel"}}
 <section id="fabrication-steps-panel" class="card fabrication-steps" style="padding:18px 22px;">
-    <div class="flex-between" style="margin-bottom:8px;">
+    <div class="flex-between" style="margin-bottom:14px;">
         <div class="eyebrow" style="margin:0;">Fabrication Steps</div>
         <button type="button"
                 class="button button--ghost button--small"
-                data-step-add-toggle
-                aria-controls="step-add-panel"
+                data-sample-modal-open="step-add-modal"
+                aria-controls="step-add-modal"
                 aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
@@ -22,102 +22,130 @@
     {{end}}
 
     {{if .Steps}}
-    <ol class="fab-timeline step-list">
+    <ol class="fab-timeline">
         {{range .Steps}}
-        {{$step := .}}
-        <li id="step-{{.ID}}" class="fab-step step-item{{if eq $.EditingStep .ID}} fab-step--editing step-item--editing{{end}}">
-            {{if eq $.EditingStep .ID}}
-            <form method="POST" action="/steps/{{.ID}}/edit"
-                  class="stacked-form step-edit-form"
-                  hx-post="/steps/{{.ID}}/edit"
-                  hx-target="#fabrication-steps-panel"
-                  hx-select="#fabrication-steps-panel"
-                  hx-swap="outerHTML">
-                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div class="form-group">
-                        <label for="edit-step-date-{{.ID}}">Date</label>
-                        <input id="edit-step-date-{{.ID}}" type="date" name="step_date" value="{{formatDate $step.StepDate}}">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-step-order-{{.ID}}">Order</label>
-                        <input id="edit-step-order-{{.ID}}" type="number" name="step_order" value="{{$step.StepOrder}}" min="1">
-                    </div>
-                </div>
-                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div class="form-group">
-                        <label for="edit-step-person-{{.ID}}">Person</label>
-                        <select id="edit-step-person-{{.ID}}" name="person_user_id">
-                            <option value="">-- None --</option>
-                            {{range $.Users}}
-                            <option value="{{.ID}}" {{if ownerSelected $step.PersonUserID .ID}}selected{{end}}>{{.Username}}</option>
-                            {{end}}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-step-equip-{{.ID}}">Equipment</label>
-                        <input id="edit-step-equip-{{.ID}}" type="text" name="equipment_text" value="{{if $step.EquipmentText}}{{$step.EquipmentText}}{{else if $step.EquipmentName}}{{$step.EquipmentName}}{{end}}" placeholder="e.g. SEM, TEM, custom rig…">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="edit-step-desc-{{.ID}}">Description</label>
-                    <textarea id="edit-step-desc-{{.ID}}" name="description">{{$step.Description}}</textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="button button--primary button--small">Save</button>
-                    <button type="button" class="button button--ghost button--small"
-                            hx-get="/samples/{{$.Sample.ID}}/steps"
-                            hx-target="#fabrication-steps-panel"
-                            hx-select="#fabrication-steps-panel"
-                            hx-swap="outerHTML">Cancel</button>
-                </div>
-            </form>
-            {{else}}
+        <li id="step-{{.ID}}" class="fab-step">
             <div class="fab-step__num">{{printf "%02d" .StepOrder}}</div>
             <div class="fab-step__body">
                 <div class="fab-step__title">
-                    {{if .Description}}{{.Description | printf "%.120s"}}{{else}}Step {{.StepOrder}}{{end}}
+                    {{if .Description}}{{.Description}}{{else}}Step {{.StepOrder}}{{end}}
                 </div>
                 <div class="fab-step__meta">
-                    {{if .StepDate}}<span class="fab-step__meta-item mono">{{formatDate .StepDate}}</span>{{end}}
-                    {{if .PersonUsername}}<span class="fab-step__meta-item">by {{.PersonUsername}}</span>{{end}}
-                    {{if .EquipmentText}}<span class="fab-step__meta-item">{{.EquipmentText}}</span>{{else if .EquipmentName}}<span class="fab-step__meta-item">{{.EquipmentName}}</span>{{end}}
+                    {{if .StepDate}}
+                    <span class="fab-step__meta-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span class="mono">{{formatDate .StepDate}}</span>
+                    </span>
+                    {{end}}
+                    {{if .PersonUsername}}
+                    <span class="fab-step__meta-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {{.PersonUsername}}
+                    </span>
+                    {{end}}
+                    {{if .EquipmentText}}
+                    <span class="fab-step__meta-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {{.EquipmentText}}
+                    </span>
+                    {{else if .EquipmentName}}
+                    <span class="fab-step__meta-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {{.EquipmentName}}
+                    </span>
+                    {{end}}
                 </div>
-                {{if and .Description (gt (len .Description) 120)}}
-                <p class="fab-step__description">{{.Description}}</p>
-                {{end}}
                 <div class="fab-step__actions">
-                    <button class="button button--ghost button--small"
-                            hx-get="/steps/{{.ID}}/edit"
-                            hx-target="#fabrication-steps-panel"
-                            hx-select="#fabrication-steps-panel"
-                            hx-swap="outerHTML">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" stroke-linejoin="round"/><path d="M14.5 6.5l3 3" stroke-linecap="round"/></svg>
-                        Edit
+                    <button type="button"
+                            class="button button--ghost button--small fab-step__action-btn"
+                            data-sample-modal-open="step-edit-modal-{{.ID}}"
+                            aria-controls="step-edit-modal-{{.ID}}"
+                            aria-label="Edit step {{printf "%02d" .StepOrder}}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" stroke-linejoin="round"/><path d="M14.5 6.5l3 3" stroke-linecap="round"/></svg>
                     </button>
                     <form method="POST" action="/steps/{{.ID}}/delete" class="inline-form"
                           hx-post="/steps/{{.ID}}/delete"
                           hx-target="#fabrication-steps-panel"
                           hx-select="#fabrication-steps-panel"
                           hx-swap="outerHTML"
-                          hx-confirm="Delete this step?">
-                        <button type="submit" class="button button--ghost button--small" style="color:var(--color-destructive);">
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            Delete
+                          hx-confirm="Delete step {{printf "%02d" .StepOrder}}?">
+                        <button type="submit"
+                                class="button button--ghost button--small fab-step__action-btn fab-step__action-btn--delete"
+                                aria-label="Delete step {{printf "%02d" .StepOrder}}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </button>
                     </form>
                 </div>
             </div>
-            {{end}}
         </li>
         {{end}}
     </ol>
     {{else}}
     <div class="empty-state">
         <p>No fabrication steps yet.</p>
-        <p class="empty-state__hint">Add the first step below to document this sample's fabrication process.</p>
+        <p class="empty-state__hint">Add the first step to document this sample's fabrication process.</p>
     </div>
     {{end}}
 
     {{template "step_add_form" .}}
+
+    {{range .Steps}}
+    {{$step := .}}
+    <div id="step-edit-modal-{{.ID}}" class="modal-backdrop step-modal" role="dialog" aria-modal="true" aria-labelledby="step-edit-title-{{.ID}}" hidden>
+        <section class="modal">
+            <header class="modal__head">
+                <div>
+                    <h3 id="step-edit-title-{{.ID}}">Edit Step {{printf "%02d" .StepOrder}}</h3>
+                    <p class="modal__sub">Update the recipe entry for this fabrication step.</p>
+                </div>
+                <button type="button" class="modal__close" data-sample-modal-close aria-label="Close">&times;</button>
+            </header>
+            <form method="POST" action="/steps/{{.ID}}/edit"
+                  class="stacked-form"
+                  hx-post="/steps/{{.ID}}/edit"
+                  hx-target="#fabrication-steps-panel"
+                  hx-select="#fabrication-steps-panel"
+                  hx-swap="outerHTML">
+                <div class="modal__body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-step-date-{{.ID}}">Date</label>
+                            <input id="edit-step-date-{{.ID}}" type="date" name="step_date" value="{{formatDate $step.StepDate}}">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-step-order-{{.ID}}">Order</label>
+                            <input id="edit-step-order-{{.ID}}" type="number" name="step_order" value="{{$step.StepOrder}}" min="1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-step-person-{{.ID}}">Person</label>
+                            <select id="edit-step-person-{{.ID}}" name="person_user_id">
+                                <option value="">— None —</option>
+                                {{range $.Users}}
+                                <option value="{{.ID}}" {{if ownerSelected $step.PersonUserID .ID}}selected{{end}}>{{.Username}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-step-equip-{{.ID}}">Equipment</label>
+                            <input id="edit-step-equip-{{.ID}}" type="text" name="equipment_text"
+                                   value="{{if $step.EquipmentText}}{{$step.EquipmentText}}{{else if $step.EquipmentName}}{{$step.EquipmentName}}{{end}}"
+                                   placeholder="e.g. SEM, TEM, custom rig…">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-step-desc-{{.ID}}">Description</label>
+                        <textarea id="edit-step-desc-{{.ID}}" name="description" rows="3">{{$step.Description}}</textarea>
+                    </div>
+                </div>
+                <div class="modal__foot">
+                    <button type="button" class="button button--secondary" data-sample-modal-close>Cancel</button>
+                    <button type="submit" class="button button--primary">Save Step</button>
+                </div>
+            </form>
+        </section>
+    </div>
+    {{end}}
 </section>
 {{end}}

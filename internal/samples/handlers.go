@@ -293,6 +293,19 @@ func (h *Handlers) renderSampleTitleSection(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// renderShareModalBody re-renders the share modal body as an HTMX partial.
+func (h *Handlers) renderShareModalBody(w http.ResponseWriter, r *http.Request, session auth.Session, sampleIDStr string) {
+	data, err := h.loadSampleDetailData(r.Context(), session, sampleIDStr)
+	if err != nil {
+		http.Error(w, "Sample not found", http.StatusNotFound)
+		return
+	}
+	data.IsPartial = true
+	if err := h.renderer.RenderSection(w, "sample_detail", "share_modal_body", data); err != nil {
+		http.Error(w, "Error rendering share panel", http.StatusInternalServerError)
+	}
+}
+
 // renderSampleDescriptionSection re-renders the inline editable description card.
 func (h *Handlers) renderSampleDescriptionSection(w http.ResponseWriter, r *http.Request, session auth.Session, sampleID, flash, errMsg string) {
 	data, err := h.loadSampleDetailData(r.Context(), session, sampleID)
@@ -1220,6 +1233,10 @@ func (h *Handlers) handleShare(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error generating share token", http.StatusInternalServerError)
 		return
 	}
+	if isHTMXRequest(r) {
+		h.renderShareModalBody(w, r, session, pathParts[0])
+		return
+	}
 	http.Redirect(w, r, fmt.Sprintf("/samples/%d", sampleID), http.StatusSeeOther)
 }
 
@@ -1249,6 +1266,10 @@ func (h *Handlers) handleShareRevoke(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.RevokeShareToken(r.Context(), sampleID); err != nil {
 		http.Error(w, "Error revoking share token", http.StatusInternalServerError)
+		return
+	}
+	if isHTMXRequest(r) {
+		h.renderShareModalBody(w, r, session, pathParts[0])
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/samples/%d", sampleID), http.StatusSeeOther)

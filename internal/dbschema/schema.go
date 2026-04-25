@@ -55,6 +55,8 @@ var schemaStatements = []string{
 	createActivityLogTargetIndex,
 	// Migration 010 – admin notification banners
 	createNotificationsTable,
+	// Migration 011 – add 'planned' sample status
+	addPlannedStatusConstraint,
 }
 
 var dataStatements = []string{
@@ -327,6 +329,12 @@ CREATE TABLE IF NOT EXISTS notifications (
     author       TEXT NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );`
+
+const addPlannedStatusConstraint = `
+ALTER TABLE samples DROP CONSTRAINT IF EXISTS chk_sample_status;
+ALTER TABLE samples
+    ADD CONSTRAINT chk_sample_status
+    CHECK (status IN ('active', 'in_progress', 'archived', 'planned'));`
 
 // seedEquipment inserts the default equipment rows when the database is blank
 // (no users, no samples, and no equipment present yet).  Matches the seed block
