@@ -119,6 +119,7 @@
         <div class="modal__foot">
             <button type="button" class="button button--ghost" data-close-modal="delete-own-modal">Keep it</button>
             <form id="delete-own-form" action="/booking/delete" method="POST" class="inline-form">
+                {{csrfField .CSRFToken}}
                 <input type="hidden" name="booking_id" id="del-own-id">
                 <button type="submit" class="button button--destructive">Delete booking</button>
             </form>
@@ -144,6 +145,7 @@
         <div class="modal__foot">
             <button type="button" class="button button--ghost" data-close-modal="delete-admin-modal">Cancel</button>
             <form id="delete-admin-form" action="/booking/delete" method="POST" class="inline-form">
+                {{csrfField .CSRFToken}}
                 <input type="hidden" name="booking_id" id="del-admin-id">
                 <input type="hidden" name="admin_password" id="del-admin-pwd">
                 <button type="submit" id="del-admin-submit" class="button button--destructive">Delete booking</button>
@@ -164,6 +166,7 @@
         </div>
         <form id="booking-form" action="/booking" method="POST">
             <div class="modal__body">
+                {{csrfField .CSRFToken}}
                 <input type="hidden" name="equipment_id" id="equipment_id">
                 {{/* Hidden datetime-local inputs submitted to the server */}}
                 <input type="hidden" name="start_time" id="start_time">

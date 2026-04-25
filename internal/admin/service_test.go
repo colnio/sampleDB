@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
@@ -77,10 +78,20 @@ type mockService struct {
 	reportErr        error
 	listUsersErr     error
 
+	// notification state
+	notifs        []admin.Notification
+	listNotifsErr error
+	createNotif   admin.Notification
+	createNotifErr error
+	deleteNotifErr error
+
 	// captured args (handler tests assert on these)
 	lastEquipmentID    int
 	lastEquipmentStat  string
 	lastEquipmentGroup int
+	lastNotifMsg       string
+	lastNotifLevel     string
+	lastDeleteNotifID  int64
 }
 
 func (m *mockService) IsAdmin(_ context.Context, _ int) (bool, error) {
@@ -133,12 +144,17 @@ func (m *mockService) ListAPIUsers(_ context.Context) ([]admin.APIUser, error) {
 	return m.apiUsers, m.listUsersErr
 }
 func (m *mockService) ListNotifications(_ context.Context) ([]admin.Notification, error) {
-	return nil, nil
+	return m.notifs, m.listNotifsErr
 }
-func (m *mockService) CreateNotification(_ context.Context, _, _, _ string) (admin.Notification, error) {
-	return admin.Notification{}, nil
+func (m *mockService) CreateNotification(_ context.Context, msg, level, _ string) (admin.Notification, error) {
+	m.lastNotifMsg = msg
+	m.lastNotifLevel = level
+	return m.createNotif, m.createNotifErr
 }
-func (m *mockService) DeleteNotification(_ context.Context, _ int64) error { return nil }
+func (m *mockService) DeleteNotification(_ context.Context, id int64) error {
+	m.lastDeleteNotifID = id
+	return m.deleteNotifErr
+}
 
 // ---------------------------------------------------------------------------
 // Service tests — GetAllEquipment
@@ -1217,5 +1233,242 @@ func TestHandlerRemoveEquipmentGroup_ServiceError(t *testing.T) {
 	}
 	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
 		t.Errorf("expected error redirect, got %q", loc)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Service tests — Notifications
+// ---------------------------------------------------------------------------
+
+func TestListNotifications_ReturnsTwoRows(t *testing.T) {
+	svc, mock := newSvc(t)
+	now := time.Now()
+
+	mock.ExpectQuery(`SELECT id, message, level, author, created_at FROM notifications`).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "message", "level", "author", "created_at"}).
+			AddRow(int64(1), "Maintenance tonight", "warning", "admin", now).
+			AddRow(int64(2), "System back online", "info", "ops", now))
+
+	notifs, err := svc.ListNotifications(context.Background())
+	if err != nil {
+		t.Fatalf("ListNotifications: %v", err)
+	}
+	if len(notifs) != 2 {
+		t.Fatalf("expected 2 notifications, got %d", len(notifs))
+	}
+	if notifs[0].Message != "Maintenance tonight" {
+		t.Errorf("unexpected message: %q", notifs[0].Message)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestListNotifications_DBError(t *testing.T) {
+	svc, mock := newSvc(t)
+	mock.ExpectQuery(`SELECT id, message, level, author, created_at FROM notifications`).
+		WillReturnError(errors.New("db error"))
+
+	_, err := svc.ListNotifications(context.Background())
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err2 := mock.ExpectationsWereMet(); err2 != nil {
+		t.Error(err2)
+	}
+}
+
+func TestCreateNotification_Success(t *testing.T) {
+	svc, mock := newSvc(t)
+	now := time.Now()
+
+	mock.ExpectQuery(`INSERT INTO notifications`).
+		WithArgs("System alert", "critical", "admin").
+		WillReturnRows(pgxmock.NewRows([]string{"id", "message", "level", "author", "created_at"}).
+			AddRow(int64(5), "System alert", "critical", "admin", now))
+
+	n, err := svc.CreateNotification(context.Background(), "System alert", "critical", "admin")
+	if err != nil {
+		t.Fatalf("CreateNotification: %v", err)
+	}
+	if n.ID != 5 || n.Level != "critical" {
+		t.Errorf("unexpected notification: %+v", n)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestDeleteNotification_Success(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`DELETE FROM notifications WHERE id = \$1`).
+		WithArgs(int64(3)).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	if err := svc.DeleteNotification(context.Background(), 3); err != nil {
+		t.Fatalf("DeleteNotification: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Handler tests — Notifications
+// ---------------------------------------------------------------------------
+
+func TestHandlerListNotifications_Success(t *testing.T) {
+	svc := &mockService{
+		notifs: []admin.Notification{
+			{ID: 1, Message: "hello", Level: "info", Author: "admin"},
+		},
+	}
+	h := newHandlers(svc)
+	req := newAuthenticatedRequest(http.MethodGet, "/api/notifications", nil)
+	rr := httptest.NewRecorder()
+	h.ListNotifications(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rr.Code)
+	}
+	var out []admin.Notification
+	if err := json.NewDecoder(rr.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out) != 1 || out[0].Message != "hello" {
+		t.Errorf("unexpected response: %+v", out)
+	}
+}
+
+func TestHandlerListNotifications_MethodNotAllowed(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodPost, "/api/notifications", nil)
+	rr := httptest.NewRecorder()
+	h.ListNotifications(rr, req)
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", rr.Code)
+	}
+}
+
+func TestHandlerListNotifications_ServiceError(t *testing.T) {
+	h := newHandlers(&mockService{listNotifsErr: errors.New("db down")})
+	req := newAuthenticatedRequest(http.MethodGet, "/api/notifications", nil)
+	rr := httptest.NewRecorder()
+	h.ListNotifications(rr, req)
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d", rr.Code)
+	}
+}
+
+func TestHandlerCreateNotification_Success(t *testing.T) {
+	svc := &mockService{}
+	h := newHandlers(svc)
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/notifications", url.Values{
+		"message": {"Scheduled maintenance"},
+		"level":   {"warning"},
+	})
+	rr := httptest.NewRecorder()
+	h.CreateNotification(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "success") {
+		t.Errorf("expected success redirect, got %q", loc)
+	}
+	if svc.lastNotifMsg != "Scheduled maintenance" || svc.lastNotifLevel != "warning" {
+		t.Errorf("service called with msg=%q level=%q", svc.lastNotifMsg, svc.lastNotifLevel)
+	}
+}
+
+func TestHandlerCreateNotification_MissingMessage(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/notifications", url.Values{
+		"message": {""},
+		"level":   {"info"},
+	})
+	rr := httptest.NewRecorder()
+	h.CreateNotification(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
+	}
+}
+
+func TestHandlerCreateNotification_InvalidLevelDefaultsToInfo(t *testing.T) {
+	svc := &mockService{}
+	h := newHandlers(svc)
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/notifications", url.Values{
+		"message": {"test"},
+		"level":   {"supersecret"},
+	})
+	rr := httptest.NewRecorder()
+	h.CreateNotification(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if svc.lastNotifLevel != "info" {
+		t.Errorf("expected level to default to 'info', got %q", svc.lastNotifLevel)
+	}
+}
+
+func TestHandlerCreateNotification_MethodNotAllowed(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodGet, "/admin/notifications", nil)
+	rr := httptest.NewRecorder()
+	h.CreateNotification(rr, req)
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", rr.Code)
+	}
+}
+
+func TestHandlerDeleteNotification_Success(t *testing.T) {
+	svc := &mockService{}
+	h := newHandlers(svc)
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/notifications/7/delete", nil)
+	rr := httptest.NewRecorder()
+	h.DeleteNotification(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "success") {
+		t.Errorf("expected success redirect, got %q", loc)
+	}
+	if svc.lastDeleteNotifID != 7 {
+		t.Errorf("expected notif ID 7, got %d", svc.lastDeleteNotifID)
+	}
+}
+
+func TestHandlerDeleteNotification_InvalidPath(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/notifications/abc/delete", nil)
+	rr := httptest.NewRecorder()
+	h.DeleteNotification(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", rr.Code)
+	}
+}
+
+func TestHandlerDeleteNotification_ServiceError(t *testing.T) {
+	h := newHandlers(&mockService{deleteNotifErr: errors.New("db error")})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/notifications/3/delete", nil)
+	rr := httptest.NewRecorder()
+	h.DeleteNotification(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
+	}
+}
+
+func TestHandlerDeleteNotification_MethodNotAllowed(t *testing.T) {
+	h := newHandlers(&mockService{})
+	req := newAuthenticatedRequest(http.MethodGet, "/admin/notifications/3/delete", nil)
+	rr := httptest.NewRecorder()
+	h.DeleteNotification(rr, req)
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", rr.Code)
 	}
 }

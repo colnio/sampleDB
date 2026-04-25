@@ -41,6 +41,7 @@
         </button>
         {{end}}
         <form action="/wiki/delete/{{urlEscape .Article.Title}}" method="POST" class="inline-form">
+            {{csrfField .CSRFToken}}
             <button type="submit" class="button button--ghost" onclick="return confirm('Delete this article?')"
                 style="color:var(--color-destructive);border-color:var(--color-destructive-border);">Delete</button>
         </form>

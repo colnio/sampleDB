@@ -69,9 +69,10 @@ type Equipment struct {
 
 // BasePageData holds session-derived fields shared by all page data structs.
 type BasePageData struct {
-	Username string
-	UserID   int
-	IsAdmin  bool
+	Username  string
+	UserID    int
+	IsAdmin   bool
+	CSRFToken string
 }
 
 // MainPageData is the template data for the main sample list page.

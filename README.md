@@ -4,9 +4,9 @@ SampleDB is a lightweight lab management portal written in Go. It combines a sea
 
 ## Features
 
-- **Authentication & Sessions** – user registration with admin approval, server-side persistent sessions (stored in PostgreSQL — survive restarts), and per-user password management.
+- **Authentication & Sessions** – user registration with admin approval, server-side persistent sessions (stored in PostgreSQL — survive restarts), and per-user password management. All state-changing web routes protected by CSRF tokens (automatically injected by the UI; Bearer-token API requests are exempt).
 - **Dashboard** – KPI cards (sample / booking / wiki / pending-approval counts), Recent samples list, cross-domain Recent activity feed, and Today's bookings timeline. Served at `/dashboard`; `/` redirects authenticated users to it and the samples grid moves to `/samples`.
-- **Sample Registry** – search samples by keywords, attach files, and track preparation notes. Each sample has a status (`active` / `in_progress` / `archived`) rendered as a chip on the list and detail pages; the list can be filtered by status, owner, and toggled between grid and table views (`/samples?status=&owner=&view=`).
+- **Sample Registry** – search samples by keywords, attach files, and track preparation notes. Each sample has a status (`active` / `in_progress` / `planned` / `archived`) rendered as a chip on the list and detail pages; the list can be filtered by status, owner, and toggled between grid and table views (`/samples?status=&owner=&view=`).
 - **Wiki** – Markdown-based knowledge base with attachment support. Articles carry a `tags TEXT[]` column and the list (`/wiki?tag=`) renders tag chips with a filter row; individual articles show an "On this page" TOC sidebar generated from the h2/h3 headings.
 - **Equipment Booking** – calendar-style reservations with per-user equipment permissions and conflict detection. Each equipment row has a status (`online` / `offline` / `maintenance`) rendered as a colored dot next to the name.
 - **Admin Panel** – manage approvals, groups, permissions, soft-delete user accounts, and export booking reports. Equipment catalogue shows per-equipment status chips and group-access badges (many-to-many `equipment_group_access` with add/remove controls); user management shows status + admin chips and an equipment-access count.

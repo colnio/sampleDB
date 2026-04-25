@@ -682,17 +682,12 @@ func (h *Handlers) DeleteNotification(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	// path: admin/notifications/{id}/delete
-	if len(parts) < 4 {
-		http.NotFound(w, r)
-		return
-	}
-	id, err := strconv.ParseInt(parts[len(parts)-2], 10, 64)
+	notifID, err := extractIDFromPrefixAndSuffix(r.URL.Path, "/admin/notifications/", "/delete")
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
+	id := int64(notifID)
 	if err := h.svc.DeleteNotification(r.Context(), id); err != nil {
 		log.Printf("admin: delete notification %d: %v", id, err)
 		http.Redirect(w, r, "/admin?error=could+not+delete+notification", http.StatusSeeOther)

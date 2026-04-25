@@ -253,7 +253,7 @@ func (h *Handlers) listArticles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := WikiListPageData{
-		BasePageData: BasePageData{Username: session.Username, IsAdmin: isAdmin},
+		BasePageData: BasePageData{Username: session.Username, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Articles:     articles,
 		Tags:         KnownTags,
 		TagFilter:    tagFilter,
@@ -302,7 +302,7 @@ func (h *Handlers) viewArticle(w http.ResponseWriter, r *http.Request, title str
 	}
 
 	data := WikiViewPageData{
-		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Article:        article,
 		EditingContent: false,
 		TOC:            BuildTOC(article.Content.HTML),
@@ -332,7 +332,7 @@ func (h *Handlers) renderContentPanel(w http.ResponseWriter, r *http.Request, se
 	}
 
 	data := WikiViewPageData{
-		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		BasePageData:   BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Article:        article,
 		EditingContent: editing,
 		IsPartial:      true,
@@ -351,7 +351,7 @@ func (h *Handlers) newArticle(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		data := WikiEditPageData{
-			BasePageData: BasePageData{Username: session.Username},
+			BasePageData: BasePageData{Username: session.Username, CSRFToken: session.CSRFToken},
 		}
 		if err := h.renderer.Render(w, "wiki_edit", data); err != nil {
 			http.Error(w, "Error rendering page", http.StatusInternalServerError)
@@ -417,7 +417,7 @@ func (h *Handlers) editArticle(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data := WikiEditPageData{
-			BasePageData:  BasePageData{Username: session.Username},
+			BasePageData:  BasePageData{Username: session.Username, CSRFToken: session.CSRFToken},
 			Article:       article,
 			ArticleImages: articleImages,
 			TagsCSV:       strings.Join(article.Tags, ", "),
@@ -638,7 +638,7 @@ func (h *Handlers) uploadAttachment(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data := &WikiViewPageData{
-			BasePageData: BasePageData{Username: session.Username},
+			BasePageData: BasePageData{Username: session.Username, CSRFToken: session.CSRFToken},
 			Article:      article,
 			Flash:        flash,
 			Error:        errMsg,

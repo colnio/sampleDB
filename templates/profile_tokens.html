@@ -28,6 +28,7 @@
             <h3 style="margin:0 0 4px;font-size:15px;color:var(--color-primary);">Generate new token</h3>
             <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px;">Tokens have full account permissions. Keep them secret.</p>
             <form method="POST" action="/profile/tokens" class="form tokens-generate__form">
+                {{csrfField .CSRFToken}}
                 <div class="form-group">
                     <label for="name">Token name</label>
                     <input type="text" id="name" name="name" placeholder="e.g. Mobile app" required maxlength="100" autocomplete="off">
@@ -42,7 +43,7 @@
             </form>
         </section>
 
-        <section class="card" style="padding:0;overflow:hidden;">
+        <section class="card tokens-list" style="padding:0;overflow:hidden;">
             <div style="padding:14px 20px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;gap:8px;">
                 <strong style="font-size:14px;">Existing tokens</strong>
                 <span class="muted" style="font-size:13px;">({{len .Tokens}})</span>
@@ -74,6 +75,7 @@
                     <td>
                     {{if not .Revoked}}
                     <form method="POST" action="/profile/tokens/{{.TokenID}}/revoke" class="inline-form">
+                        {{csrfField $.CSRFToken}}
                         <button type="submit" class="button button--destructive button--small" onclick="return confirm('Revoke this token?')">Revoke</button>
                     </form>
                     {{end}}
@@ -88,99 +90,11 @@
         </section>
     </div>
 
-    <section class="card" style="padding:18px 22px;">
+    <section class="card tokens-usage" style="padding:18px 22px;">
         <div class="eyebrow" style="margin-bottom:10px;">Usage</div>
         <p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;">Send the token in the <code>Authorization</code> header on every API request.</p>
         <pre style="margin:0;background:var(--surface-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:14px 16px;font-size:13px;font-family:var(--font-family-mono);overflow-x:auto;">Authorization: Bearer &lt;your-token&gt;</pre>
     </section>
 </div>
 
-<style>
-.tokens-page { display: flex; flex-direction: column; gap: 18px; }
-.tokens-page .card { padding: 20px 24px; margin: 0; }
-.tokens-page h2 { font-size: 15px; margin: 0; color: var(--text-strong); }
-
-.tokens-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-    gap: 18px;
-    align-items: start;
-}
-
-.tokens-generate__head { margin-bottom: 14px; }
-.tokens-generate__hint {
-    margin: 4px 0 0;
-    color: var(--text-muted);
-    font-size: 12.5px;
-}
-.tokens-generate__form { display: flex; flex-direction: column; gap: 14px; }
-.tokens-generate__form .form-group { display: flex; flex-direction: column; gap: 6px; }
-.tokens-generate__form .form-group label { font-size: 12.5px; color: var(--text-muted); font-weight: 500; }
-.tokens-generate__form .form-group input,
-.tokens-generate__form .form-group select {
-    width: 100%;
-    padding: 9px 11px;
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    background: var(--surface-subtle);
-    color: var(--text-strong);
-    font-size: 14px;
-}
-.tokens-generate__form .form-group select[disabled] { opacity: 0.65; cursor: not-allowed; }
-.tokens-generate__submit { align-self: stretch; margin-top: 4px; }
-
-.tokens-list__head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
-.tokens-list__count { color: var(--text-muted); font-weight: 500; font-size: 13px; }
-.tokens-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.tokens-table th,
-.tokens-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
-.tokens-table th {
-    font-weight: 600;
-    font-size: 11.5px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-}
-.tokens-table__name { font-weight: 600; color: var(--text-strong); }
-.tokens-table__muted { color: var(--text-muted); }
-.tokens-table__actions { text-align: right; width: 1%; white-space: nowrap; }
-.tokens-table__row--revoked { opacity: 0.6; }
-.tokens-empty { color: var(--text-muted); font-style: italic; margin: 0; }
-
-.tokens-usage__head { margin-bottom: 10px; }
-.tokens-usage__code {
-    margin: 10px 0 0;
-    padding: 14px 16px;
-    background: var(--surface-subtle);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    font-size: 13px;
-    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    overflow-x: auto;
-}
-
-.token-reveal { word-break: break-all; }
-.token-value {
-    display: block;
-    margin-top: 8px;
-    padding: 10px 12px;
-    background: var(--surface-subtle);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    font-size: 13px;
-    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-}
-
-.alert-info {
-    padding: 12px 16px;
-    border-radius: 8px;
-    background: rgba(37, 99, 235, 0.08);
-    border: 1px solid rgba(37, 99, 235, 0.2);
-    color: var(--text-strong);
-}
-
-@media (max-width: 900px) {
-    .tokens-grid { grid-template-columns: 1fr; }
-}
-</style>
 {{end}}

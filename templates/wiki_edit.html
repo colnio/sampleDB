@@ -14,6 +14,7 @@
     </h1>
 
     <form action="{{if .Article}}/wiki/edit/{{urlEscape .Article.Title}}{{else}}/wiki/new{{end}}" method="POST" class="form-container stacked-form" onsubmit="return validateForm()">
+        {{csrfField .CSRFToken}}
         <div class="form-group">
             <label for="title">Title</label>
             <input type="text" id="title" name="title" value="{{if .Article}}{{.Article.Title}}{{end}}" {{if .Article}}readonly{{else}}required{{end}}>

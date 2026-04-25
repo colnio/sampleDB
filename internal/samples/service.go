@@ -43,9 +43,8 @@ type Service interface {
 	AttachmentInfo(ctx context.Context, attachmentID int) (sampleID int, filePath string, err error)
 
 	// Authorization
-	// CheckOwner returns nil if userID owns sampleID (or is admin).
-	// Returns web.ErrNotFound if the sample doesn't exist,
-	// web.ErrForbidden if the user is not the owner and not admin.
+	// CheckOwner returns nil if the sample exists; all authenticated users may
+	// mutate any sample. Returns web.ErrNotFound if the sample doesn't exist.
 	CheckOwner(ctx context.Context, sampleID, userID int) error
 
 	// Sharing

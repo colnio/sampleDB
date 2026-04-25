@@ -91,12 +91,12 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	}))
 	mux.HandleFunc("/samples", withAuth(samplesHdlrs.MainPage))
-	mux.HandleFunc("/samples/new", withAuth(samplesHdlrs.NewSample))
+	mux.HandleFunc("/samples/new", withAuth(withCSRF(samplesHdlrs.NewSample)))
 	mux.HandleFunc("/samples/export.csv", withAuth(samplesHdlrs.ExportCSV))
-	mux.HandleFunc("/samples/edit/", withAuth(samplesHdlrs.EditSample))
-	mux.HandleFunc("/samples/", withAuth(samplesHdlrs.HandleSample))
-	mux.HandleFunc("/attachment/", withAuth(samplesHdlrs.HandleAttachment))
-	mux.HandleFunc("/steps/", withAuth(samplesHdlrs.StepAction))
+	mux.HandleFunc("/samples/edit/", withAuth(withCSRF(samplesHdlrs.EditSample)))
+	mux.HandleFunc("/samples/", withAuth(withCSRF(samplesHdlrs.HandleSample)))
+	mux.HandleFunc("/attachment/", withAuth(withCSRF(samplesHdlrs.HandleAttachment)))
+	mux.HandleFunc("/steps/", withAuth(withCSRF(samplesHdlrs.StepAction)))
 	mux.HandleFunc("/api/v1/samples", withAuth(samplesHdlrs.APISamples))
 	mux.HandleFunc("/api/v1/samples/", withAuth(samplesHdlrs.APISamples))
 	mux.HandleFunc("/api/v1/steps/", withAuth(samplesHdlrs.APISteps))
@@ -115,9 +115,9 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	bookingSvc := booking.NewService(a.DB, a.Location)
 	bookingHdlrs := booking.NewHandlers(bookingSvc, a.Renderer, a.Auth, a.Location)
 	bookingHdlrs.Activity = a.Activity
-	mux.HandleFunc("/booking", withAuth(bookingHdlrs.HandleBooking))
+	mux.HandleFunc("/booking", withAuth(withCSRF(bookingHdlrs.HandleBooking)))
 	mux.HandleFunc("/api/bookings", withAuth(bookingHdlrs.GetBookings))
-	mux.HandleFunc("/booking/delete", withAuth(bookingHdlrs.DeleteBooking))
+	mux.HandleFunc("/booking/delete", withAuth(withCSRF(bookingHdlrs.DeleteBooking)))
 
 	// --- Wiki domain routes (wired via wiki.Handlers) ---
 	wikiSvc := wiki.NewService(a.DB)
@@ -126,9 +126,9 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 		BaseDir:    a.Config.BaseDir,
 	})
 	wikiHdlrs.Activity = a.Activity
-	mux.HandleFunc("/wiki", withAuth(wikiHdlrs.HandleWiki))
-	mux.HandleFunc("/wiki/", withAuth(wikiHdlrs.HandleWiki))
-	mux.HandleFunc("/wiki/attachment/", withAuth(wikiHdlrs.HandleAttachment))
+	mux.HandleFunc("/wiki", withAuth(withCSRF(wikiHdlrs.HandleWiki)))
+	mux.HandleFunc("/wiki/", withAuth(withCSRF(wikiHdlrs.HandleWiki)))
+	mux.HandleFunc("/wiki/attachment/", withAuth(withCSRF(wikiHdlrs.HandleAttachment)))
 	mux.HandleFunc("/api/v1/wiki", withAuth(wikiHdlrs.APIWiki))
 	mux.HandleFunc("/api/v1/wiki/", withAuth(wikiHdlrs.APIWiki))
 
@@ -179,8 +179,8 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	profileSvc := profile.NewService(a.DB)
 	profileHdlrs := profile.NewHandlers(profileSvc, a.Renderer, a.Auth)
 	mux.HandleFunc("/change-password", withAuth(withCSRF(profileHdlrs.ChangePassword)))
-	mux.HandleFunc("/profile/tokens", withAuth(profileHdlrs.ProfileTokens))
-	mux.HandleFunc("/profile/tokens/", withAuth(profileHdlrs.ProfileTokenRevoke))
+	mux.HandleFunc("/profile/tokens", withAuth(withCSRF(profileHdlrs.ProfileTokens)))
+	mux.HandleFunc("/profile/tokens/", withAuth(withCSRF(profileHdlrs.ProfileTokenRevoke)))
 
 	// Public routes (no auth required)
 	mux.HandleFunc("/agents", a.Agents.AgentsPage)

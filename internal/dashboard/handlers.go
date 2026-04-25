@@ -80,24 +80,13 @@ func (h *Handlers) DashboardPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var feed []ActivityEntry
+	var feed []activity.Entry
 	if h.activity != nil {
 		entries, err := h.activity.Recent(r.Context(), 7)
 		if err != nil {
 			log.Printf("dashboard: activity.Recent: %v", err)
 		} else {
-			feed = make([]ActivityEntry, 0, len(entries))
-			for _, e := range entries {
-				feed = append(feed, ActivityEntry{
-					ID:            e.ID,
-					ActorUsername: e.ActorUsername,
-					Verb:          e.Verb,
-					TargetType:    e.TargetType,
-					TargetID:      e.TargetID,
-					TargetLabel:   e.TargetLabel,
-					CreatedAt:     e.CreatedAt,
-				})
-			}
+			feed = entries
 		}
 	}
 
@@ -111,7 +100,7 @@ func (h *Handlers) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageData{
-		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		KPIs:          kpis,
 		RecentSamples: recents,
 		Activity:      feed,

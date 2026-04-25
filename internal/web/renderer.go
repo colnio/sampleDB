@@ -489,9 +489,6 @@ func buildBookingFuncMap(loc *time.Location) template.FuncMap {
 		"formatDayName": func(t time.Time) string {
 			return t.Format("Monday")
 		},
-		"formatTime": func(t time.Time) string {
-			return t.Format("15:04")
-		},
 		"formatTime24": func(t time.Time) string {
 			return t.Format("15:04")
 		},
@@ -523,5 +520,8 @@ func buildBookingFuncMap(loc *time.Location) template.FuncMap {
 			return t.AddDate(0, 0, days)
 		},
 		"firstInitial": firstInitial,
+		"csrfField": func(token string) template.HTML {
+			return template.HTML(`<input type="hidden" name="csrf_token" value="` + html.EscapeString(token) + `">`)
+		},
 	}
 }

@@ -163,9 +163,7 @@ func (l *Logger) ForSample(ctx context.Context, sampleID, limit int) ([]Entry, e
 	return scanEntries(rows)
 }
 
-// scanRows is the minimal interface implemented by pgx.Rows that activity
-// needs. It is kept here so the scanner can be reused by tests that inject a
-// mock rows value.
+// scanRows is the minimal subset of pgx.Rows needed by scanEntries.
 type scanRows interface {
 	Next() bool
 	Scan(dest ...any) error

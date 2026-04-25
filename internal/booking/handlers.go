@@ -147,7 +147,7 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := BookingPageData{
-		BasePageData:      BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		BasePageData:      BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Equipment:         equipment,
 		Bookings:          bookings,
 		HasPermission:     hasPermission,

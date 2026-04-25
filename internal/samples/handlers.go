@@ -238,7 +238,7 @@ func (h *Handlers) loadSampleDetailData(ctx context.Context, session auth.Sessio
 	}
 
 	return SampleDetailPageData{
-		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Sample:       sample,
 		Users:        users,
 		Equipment:    equipment,
@@ -616,7 +616,7 @@ func (h *Handlers) NewSample(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data := NewSamplePageData{
-			BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+			BasePageData: BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 			Users:        users,
 		}
 		if err := h.renderer.Render(w, "new_sample", data); err != nil {

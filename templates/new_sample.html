@@ -20,6 +20,7 @@
         <h3 style="margin:0 0 4px;font-size:15px;color:var(--color-primary);">Sample Details</h3>
         <p class="muted" style="font-size:13px;margin:0 0 20px;">Fill in the basics. You'll add fabrication steps after saving.</p>
         <form action="/samples/new" method="POST" class="stacked-form">
+            {{csrfField .CSRFToken}}
             <div class="form-group">
                 <label for="sample-name">Sample Name</label>
                 <input id="sample-name" type="text" name="name" placeholder="e.g. GaAs Wafer Batch 001" required>

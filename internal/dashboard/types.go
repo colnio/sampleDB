@@ -2,7 +2,11 @@
 // recent samples, an activity feed, and the day's bookings.
 package dashboard
 
-import "time"
+import (
+	"time"
+
+	"sampleDB/internal/activity"
+)
 
 // KPIs is the set of counts displayed in the top-of-page card grid.
 type KPIs struct {
@@ -49,9 +53,10 @@ type TodayBooking struct {
 
 // BasePageData mirrors the session-derived fields used across all templates.
 type BasePageData struct {
-	Username string
-	UserID   int
-	IsAdmin  bool
+	Username  string
+	UserID    int
+	IsAdmin   bool
+	CSRFToken string
 }
 
 // PageData is the template context for /dashboard.
@@ -59,19 +64,7 @@ type PageData struct {
 	BasePageData
 	KPIs          KPIs
 	RecentSamples []RecentSample
-	Activity      []ActivityEntry
+	Activity      []activity.Entry
 	TodayBookings []TodayBooking
 	Now           time.Time
-}
-
-// ActivityEntry mirrors activity.Entry but keeps the dashboard package free of
-// an import cycle risk and gives the template a stable shape to bind to.
-type ActivityEntry struct {
-	ID            int64
-	ActorUsername string
-	Verb          string
-	TargetType    string
-	TargetID      *int
-	TargetLabel   string
-	CreatedAt     time.Time
 }

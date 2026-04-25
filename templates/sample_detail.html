@@ -129,6 +129,7 @@
                   class="inline-form"
                   hx-boost="false"
                   onsubmit="return confirm('Permanently delete sample \u201C{{.Sample.Name}}\u201D and all its attachments? This cannot be undone.');">
+                {{csrfField .CSRFToken}}
                 <button type="submit" class="button button--destructive button--small">Delete sample</button>
             </form>
         </div>
@@ -543,6 +544,7 @@
           method="POST"
           class="stacked-form"
           hx-boost="false">
+            {{csrfField .CSRFToken}}
             <div class="modal__body">
                 <div class="form-group">
                     <label for="sample-owner">Owner</label>

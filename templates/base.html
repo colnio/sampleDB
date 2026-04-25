@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{template "title" .}}</title>
+    <meta name="csrf-token" content="{{.CSRFToken}}">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <script>
     (function () {
@@ -78,9 +79,10 @@
             if (!visible.length) { area.innerHTML = ''; return; }
             var html = '<div class="notif-stack">';
             visible.forEach(function(n) {
-                var lbl = levelLabel[n.level] || n.level;
+                var safeLevel = escHtml(n.level);
+                var lbl = escHtml(levelLabel[n.level] || n.level);
                 var date = n.created_at ? new Date(n.created_at).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : '';
-                html += '<div class="notif-banner notif-banner--' + n.level + '" data-notif-id="' + n.id + '">' +
+                html += '<div class="notif-banner notif-banner--' + safeLevel + '" data-notif-id="' + n.id + '">' +
                     '<div class="notif-banner__bar"></div>' +
                     '<div class="notif-banner__body">' +
                         '<div class="notif-banner__head">' +
@@ -116,6 +118,18 @@
         document.body.addEventListener('htmx:afterSwap', function(evt) {
             if (evt.detail && evt.detail.target && evt.detail.target.id === 'page-root') {
                 loadNotifications();
+            }
+        });
+    })();
+    </script>
+    <script>
+    (function() {
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfMeta || !csrfMeta.content) return;
+        var token = csrfMeta.content;
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            if (evt.detail.verb !== 'get') {
+                evt.detail.headers['X-CSRF-Token'] = token;
             }
         });
     })();
