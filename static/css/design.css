@@ -3037,3 +3037,375 @@ html[data-theme="light"] .auth-theme-toggle__icon--moon {
         flex-direction: column;
     }
 }
+
+/* === Wiki === */
+
+.wiki-article-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) 240px;
+    gap: 18px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .wiki-article-grid {
+        grid-template-columns: 1fr;
+    }
+    .wiki-toc {
+        display: none;
+    }
+}
+
+.article-content-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin-bottom: 0;
+}
+
+.article-content-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding: 18px 22px 0;
+}
+
+.article-content-panel__header .eyebrow {
+    margin: 0;
+}
+
+.article-content-panel__body {
+    padding: 0 22px 22px;
+}
+
+.markdown-body {
+    color: var(--text-strong) !important;
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-body);
+}
+
+.markdown-body > *:first-child {
+    margin-top: 0;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.markdown-body pre,
+.markdown-body table {
+    margin-bottom: var(--space-md);
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    padding-left: var(--space-xl);
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
+    font-weight: 600;
+    line-height: var(--line-height-heading);
+    color: var(--text-strong) !important;
+}
+
+.markdown-body h1 { font-size: var(--font-size-3xl) !important; }
+.markdown-body h2 { font-size: var(--font-size-2xl) !important; }
+.markdown-body h3 { font-size: var(--font-size-xl) !important; }
+.markdown-body h4 { font-size: var(--font-size-lg) !important; }
+.markdown-body h5 { font-size: var(--font-size-base) !important; }
+.markdown-body h6 {
+    font-size: var(--font-size-sm) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.markdown-body a {
+    color: var(--color-primary) !important;
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+    color: var(--color-primary-active) !important;
+}
+
+.markdown-body strong {
+    font-weight: 600;
+}
+
+.markdown-body code {
+    padding: 0.2em 0.4em;
+    font-size: 0.85em;
+    background-color: rgba(27, 31, 35, 0.05);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family-mono);
+    color: var(--text-strong) !important;
+}
+
+.markdown-body pre {
+    background-color: var(--surface-subtle);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+    overflow: auto;
+}
+
+.markdown-body pre code {
+    background: none;
+    padding: 0;
+    color: var(--text-strong) !important;
+}
+
+.markdown-body blockquote {
+    padding: 0 var(--space-md);
+    border-left: 0.25em solid var(--neutral-200);
+    color: var(--neutral-600) !important;
+}
+
+.markdown-body table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow: auto;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+    padding: calc(var(--space-sm) - 2px) var(--space-sm);
+    border: 1px solid var(--neutral-200);
+}
+
+.markdown-body table th {
+    font-weight: 600;
+    background-color: var(--surface-subtle);
+}
+
+.markdown-body img {
+    max-width: 100%;
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-default);
+}
+
+/* TOC sidebar */
+.wiki-toc .card {
+    padding: 18px 20px;
+    position: sticky;
+    top: 16px;
+}
+
+.wiki-toc .eyebrow {
+    margin-bottom: 10px;
+}
+
+.wiki-toc nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wiki-toc__item--l3 {
+    padding-left: 12px;
+}
+
+.wiki-toc nav a {
+    display: block;
+    padding: 4px 0 4px 8px;
+    margin-left: -8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+}
+
+.wiki-toc nav a:hover {
+    color: var(--color-primary);
+    border-left-color: var(--color-primary);
+}
+
+/* Wiki attachments card */
+.wiki-attachments-card {
+    padding: 18px 22px;
+}
+
+.wiki-attachments-card .eyebrow {
+    margin: 0;
+}
+
+.wiki-attach-count {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.wiki-attachments-card .upload-drop-zone {
+    margin-top: 12px;
+}
+
+/* EasyMDE editor */
+.EasyMDEContainer {
+    display: block;
+    width: 100%;
+}
+
+.editor-toolbar {
+    display: flex !important;
+    opacity: 1 !important;
+    border: 1px solid var(--neutral-200);
+    background-color: var(--surface-default);
+    padding: 5px;
+}
+
+.editor-toolbar a {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin: 0 2px;
+    padding: 3px;
+    color: var(--neutral-600) !important;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    text-decoration: none !important;
+}
+
+.editor-toolbar a:hover {
+    background-color: var(--surface-subtle);
+    border-color: var(--neutral-200);
+    color: var(--color-primary) !important;
+}
+
+.editor-toolbar a.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary-active);
+    color: var(--text-on-accent) !important;
+}
+
+.CodeMirror {
+    height: 500px !important;
+    border: 1px solid var(--neutral-200);
+    border-top: none;
+}
+
+.editor-toolbar i.separator {
+    display: inline-block;
+    width: 1px;
+    height: 20px;
+    margin: 0 5px;
+    background-color: var(--neutral-200);
+}
+
+.editor-statusbar {
+    padding: 8px;
+    color: var(--text-muted);
+    background-color: var(--surface-subtle);
+    border: 1px solid var(--neutral-200);
+    border-top: none;
+}
+
+/* Wiki image picker panel */
+.wiki-image-picker {
+    margin-top: var(--space-md);
+    background: var(--surface-default);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+}
+
+.wiki-image-picker__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+.wiki-image-picker__title {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-strong);
+}
+
+.wiki-image-picker__close {
+    background: none;
+    border: none;
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+}
+
+.wiki-image-picker__close:hover {
+    color: var(--text-strong);
+}
+
+.wiki-image-picker__body {
+    padding: var(--space-md);
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.wiki-image-picker__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: var(--space-sm);
+}
+
+.wiki-image-picker__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+    background: var(--surface-subtle);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: center;
+}
+
+.wiki-image-picker__item:hover {
+    border-color: var(--color-primary);
+    background: var(--surface-hover, var(--surface-subtle));
+}
+
+.wiki-image-picker__item img {
+    max-width: 100%;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+.wiki-image-picker__name {
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--text-muted);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+.wiki-image-picker__empty {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    padding: var(--space-md) 0;
+    margin: 0;
+}

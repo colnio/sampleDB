@@ -53,7 +53,7 @@
         {{end}}
     </div>
 {{else}}
-    <div class="empty-state card" style="text-align:center;padding:32px;">
+    <div class="empty-state card">
         <p>No articles{{if .TagFilter}} tagged "{{.TagFilter}}"{{end}} yet.</p>
         <p class="empty-state__hint">{{if .TagFilter}}Clear the filter or create a new article with this tag.{{else}}Create the first one to start documenting.{{end}}</p>
     </div>

@@ -54,13 +54,13 @@
     </div>
     {{if .TOC}}
     <aside class="wiki-toc" aria-label="On this page">
-        <div class="card" style="padding:18px 20px;position:sticky;top:16px;">
-            <div class="eyebrow" style="margin-bottom:10px;">On this page</div>
+        <div class="card">
+            <div class="eyebrow">On this page</div>
             <nav>
-                <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;">
+                <ul>
                     {{range .TOC}}
-                    <li style="{{if eq .Level 3}}padding-left:12px;{{end}}">
-                        <a href="#{{.Anchor}}" style="display:block;padding:4px 0;font-size:13px;color:var(--text-muted);text-decoration:none;border-left:2px solid transparent;padding-left:8px;margin-left:-8px;">{{.Title}}</a>
+                    <li{{if eq .Level 3}} class="wiki-toc__item--l3"{{end}}>
+                        <a href="#{{.Anchor}}">{{.Title}}</a>
                     </li>
                     {{end}}
                 </ul>
@@ -79,352 +79,6 @@
     });
 </script>
 
-<style>
-.wiki-article-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 3fr) 240px;
-    gap: 18px;
-    align-items: start;
-}
-
-@media (max-width: 900px) {
-    .wiki-article-grid {
-        grid-template-columns: 1fr;
-    }
-    .wiki-toc {
-        display: none;
-    }
-}
-
-.article-content-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-    margin-bottom: 0;
-}
-
-.article-content-panel__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-    padding: 18px 22px 0;
-}
-
-.article-content-panel__body {
-    padding: 0 22px 22px;
-}
-
-.markdown-body {
-    color: var(--text-strong) !important;
-    font-family: var(--font-family-base);
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-body);
-}
-
-.markdown-body > *:first-child {
-    margin-top: 0;
-}
-
-.markdown-body p,
-.markdown-body ul,
-.markdown-body ol,
-.markdown-body blockquote,
-.markdown-body pre,
-.markdown-body table {
-    margin-bottom: var(--space-md);
-}
-
-.markdown-body ul,
-.markdown-body ol {
-    padding-left: var(--space-xl);
-}
-
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
-.markdown-body h4,
-.markdown-body h5,
-.markdown-body h6 {
-    margin-top: var(--space-xl);
-    margin-bottom: var(--space-md);
-    font-weight: 600;
-    line-height: var(--line-height-heading);
-    color: var(--text-strong) !important;
-}
-
-.markdown-body h1 { font-size: var(--font-size-3xl) !important; }
-.markdown-body h2 { font-size: var(--font-size-2xl) !important; }
-.markdown-body h3 { font-size: var(--font-size-xl) !important; }
-.markdown-body h4 { font-size: var(--font-size-lg) !important; }
-.markdown-body h5 { font-size: var(--font-size-base) !important; }
-.markdown-body h6 {
-    font-size: var(--font-size-sm) !important;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.markdown-body a {
-    color: var(--color-primary) !important;
-    text-decoration: none;
-}
-
-.markdown-body a:hover {
-    text-decoration: underline;
-    color: var(--color-primary-active) !important;
-}
-
-.markdown-body strong {
-    font-weight: 600;
-}
-
-.markdown-body code {
-    padding: 0.2em 0.4em;
-    font-size: 0.85em;
-    background-color: rgba(27, 31, 35, 0.05);
-    border-radius: var(--radius-sm);
-    font-family: var(--font-family-mono);
-    color: var(--text-strong) !important;
-}
-
-.markdown-body pre {
-    background-color: var(--surface-subtle);
-    border-radius: var(--radius-sm);
-    padding: var(--space-md);
-    overflow: auto;
-}
-
-.markdown-body pre code {
-    background: none;
-    padding: 0;
-    color: var(--text-strong) !important;
-}
-
-.markdown-body blockquote {
-    padding: 0 var(--space-md);
-    border-left: 0.25em solid var(--neutral-200);
-    color: var(--neutral-600) !important;
-}
-
-.markdown-body table {
-    border-spacing: 0;
-    border-collapse: collapse;
-    display: block;
-    width: max-content;
-    max-width: 100%;
-    overflow: auto;
-}
-
-.markdown-body table th,
-.markdown-body table td {
-    padding: calc(var(--space-sm) - 2px) var(--space-sm);
-    border: 1px solid var(--neutral-200);
-}
-
-.markdown-body table th {
-    font-weight: 600;
-    background-color: var(--surface-subtle);
-}
-
-.markdown-body img {
-    max-width: 100%;
-    border-radius: var(--radius-sm);
-    background-color: var(--surface-default);
-}
-
-.attachments-container {
-    margin-bottom: var(--space-xl);
-}
-
-.attachments-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: var(--space-md);
-    margin-top: var(--space-md);
-}
-
-figure.attachment-preview {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--neutral-200);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    margin: 0;
-}
-
-.attachment-thumb,
-.attachment-file {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-md);
-    width: 100%;
-    background: var(--surface-subtle);
-    border: none;
-    cursor: pointer;
-}
-
-.attachment-thumb img {
-    max-width: 100%;
-    max-height: 150px;
-    object-fit: contain;
-}
-
-.attachment-file {
-    text-decoration: none;
-    color: var(--text-strong);
-    font-weight: 500;
-}
-
-.file-icon {
-    font-size: 3rem;
-    color: var(--text-muted);
-}
-
-.attachment-info {
-    padding: var(--space-sm);
-    border-top: 1px solid var(--neutral-200);
-}
-
-.attachment-name {
-    font-size: var(--font-size-sm);
-    margin-bottom: var(--space-xs);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.attachment-actions {
-    display: flex;
-    gap: var(--space-sm);
-}
-
-.upload-form {
-    background: var(--surface-default);
-    padding: var(--space-xl);
-    border-radius: var(--radius-md);
-    box-shadow: var(--card-shadow);
-    margin-bottom: var(--space-xl);
-}
-
-.upload-form form {
-    display: flex;
-    gap: var(--space-md);
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: var(--space-md);
-}
-
-.image-lightbox {
-    position: fixed;
-    inset: 0;
-    display: none;
-    z-index: 50;
-}
-
-.image-lightbox.is-visible {
-    display: block;
-}
-
-.lightbox-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(3px);
-}
-
-.lightbox-panel {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: var(--neutral-900);
-    padding: var(--space-lg);
-    border-radius: var(--radius-md);
-    max-width: min(90vw, 680px);
-    width: 100%;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
-}
-
-.lightbox-panel img {
-    width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
-    border-radius: var(--radius-sm);
-    display: block;
-    margin-bottom: var(--space-md);
-}
-
-.lightbox-panel p {
-    margin: 0;
-    color: var(--surface-subtle);
-    text-align: center;
-    font-size: var(--font-size-sm);
-}
-
-.lightbox-close {
-    position: absolute;
-    top: var(--space-sm);
-    right: var(--space-sm);
-    background: transparent;
-    border: none;
-    color: var(--surface-muted);
-    font-size: var(--font-size-2xl);
-    cursor: pointer;
-    line-height: 1;
-}
-
-@media (max-width: 768px) {
-    .wiki-article {
-        padding: var(--space-lg) var(--space-md);
-    }
-
-    .article-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-md);
-    }
-
-    .article-actions {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-sm);
-    }
-
-    .article-actions .button,
-    .article-actions .inline-form .button {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .article-content,
-    .upload-form {
-        padding: var(--space-lg);
-    }
-
-    .attachments-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .attachment-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .upload-form form {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-sm);
-    }
-
-    .upload-form form .button {
-        width: 100%;
-        justify-content: center;
-    }
-}
-</style>
 <script src="/static/js/upload.js" defer></script>
 <script src="/static/js/gallery.js" defer></script>
 {{end}}
@@ -432,7 +86,7 @@ figure.attachment-preview {
 {{define "article_content_panel"}}
 <section id="article-content-panel" class="card article-content-panel">
     <header class="article-content-panel__header">
-        <div class="eyebrow" style="margin:0;">Content</div>
+        <div class="eyebrow">Content</div>
     </header>
     <div class="article-content-panel__body">
         {{with .Flash}}
@@ -485,12 +139,12 @@ figure.attachment-preview {
 {{end}}
 
 {{define "wiki_attachments_section"}}
-<div id="wiki-attachments-section" class="card" style="padding:18px 22px;">
+<div id="wiki-attachments-section" class="card wiki-attachments-card">
     {{with .Flash}}<div class="alert alert-success">{{.}}</div>{{end}}
     {{with .Error}}<div class="alert alert-error">{{.}}</div>{{end}}
 
     <div class="flex-between" style="margin-bottom:14px;">
-        <div class="eyebrow" style="margin:0;">Attachments{{if .Article.Attachments}} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:12px;">· {{len .Article.Attachments}}</span>{{end}}</div>
+        <div class="eyebrow">Attachments{{if .Article.Attachments}} <span class="wiki-attach-count">· {{len .Article.Attachments}}</span>{{end}}</div>
         <label class="button button--ghost button--small" style="cursor:pointer;">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" stroke-linecap="round" stroke-linejoin="round"/>
@@ -536,7 +190,6 @@ figure.attachment-preview {
     {{end}}
 
     <div class="upload-drop-zone"
-         style="margin-top:12px;"
          data-upload-zone
          data-upload-endpoint="/wiki/upload/{{.Article.ID}}"
          data-upload-target="#wiki-attachments-section">
