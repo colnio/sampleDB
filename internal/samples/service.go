@@ -155,7 +155,8 @@ func (s *DBService) ListAll(ctx context.Context, f ListFilters) ([]Sample, error
 	q := `SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at,
 		       COALESCE(s.status, 'active'),
-		       first_img.attachment_id
+		       first_img.attachment_id,
+		       (SELECT COUNT(*) FROM fabrication_steps WHERE sample_id = s.sample_id) AS step_count
 		  FROM samples s
 		  LEFT JOIN users u ON s.owner_user_id = u.user_id
 		  LEFT JOIN LATERAL (
@@ -200,7 +201,7 @@ func (s *DBService) ListAll(ctx context.Context, f ListFilters) ([]Sample, error
 		var smpl Sample
 		if err := rows.Scan(&smpl.ID, &smpl.Name, &smpl.Description, &smpl.Keywords,
 			&smpl.Owner, &smpl.OwnerUserID, &smpl.OwnerUsername, &smpl.SamplePrep,
-			&smpl.CreatedAt, &smpl.Status, &smpl.FirstImageID); err != nil {
+			&smpl.CreatedAt, &smpl.Status, &smpl.FirstImageID, &smpl.StepCount); err != nil {
 			return nil, err
 		}
 		out = append(out, smpl)
@@ -256,7 +257,8 @@ func (s *DBService) Search(ctx context.Context, query string, f ListFilters) ([]
 	q := fmt.Sprintf(`SELECT s.sample_id, s.sample_name, COALESCE(s.sample_description, ''), COALESCE(s.sample_keywords, ''),
 		       COALESCE(s.sample_owner, ''), s.owner_user_id, u.username, COALESCE(s.sample_prep, ''), s.created_at,
 		       COALESCE(s.status, 'active'),
-		       first_img.attachment_id
+		       first_img.attachment_id,
+		       (SELECT COUNT(*) FROM fabrication_steps WHERE sample_id = s.sample_id) AS step_count
 		  FROM samples s
 		  LEFT JOIN users u ON s.owner_user_id = u.user_id
 		  LEFT JOIN LATERAL (
@@ -296,7 +298,7 @@ func (s *DBService) Search(ctx context.Context, query string, f ListFilters) ([]
 		var smpl Sample
 		if err := rows.Scan(&smpl.ID, &smpl.Name, &smpl.Description, &smpl.Keywords,
 			&smpl.Owner, &smpl.OwnerUserID, &smpl.OwnerUsername, &smpl.SamplePrep,
-			&smpl.CreatedAt, &smpl.Status, &smpl.FirstImageID); err != nil {
+			&smpl.CreatedAt, &smpl.Status, &smpl.FirstImageID, &smpl.StepCount); err != nil {
 			return nil, err
 		}
 		out = append(out, smpl)

@@ -148,6 +148,14 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 		},
 		"today":           func() string { return time.Now().Format("2006-01-02") },
 		"add":             func(a, b int) int { return a + b },
+		"mod":             func(a, b int) int { return a % b },
+		"formatDateChip": func(s string) string {
+			t, err := time.Parse("2006-01-02", s)
+			if err != nil {
+				return s
+			}
+			return t.Format("Jan 02")
+		},
 		"urlEscape":       url.PathEscape,
 		"statusChipClass": statusChipClass,
 		"statusLabel":     statusLabel,

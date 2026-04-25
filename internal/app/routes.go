@@ -91,6 +91,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("/samples", withAuth(samplesHdlrs.MainPage))
 	mux.HandleFunc("/samples/new", withAuth(samplesHdlrs.NewSample))
+	mux.HandleFunc("/samples/export.csv", withAuth(samplesHdlrs.ExportCSV))
 	mux.HandleFunc("/samples/edit/", withAuth(samplesHdlrs.EditSample))
 	mux.HandleFunc("/samples/", withAuth(samplesHdlrs.HandleSample))
 	mux.HandleFunc("/attachment/", withAuth(samplesHdlrs.HandleAttachment))

@@ -4,9 +4,17 @@
 <div class="page-topbar">
     <div class="page-topbar__left">
         <h1>Samples</h1>
-        <div class="page-topbar__crumbs">{{len .Samples}} sample{{if ne (len .Samples) 1}}s{{end}}{{if .Query}} matching "{{.Query}}"{{end}}{{if .StatusFilter}} · {{statusLabel .StatusFilter}}{{end}}{{if .OwnerFilter}} · owned by {{.OwnerFilter}}{{end}}{{if or .DateFrom .DateTo}} · filtered by date{{end}}</div>
+        <div class="page-topbar__crumbs">{{len .Samples}} of {{len .Samples}} sample{{if ne (len .Samples) 1}}s{{end}}{{if .Query}} matching "{{.Query}}"{{end}}{{if .StatusFilter}} · {{statusLabel .StatusFilter}}{{end}}{{if .OwnerFilter}} · owned by {{.OwnerFilter}}{{end}}{{if or .DateFrom .DateTo}} · filtered by date{{end}}</div>
     </div>
     <div class="page-topbar__actions">
+        <a href="/samples/export.csv" class="button button--secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Export CSV</span>
+        </a>
         <a href="/samples/new" class="button button--primary">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -26,69 +34,103 @@
       hx-trigger="submit, keyup changed delay:300ms from:#samples-query, change from:input[type='date'], change from:#status-filter, change from:#owner-filter"
       hx-indicator="#samples-search-indicator"
       hx-push-url="true">
-    <label class="toolbar__search">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
-            <circle cx="11" cy="11" r="6"/>
-            <path d="M20 20l-4-4" stroke-linecap="round"/>
-        </svg>
-        <input id="samples-query" type="search" name="query" value="{{.Query}}" placeholder="Search samples, keywords, owners…" autocomplete="off">
-    </label>
-    <label class="filter-chip" for="status-filter">
-        <span>Status</span>
-        <select id="status-filter" name="status" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;">
-            <option value="all" {{if eq .StatusFilter ""}}selected{{end}}>All</option>
-            <option value="planned" {{if eq .StatusFilter "planned"}}selected{{end}}>Planned</option>
-            <option value="active" {{if eq .StatusFilter "active"}}selected{{end}}>Active</option>
-            <option value="in_progress" {{if eq .StatusFilter "in_progress"}}selected{{end}}>In Progress</option>
-            <option value="archived" {{if eq .StatusFilter "archived"}}selected{{end}}>Archived</option>
-        </select>
-    </label>
-    <label class="filter-chip" for="owner-filter">
-        <span>Owner</span>
-        <select id="owner-filter" name="owner" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;">
-            <option value="all" {{if eq .OwnerFilter ""}}selected{{end}}>All</option>
-            {{range .Users}}
-            <option value="{{.Username}}" {{if eq $.OwnerFilter .Username}}selected{{end}}>{{.Username}}</option>
-            {{end}}
-        </select>
-    </label>
-    <label class="filter-chip" for="date-from">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
-            <rect x="3.75" y="5.5" width="16.5" height="14.5" rx="2"/>
-            <path d="M8 3.75v3.5m8-3.5v3.5M3.75 10.5h16.5" stroke-linecap="round"/>
-        </svg>
-        <span>From</span>
-        <input id="date-from" type="date" name="date_from" value="{{.DateFrom}}" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;width:115px;">
-    </label>
-    <label class="filter-chip" for="date-to">
-        <span>To</span>
-        <input id="date-to" type="date" name="date_to" value="{{.DateTo}}" style="background:transparent;border:none;padding:0;min-height:auto;color:inherit;font-family:inherit;font-size:12.5px;width:115px;">
-    </label>
-    <div class="seg" role="tablist" aria-label="View mode" style="margin-left:auto;">
-        <a href="/samples?{{.GridQuery}}"
-           class="{{if ne .View "table"}}is-active{{end}}"
-           hx-get="/samples?{{.GridQuery}}"
-           hx-target="#samples-panel"
-           hx-select="#samples-panel"
-           hx-push-url="true"
-           role="tab"
-           aria-selected="{{if ne .View "table"}}true{{else}}false{{end}}"
-           data-view="grid">Grid</a>
-        <a href="/samples?{{.TableQuery}}"
-           class="{{if eq .View "table"}}is-active{{end}}"
-           hx-get="/samples?{{.TableQuery}}"
-           hx-target="#samples-panel"
-           hx-select="#samples-panel"
-           hx-push-url="true"
-           role="tab"
-           aria-selected="{{if eq .View "table"}}true{{else}}false{{end}}"
-           data-view="table">Table</a>
+
+    <!-- Row 1: search + filter chips -->
+    <div class="toolbar__row">
+        <label class="toolbar__search">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
+                <circle cx="11" cy="11" r="6"/>
+                <path d="M20 20l-4-4" stroke-linecap="round"/>
+            </svg>
+            <input id="samples-query" type="search" name="query" value="{{.Query}}" placeholder="Search samples, keywords, owners…" autocomplete="off">
+        </label>
+
+        <details class="date-range-chip" id="date-range-chip">
+            <summary class="filter-chip">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" style="width:14px;height:14px;flex:none;">
+                    <rect x="3.75" y="5.5" width="16.5" height="14.5" rx="2"/>
+                    <path d="M8 3.75v3.5m8-3.5v3.5M3.75 10.5h16.5" stroke-linecap="round"/>
+                </svg>
+                <span id="date-range-label">{{if and .DateFrom .DateTo}}{{formatDateChip .DateFrom}} – {{formatDateChip .DateTo}}{{else if .DateFrom}}From {{formatDateChip .DateFrom}}{{else if .DateTo}}To {{formatDateChip .DateTo}}{{else}}Date range{{end}}</span>
+            </summary>
+            <div class="date-picker-panel">
+                <label class="date-picker-panel__field">
+                    <span>From</span>
+                    <input id="date-from" type="date" name="date_from" value="{{.DateFrom}}">
+                </label>
+                <span class="date-picker-panel__sep">–</span>
+                <label class="date-picker-panel__field">
+                    <span>To</span>
+                    <input id="date-to" type="date" name="date_to" value="{{.DateTo}}">
+                </label>
+            </div>
+        </details>
+
+        <label class="filter-chip" for="owner-filter">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" style="width:14px;height:14px;flex:none;">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/>
+            </svg>
+            <select id="owner-filter" name="owner" class="filter-chip__select">
+                <option value="all" {{if eq .OwnerFilter ""}}selected{{end}}>All owners</option>
+                {{range .Users}}
+                <option value="{{.Username}}" {{if eq $.OwnerFilter .Username}}selected{{end}}>{{.Username}}</option>
+                {{end}}
+            </select>
+        </label>
     </div>
+
+    <!-- Row 2: status pills + view toggle + search -->
+    <div class="toolbar__row">
+        <input type="hidden" id="status-filter" name="status" value="{{.StatusFilter}}">
+        <div class="status-pills" role="group" aria-label="Filter by status">
+            <button type="button" class="status-pill{{if eq .StatusFilter ""}} is-active{{end}}" data-status="">All status</button>
+            <button type="button" class="status-pill{{if eq .StatusFilter "active"}} is-active{{end}}" data-status="active">Active</button>
+            <button type="button" class="status-pill{{if eq .StatusFilter "in_progress"}} is-active{{end}}" data-status="in_progress">In Progress</button>
+            <button type="button" class="status-pill{{if eq .StatusFilter "planned"}} is-active{{end}}" data-status="planned">Planned</button>
+            <button type="button" class="status-pill{{if eq .StatusFilter "archived"}} is-active{{end}}" data-status="archived">Archived</button>
+        </div>
+
+        <div class="toolbar__row-right">
+            <div class="seg" role="tablist" aria-label="View mode">
+                <a href="/samples?{{.GridQuery}}"
+                   class="{{if ne .View "table"}}is-active{{end}}"
+                   hx-get="/samples?{{.GridQuery}}"
+                   hx-target="#samples-panel"
+                   hx-select="#samples-panel"
+                   hx-push-url="true"
+                   role="tab"
+                   aria-selected="{{if ne .View "table"}}true{{else}}false{{end}}"
+                   data-view="grid">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    Grid
+                </a>
+                <a href="/samples?{{.TableQuery}}"
+                   class="{{if eq .View "table"}}is-active{{end}}"
+                   hx-get="/samples?{{.TableQuery}}"
+                   hx-target="#samples-panel"
+                   hx-select="#samples-panel"
+                   hx-push-url="true"
+                   role="tab"
+                   aria-selected="{{if eq .View "table"}}true{{else}}false{{end}}"
+                   data-view="table">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;">
+                        <path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round"/>
+                    </svg>
+                    Table
+                </a>
+            </div>
+            <button type="submit" class="button button--secondary button--small">Search</button>
+            <div id="samples-search-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
+                <span class="spinner"></span>
+            </div>
+        </div>
+    </div>
+
     <input type="hidden" name="view" value="{{.View}}">
-    <button type="submit" class="button button--secondary button--small">Search</button>
-    <div id="samples-search-indicator" class="inline-indicator htmx-indicator" aria-hidden="true">
-        <span class="spinner"></span>
-    </div>
 </form>
 
 {{template "samples_panel" .}}
@@ -106,7 +148,7 @@
                         <th>Name</th>
                         <th>Owner</th>
                         <th>Status</th>
-                        <th>Files</th>
+                        <th>Steps</th>
                         <th>Created</th>
                     </tr>
                 </thead>
@@ -117,7 +159,7 @@
                         <td><a href="/samples/{{.ID}}" style="color:var(--text-strong);font-weight:500;">{{.Name}}</a></td>
                         <td>{{if .OwnerUsername}}{{.OwnerUsername}}{{else if .Owner}}{{.Owner}}{{else}}Unassigned{{end}}</td>
                         <td><span class="status-chip status-chip--{{statusChipClass .Status}}"><span class="status-chip__dot"></span>{{statusLabel .Status}}</span></td>
-                        <td>{{if .FirstImageID}}&ge;1{{else}}0{{end}}</td>
+                        <td>{{.StepCount}}</td>
                         <td class="cell--mono">{{.CreatedAt.Format "2006-01-02"}}</td>
                     </tr>
                     {{end}}
@@ -128,16 +170,14 @@
         <div class="samples-grid">
             {{range .Samples}}
             <article class="card tile sample-card">
-                <a href="/samples/{{.ID}}" class="sample-card__thumbnail{{if not .FirstImageID}} sample-card__thumbnail--empty{{end}}" tabindex="-1" aria-hidden="true">
+                <a href="/samples/{{.ID}}" class="sample-card__thumbnail sample-card__thumbnail--color-{{mod .ID 6}}{{if not .FirstImageID}} sample-card__thumbnail--empty{{end}}" tabindex="-1" aria-hidden="true">
                     {{if .FirstImageID}}
                     <img src="/attachment/{{.FirstImageID}}" alt="" loading="lazy">
                     {{end}}
+                    <span class="status-chip sample-card__status">{{statusLabel .Status}}</span>
                 </a>
                 <div class="sample-card__body">
-                    <div class="sample-card__id-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                        <div class="sample-card__id">SMP-{{printf "%03d" .ID}}</div>
-                        <span class="status-chip status-chip--{{statusChipClass .Status}}"><span class="status-chip__dot"></span>{{statusLabel .Status}}</span>
-                    </div>
+                    <div class="sample-card__id">SMP-{{printf "%03d" .ID}}</div>
                     <h3 class="sample-card__name"><a href="/samples/{{.ID}}">{{.Name}}</a></h3>
                     <p class="sample-card__desc">{{if .Description}}{{.Description}}{{else}}No description{{end}}</p>
                     {{if .Keywords}}
@@ -146,8 +186,10 @@
                     </div>
                     {{end}}
                     <div class="sample-card__meta">
-                        <span>{{if .OwnerUsername}}{{.OwnerUsername}}{{else if .Owner}}{{.Owner}}{{else}}Unassigned{{end}}</span>
-                        <span class="mono">{{.CreatedAt.Format "Jan 02"}}</span>
+                        <span>{{if .OwnerUsername}}{{.OwnerUsername}}{{else if .Owner}}{{.Owner}}{{else}}—{{end}}</span>
+                        <span class="sample-card__meta-dot">·</span>
+                        <span class="mono">{{.CreatedAt.Format "2006-01-02"}}</span>
+                        {{if .StepCount}}<span class="sample-card__meta-dot">·</span><span>{{.StepCount}} step{{if ne .StepCount 1}}s{{end}}</span>{{end}}
                     </div>
                 </div>
             </article>
@@ -161,6 +203,59 @@
         </div>
     {{end}}
 </section>
+
+<script>
+(function () {
+    var form = document.getElementById('samples-search');
+    var hiddenStatus = document.getElementById('status-filter');
+    if (!form || !hiddenStatus) return;
+
+    form.querySelectorAll('[data-status]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            hiddenStatus.value = this.dataset.status;
+            form.querySelectorAll('[data-status]').forEach(function (b) {
+                b.classList.toggle('is-active', b === btn);
+            });
+            hiddenStatus.dispatchEvent(new Event('change'));
+        });
+    });
+
+    var chip = document.getElementById('date-range-chip');
+    var dateFrom = document.getElementById('date-from');
+    var dateTo = document.getElementById('date-to');
+    var label = document.getElementById('date-range-label');
+
+    function updateDateLabel() {
+        if (!label) return;
+        var from = dateFrom ? dateFrom.value : '';
+        var to = dateTo ? dateTo.value : '';
+        if (from && to) {
+            label.textContent = formatChipDate(from) + ' – ' + formatChipDate(to);
+        } else if (from) {
+            label.textContent = 'From ' + formatChipDate(from);
+        } else if (to) {
+            label.textContent = 'To ' + formatChipDate(to);
+        } else {
+            label.textContent = 'Date range';
+        }
+        if (chip && (from || to)) chip.classList.add('is-active');
+        else if (chip) chip.classList.remove('is-active');
+    }
+
+    function formatChipDate(iso) {
+        var d = new Date(iso + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    }
+
+    if (dateFrom) dateFrom.addEventListener('change', updateDateLabel);
+    if (dateTo) dateTo.addEventListener('change', updateDateLabel);
+    updateDateLabel();
+
+    document.addEventListener('click', function (e) {
+        if (chip && !chip.contains(e.target)) chip.removeAttribute('open');
+    });
+})();
+</script>
 {{end}}
 
 {{template "base" .}}

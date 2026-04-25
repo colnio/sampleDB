@@ -415,12 +415,72 @@ func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ExportCSV serves GET /samples/export.csv — downloads all visible samples as CSV.
+func (h *Handlers) ExportCSV(w http.ResponseWriter, r *http.Request) {
+	session := auth.MustSessionFromContext(r.Context())
+	_ = session
+
+	statusFilter := normalizeStatusFilter(r.URL.Query().Get("status"))
+	ownerFilter := normalizeOwnerFilter(r.URL.Query().Get("owner"))
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
+	query := strings.TrimSpace(r.URL.Query().Get("query"))
+
+	filters := ListFilters{
+		DateFrom: dateFrom,
+		DateTo:   dateTo,
+		Status:   statusFilter,
+		Owner:    ownerFilter,
+	}
+
+	var (
+		samples []Sample
+		err     error
+	)
+	if query != "" {
+		samples, err = h.svc.Search(r.Context(), query, filters)
+	} else {
+		samples, err = h.svc.ListAll(r.Context(), filters)
+	}
+	if err != nil {
+		http.Error(w, "Error retrieving samples", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=samples.csv")
+
+	fmt.Fprintf(w, "ID,Name,Owner,Status,Steps,Keywords,Created\n")
+	for _, s := range samples {
+		owner := s.Owner
+		if s.OwnerUsername != nil {
+			owner = *s.OwnerUsername
+		}
+		fmt.Fprintf(w, "SMP-%03d,%s,%s,%s,%d,%s,%s\n",
+			s.ID,
+			csvEscape(s.Name),
+			csvEscape(owner),
+			s.Status,
+			s.StepCount,
+			csvEscape(s.Keywords),
+			s.CreatedAt.Format("2006-01-02"),
+		)
+	}
+}
+
+func csvEscape(s string) string {
+	if strings.ContainsAny(s, ",\"\n\r") {
+		return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+	}
+	return s
+}
+
 // normalizeStatusFilter coerces the raw ?status= query param into a canonical
 // value. "all" and unknown strings collapse to "" (no filter) so the DB layer
 // never sees an invalid status string.
 func normalizeStatusFilter(s string) string {
 	switch s {
-	case "active", "in_progress", "archived":
+	case "active", "in_progress", "archived", "planned":
 		return s
 	}
 	return ""
@@ -440,7 +500,7 @@ func normalizeOwnerFilter(s string) string {
 // existing status unchanged on edit.
 func normalizeStatusInput(s string) string {
 	switch s {
-	case "active", "in_progress", "archived":
+	case "active", "in_progress", "archived", "planned":
 		return s
 	}
 	return ""

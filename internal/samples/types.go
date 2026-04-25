@@ -26,6 +26,7 @@ type Sample struct {
 	ShareVisibility string // 'private', 'public', 'authenticated'
 	FirstImageID    *int
 	Status          string // 'active', 'in_progress', 'archived'
+	StepCount       int
 }
 
 // Attachment represents a file attached to a sample.
