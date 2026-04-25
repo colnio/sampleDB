@@ -1,85 +1,102 @@
 {{define "title"}}Equipment Booking{{end}}
 
 {{define "content"}}
-<div class="booking-page">
-    <header class="page-heading">
-        <h1 class="heading-with-icon">
-            <svg class="heading-with-icon__icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                <rect x="3.75" y="5.5" width="16.5" height="14.5" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
-                <path d="M8 3.75v3.5m8-3.5v3.5M3.75 10.5h16.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-                <path d="M15.75 14.5h2.5v2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                <circle cx="16" cy="15.5" r="1.6" fill="currentColor"></circle>
-            </svg>
-            <span>Equipment Booking</span>
-        </h1>
-    </header>
-
-    <div class="booking-toolbar">
-        <div class="toolbar-section">
-            <a href="/booking?date={{formatDateISO (addDays .SelectedDate -1)}}" class="nav-chip">&laquo; Prev</a>
-        </div>
-        <div class="toolbar-section toolbar-section--search">
-            <form class="toolbar-search" action="/booking" method="GET" autocomplete="off">
-                <input type="date" name="date" value="{{formatDateISO .SelectedDate}}" aria-label="Select date" autocomplete="off">
-                <button class="button button--primary" type="submit">Go</button>
-            </form>
-        </div>
-        <div class="toolbar-section">
-            <a href="/booking?date={{formatDateISO (addDays .SelectedDate 1)}}" class="nav-chip">Next &raquo;</a>
-        </div>
-        <div class="toolbar-section toolbar-section--actions">
-            <button type="button" class="button button--primary booking-book-slot" onclick="openQuickBooking()">
-                <span aria-hidden="true">+</span> Book Slot
-            </button>
-        </div>
+<div class="page-topbar">
+    <div class="page-topbar__left">
+        <h1>Equipment Booking</h1>
+        <div class="page-topbar__crumbs">{{formatDayName .SelectedDate}} · {{formatDateNumeric .SelectedDate}}</div>
     </div>
-
-    {{with .Error}}
-    <div class="alert alert-error">{{.}}</div>
-    {{end}}
-
-    {{with .Success}}
-    <div class="alert alert-success">{{.}}</div>
-    {{end}}
-
-    <div class="day-banner">
-        <div class="day-banner__day">{{formatDayName .SelectedDate}}</div>
-        <div class="day-banner__date">{{formatDateNumeric .SelectedDate}}</div>
+    <div class="page-topbar__actions">
+        <a href="/booking?date={{formatDateISO (addDays .SelectedDate -1)}}" class="button button--ghost">‹ Prev</a>
+        <form class="booking-date-form" action="/booking" method="GET" autocomplete="off">
+            <input type="date" name="date" value="{{formatDateISO .SelectedDate}}" aria-label="Select date" autocomplete="off">
+            <button class="button button--secondary" type="submit">Go</button>
+        </form>
+        <a href="/booking?date={{formatDateISO (addDays .SelectedDate 1)}}" class="button button--ghost">Next ›</a>
+        <button type="button" class="button button--primary" id="open-book-modal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Book Slot
+        </button>
     </div>
+</div>
 
-    <div class="timeline-shell">
-        <div class="timeline-header">
-            <div class="timeline-equipment-col">Equipment</div>
-            <div class="timeline-hours">
-                {{range .Hours}}
-                <div class="timeline-hour"><span>{{formatTime .}}</span></div>
-                {{end}}
+{{with .Error}}<div class="alert alert-error" style="margin-bottom:16px;">{{.}}</div>{{end}}
+{{with .Success}}<div class="alert alert-success" style="margin-bottom:16px;">{{.}}</div>{{end}}
+
+<div class="toolbar" style="margin-bottom:16px;">
+    <div class="booking-legend">
+        <span class="booking-legend__item"><span class="tline-row__dot" style="display:inline-block;"></span>Online</span>
+        <span class="booking-legend__item"><span class="tline-row__dot" style="display:inline-block;background:#f59e0b;"></span>Maintenance{{if .IsAdmin}} (admin+access can book){{end}}</span>
+        <span class="booking-legend__item"><span class="tline-row__dot" style="display:inline-block;background:var(--color-destructive);"></span>Offline</span>
+    </div>
+</div>
+
+<div class="timeline-wrap">
+    <div class="timeline-wrap__scroll" id="booking-scroll">
+        <div class="tline">
+            <div class="tline-head">
+                <div class="tline-head__left">Equipment</div>
+                <div class="tline-hours">
+                    {{range .Hours}}
+                    <div class="tline-hour">{{formatTime24 .}}</div>
+                    {{end}}
+                </div>
             </div>
-        </div>
-        <div class="timeline-body">
             {{range .Equipment}}
             {{$equipment := .}}
-            <div class="timeline-row">
-                <div class="timeline-equipment">
-                    <div class="equipment-title">
-                        <span class="equipment-status-dot equipment-status-dot--{{$equipment.Status}}" aria-hidden="true"></span>
-                        <span class="equipment-title__name" title="{{$equipment.Name}}">{{$equipment.Name}}</span>
-                    </div>
-                    <div class="equipment-status-label">{{$equipment.Status}}</div>
+            {{$canSee  := index $.HasPermission  $equipment.ID}}
+            {{$canBook := index $.HasBookPermission $equipment.ID}}
+            {{$status  := $equipment.Status}}
+            <div class="tline-row tline-row--{{$status}}">
+                <div class="tline-row__left">
+                    <span class="tline-row__dot" aria-hidden="true"></span>
+                    <span class="tline-row__name" title="{{$equipment.Name}}">{{$equipment.Name}}</span>
+                    {{if eq $status "offline"}}
+                    <span class="tline-row__status-badge tline-row__status-badge--offline">Offline</span>
+                    {{else if eq $status "maintenance"}}
+                    <span class="tline-row__status-badge tline-row__status-badge--maintenance">Maintenance</span>
+                    {{else if and $canSee (not $canBook)}}
+                    <span class="tline-row__access-badge">View only</span>
+                    {{end}}
                 </div>
-                {{if index $.HasPermission $equipment.ID}}
-                <div class="timeline-lane" data-equipment="{{$equipment.ID}}">
-                    <div class="lane-grid">
-                        {{range $.TimeSlots}}
-                        <div class="lane-cell"
-                             data-equipment="{{$equipment.ID}}"
-                             data-datetime="{{formatDateTimeISO (combineDatetime $.SelectedDate .)}}"
-                             onclick="handleLaneCellClick(this)"></div>
-                        {{end}}
-                    </div>
+                {{if eq $status "offline"}}
+                {{/* Offline: nobody can book; show to all with clear indicator */}}
+                <div class="tline-lane tline-lane--offline">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"/><path d="M4.93 4.93l14.14 14.14" stroke-linecap="round"/>
+                    </svg>
+                    <span>Offline – unavailable for booking</span>
+                </div>
+                {{else if eq $status "maintenance"}}
+                {{/* Maintenance: admin+access can book; others see a locked lane */}}
+                {{if $canBook}}
+                <div class="tline-lane tline-lane--maintenance"
+                     data-equipment="{{$equipment.ID}}"
+                     data-can-book="1">
+                    <div class="slots">{{range $.Hours}}<div class="slot"></div>{{end}}</div>
                 </div>
                 {{else}}
-                <div class="timeline-lane timeline-lane--locked">
+                <div class="tline-lane tline-lane--maintenance-locked">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Under maintenance</span>
+                </div>
+                {{end}}
+                {{else if $canSee}}
+                {{/* Online, has lane access: interactive (or view-only for admin) */}}
+                <div class="tline-lane{{if not $canBook}} tline-lane--admin{{end}}"
+                     data-equipment="{{$equipment.ID}}"
+                     data-can-book="{{if $canBook}}1{{else}}0{{end}}">
+                    <div class="slots">{{range $.Hours}}<div class="slot"></div>{{end}}</div>
+                </div>
+                {{else}}
+                {{/* Online, no group access, not admin */}}
+                <div class="tline-lane tline-lane--locked">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <rect x="5" y="11" width="14" height="9" rx="2"/>
+                        <path d="M8 11V7.5a4 4 0 018 0V11" stroke-linecap="round"/>
+                    </svg>
                     <span>No access</span>
                 </div>
                 {{end}}
@@ -87,857 +104,521 @@
             {{end}}
         </div>
     </div>
+</div>
 
-    <div id="booking-modal" class="booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
-        <div class="booking-modal__dialog">
-            <div class="booking-modal__header">
-                <h3 id="booking-modal-title">New Booking</h3>
-                <button type="button" class="booking-modal__close" onclick="closeModal()" aria-label="Close booking form">&times;</button>
-            </div>
-            <form id="booking-form" action="/booking" method="POST" class="stacked-form" autocomplete="off">
-                <input type="hidden" name="equipment_id" id="equipment_id" autocomplete="off">
-                <div class="booking-field">
-                    <label for="start_time">Start time</label>
-                    <input type="datetime-local" id="start_time" name="start_time" required autocomplete="off">
-                </div>
-                <div class="booking-field">
-                    <label for="end_time">End time</label>
-                    <input type="datetime-local" id="end_time" name="end_time" required autocomplete="off">
-                </div>
-                <div class="booking-field">
-                    <label for="purpose">Purpose</label>
-                    <textarea id="purpose" name="purpose" required autocomplete="off"></textarea>
-                </div>
-                <div class="booking-modal__actions">
-                    <button type="submit" class="button button--primary">Book</button>
-                    <button type="button" class="button button--secondary" onclick="closeModal()">Cancel</button>
-                </div>
+{{/* Delete booking — owner confirm */}}
+<div id="delete-own-modal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="del-own-title">
+    <div class="modal">
+        <div class="modal__head">
+            <h3 id="del-own-title">Cancel booking?</h3>
+            <button type="button" class="modal__close" data-close-modal="delete-own-modal" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal__body">
+            <p id="del-own-desc" style="margin:0;font-size:13.5px;color:var(--text-strong);"></p>
+        </div>
+        <div class="modal__foot">
+            <button type="button" class="button button--ghost" data-close-modal="delete-own-modal">Keep it</button>
+            <form id="delete-own-form" action="/booking/delete" method="POST" class="inline-form">
+                <input type="hidden" name="booking_id" id="del-own-id">
+                <button type="submit" class="button button--destructive">Delete booking</button>
             </form>
         </div>
     </div>
 </div>
 
+{{/* Delete booking — admin confirm with password */}}
+<div id="delete-admin-modal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="del-admin-title">
+    <div class="modal">
+        <div class="modal__head">
+            <h3 id="del-admin-title">Delete booking (admin)</h3>
+            <button type="button" class="modal__close" data-close-modal="delete-admin-modal" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal__body">
+            <p id="del-admin-desc" style="margin:0 0 14px;font-size:13.5px;color:var(--text-strong);"></p>
+            <div class="form-group">
+                <label for="admin-password">Confirm with your password</label>
+                <input type="password" id="admin-password" name="admin_password" autocomplete="current-password" required
+                       placeholder="Your password">
+            </div>
+        </div>
+        <div class="modal__foot">
+            <button type="button" class="button button--ghost" data-close-modal="delete-admin-modal">Cancel</button>
+            <form id="delete-admin-form" action="/booking/delete" method="POST" class="inline-form">
+                <input type="hidden" name="booking_id" id="del-admin-id">
+                <input type="hidden" name="admin_password" id="del-admin-pwd">
+                <button type="submit" id="del-admin-submit" class="button button--destructive">Delete booking</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{/* Book Slot Modal */}}
+<div id="booking-modal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
+    <div class="modal">
+        <div class="modal__head">
+            <div>
+                <h3 id="booking-modal-title">Book Equipment Slot</h3>
+                <div class="modal__sub" id="booking-modal-equip-name"></div>
+            </div>
+            <button type="button" class="modal__close" id="close-book-modal" aria-label="Close">&times;</button>
+        </div>
+        <form id="booking-form" action="/booking" method="POST">
+            <div class="modal__body">
+                <input type="hidden" name="equipment_id" id="equipment_id">
+                {{/* Hidden datetime-local inputs submitted to the server */}}
+                <input type="hidden" name="start_time" id="start_time">
+                <input type="hidden" name="end_time"   id="end_time">
+
+                <div class="form-group">
+                    <label>Start</label>
+                    <div class="datetime-picker">
+                        <input type="date" id="start_date" class="datetime-picker__date" aria-label="Start date">
+                        <div class="time-picker">
+                            <select id="start_h" class="time-picker__h" aria-label="Start hour">
+                                {{range $h := iterate 0 24}}<option value="{{printf "%02d" $h}}">{{printf "%02d" $h}}</option>{{end}}
+                            </select>
+                            <span class="time-picker__sep">:</span>
+                            <select id="start_m" class="time-picker__m" aria-label="Start minute">
+                                <option value="00">00</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>End</label>
+                    <div class="datetime-picker">
+                        <input type="date" id="end_date" class="datetime-picker__date" aria-label="End date">
+                        <div class="time-picker">
+                            <select id="end_h" class="time-picker__h" aria-label="End hour">
+                                {{range $h := iterate 0 24}}<option value="{{printf "%02d" $h}}">{{printf "%02d" $h}}</option>{{end}}
+                            </select>
+                            <span class="time-picker__sep">:</span>
+                            <select id="end_m" class="time-picker__m" aria-label="End minute">
+                                <option value="00">00</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="purpose">Purpose</label>
+                    <textarea id="purpose" name="purpose" rows="3" required placeholder="Describe the experiment or measurement…"></textarea>
+                </div>
+            </div>
+            <div class="modal__foot">
+                <button type="button" class="button button--ghost" id="cancel-book-modal">Cancel</button>
+                <button type="submit" class="button button--primary">Book Slot</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
-.booking-page {
-    --equipment-col-width: 240px;
-    --hour-width: 88px;
-    --slots-per-hour: 4;
-    --slot-width: calc(var(--hour-width) / var(--slots-per-hour));
-    --total-slots: 96;
-    --lane-width: calc(var(--slot-width) * var(--total-slots));
-    --lane-height: 72px;
-    --grid-border: var(--border-subtle);
-    --lane-grid-line: rgba(15, 23, 42, 0.08);
-    --lane-cell-divider: rgba(15, 23, 42, 0.08);
-    --booking-accent-strong: var(--color-primary-active);
-    --booking-accent-soft: var(--color-primary);
-    --booking-accent-contrast: var(--color-button-on-dark);
-    --booking-chip-bg: var(--surface-subtle);
-    --booking-chip-hover-bg: var(--surface-muted);
-    --booking-hover-bg: rgba(37, 99, 235, 0.12);
-    --booking-locked-stripe: var(--surface-subtle);
-    --booking-locked-stripe-alt: var(--surface-muted);
-    padding: var(--space-md);
-    max-width: 1800px;
-    margin: 0 auto;
+.booking-date-form { display:flex; align-items:center; gap:8px; }
+.booking-date-form input[type="date"] {
+    border:1px solid var(--border-subtle); border-radius:8px; padding:8px 10px;
+    font-size:13.5px; font-weight:500; background:var(--surface-default);
+    color:var(--text-strong); min-height:38px; font-family:inherit;
 }
-
-:root[data-theme="dark"] .booking-page {
-    --lane-grid-line: rgba(240, 246, 252, 0.12);
-    --lane-cell-divider: rgba(240, 246, 252, 0.1);
-    --booking-chip-bg: var(--surface-default);
-    --booking-chip-hover-bg: rgba(68, 147, 248, 0.12);
-    --booking-hover-bg: rgba(68, 147, 248, 0.25);
-    --booking-locked-stripe: #151b23;
-    --booking-locked-stripe-alt: #0d1117;
+.booking-legend { display:flex; align-items:center; gap:20px; font-size:12px; color:var(--text-muted); }
+.booking-legend__item { display:inline-flex; align-items:center; gap:6px; }
+/* Drag preview */
+.tline-drag-preview {
+    position:absolute; top:6px; bottom:6px; pointer-events:none; z-index:10;
+    background:rgba(37,99,235,0.15); border:1.5px dashed var(--color-primary);
+    border-radius:6px; display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; color:var(--color-primary);
+    font-family:var(--font-family-mono);
 }
-
-.booking-toolbar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    flex-wrap: wrap;
-    padding: 12px 16px;
-    background: var(--surface-default);
-    border: 1px solid var(--grid-border);
-    border-radius: 12px;
-    box-shadow: var(--card-shadow);
-}
-
-.toolbar-section {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.toolbar-section--search {
-    flex: 1;
-}
-
-.toolbar-label {
-    font-weight: 700;
-    color: var(--text-strong);
-}
-
-.toolbar-search {
-    display: flex;
-    gap: var(--space-sm);
-    align-items: center;
-}
-
-.toolbar-search input[type="date"] {
-    border: 1px solid var(--grid-border);
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    background: var(--surface-default);
-    color: var(--text-strong);
-}
-
-.toolbar-section--actions {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.nav-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--grid-border);
-    background: var(--booking-chip-bg);
-    color: var(--text-strong);
-    font-weight: 700;
-    text-decoration: none;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.nav-chip:hover {
-    background: var(--booking-chip-hover-bg);
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-}
-
-.button--positive {
-    background: var(--color-success);
-    border-color: var(--color-success);
-    color: var(--color-button-on-dark);
-    box-shadow: 0 4px 12px rgba(68, 147, 248, 0.25);
-}
-
-.button--positive:hover {
-    background: var(--color-success-border);
-    border-color: var(--color-success-border);
-}
-
-.day-banner {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    margin: 16px 0 8px;
-    font-weight: 700;
-    color: var(--text-strong);
-}
-
-.day-banner__day {
-    padding: 8px 12px;
-    border-radius: 12px;
-    background: var(--booking-accent-strong);
-    color: var(--booking-accent-contrast);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.day-banner__date {
-    font-size: 1.05rem;
-}
-
-.timeline-shell {
-    overflow-x: auto;
-    border: 1px solid var(--grid-border);
-    border-radius: 12px;
-    background: var(--surface-default);
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-}
-
-:root[data-theme="dark"] .timeline-shell {
-    box-shadow: 0 18px 36px rgba(1, 4, 9, 0.6);
-}
-
-.timeline-header {
-    display: flex;
-    min-width: calc(var(--equipment-col-width) + var(--lane-width));
-    position: sticky;
-    top: 0;
-    z-index: 5;
-}
-
-.timeline-equipment-col {
-    width: var(--equipment-col-width);
-    min-width: var(--equipment-col-width);
-    background: var(--booking-accent-strong);
-    color: var(--booking-accent-contrast);
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 12px;
-    border-right: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-.timeline-hours {
-    display: grid;
-    grid-template-columns: repeat(24, var(--hour-width));
-    min-width: calc(var(--hour-width) * 24);
-    width: var(--lane-width);
-    flex: 0 0 var(--lane-width);
-    background: var(--surface-muted);
-    border-left: 1px solid var(--grid-border);
-}
-
-.timeline-hour {
-    border-right: 1px solid var(--grid-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 4px;
-    font-weight: 700;
-    color: var(--text-strong);
-    font-size: 0.95rem;
-}
-.timeline-hour:first-child {
-    border-left: 1px solid var(--grid-border);
-}
-.timeline-hour:last-child {
-    border-right: 1px solid var(--grid-border);
-}
-
-.timeline-body {
-    display: flex;
-    flex-direction: column;
-    min-width: calc(var(--equipment-col-width) + var(--lane-width));
-}
-
-.timeline-row {
-    display: flex;
-    height: var(--lane-height);
-    min-width: calc(var(--equipment-col-width) + var(--lane-width));
-}
-
-.timeline-equipment {
-    width: var(--equipment-col-width);
-    min-width: var(--equipment-col-width);
-    height: var(--lane-height);
-    background: var(--surface-subtle);
-    border-right: 1px solid var(--grid-border);
-    border-bottom: 1px solid var(--grid-border);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    justify-content: center;
-    overflow: hidden;
-    text-align: center;
-}
-
-.equipment-title {
-    font-weight: 700;
-    color: var(--text-strong);
+/* Custom 24h datetime picker */
+.datetime-picker {
     display: flex;
     align-items: center;
     gap: 8px;
-    justify-content: center;
-    line-height: 1.2;
-    min-width: 0;
-    max-width: 100%;
-}
-
-.equipment-title__name {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.equipment-status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-success, #22c55e);
-    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
-    flex: none;
-}
-
-.equipment-status-dot--offline {
-    background: var(--color-destructive, #ef4444);
-    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
-}
-
-.equipment-status-dot--maintenance {
-    background: #f59e0b;
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
-}
-
-.equipment-status-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    line-height: 1.1;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.booking-book-slot {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 700;
-}
-
-.equipment-link {
-    color: var(--color-primary);
-    font-weight: 600;
-    text-decoration: none;
-    font-size: 0.9rem;
-}
-
-.timeline-lane {
-    position: relative;
-    width: var(--lane-width);
-    min-width: var(--lane-width);
-    height: var(--lane-height);
-    border-bottom: 1px solid var(--grid-border);
-    border-left: 1px solid var(--grid-border);
-    overflow: hidden;
-    flex: 0 0 var(--lane-width);
-    background: linear-gradient(to right, var(--surface-subtle) 0%, var(--surface-default) 100%);
-}
-
-.timeline-lane--locked {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    background: repeating-linear-gradient(-45deg, var(--booking-locked-stripe) 0, var(--booking-locked-stripe) 12px, var(--booking-locked-stripe-alt) 12px, var(--booking-locked-stripe-alt) 24px);
-    border-left: 1px solid var(--grid-border);
-}
-
-.lane-grid {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    grid-template-columns: repeat(96, var(--slot-width));
-    grid-auto-rows: 1fr;
-    background: repeating-linear-gradient(
-            to right,
-            var(--lane-grid-line) 0,
-            var(--lane-grid-line) 1px,
-            transparent 1px,
-            transparent calc(var(--hour-width))
-        );
-}
-
-.lane-cell {
-    height: 100%;
-    border-right: 1px solid var(--lane-cell-divider);
-}
-
-.lane-cell:hover {
-    background: var(--booking-hover-bg);
-    cursor: pointer;
-    transition: background 0.15s ease;
-}
-
-@media (min-width: 769px) {
-    .timeline-equipment-col,
-    .timeline-equipment {
-        position: sticky;
-        left: 0;
-    }
-
-    .timeline-equipment-col {
-        z-index: 7;
-        box-shadow: 6px 0 12px rgba(15, 23, 42, 0.08);
-    }
-
-    .timeline-equipment {
-        z-index: 6;
-        box-shadow: 4px 0 10px rgba(15, 23, 42, 0.06);
-    }
-
-    :root[data-theme="dark"] .timeline-equipment-col {
-        box-shadow: 6px 0 14px rgba(0, 0, 0, 0.55);
-    }
-
-    :root[data-theme="dark"] .timeline-equipment {
-        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.45);
-    }
-}
-
-.booking-block {
-    position: absolute;
-    top: 10px;
-    height: calc(var(--lane-height) - 20px);
-    border-radius: 6px;
-    background: var(--color-primary);
-    color: var(--color-button-on-dark);
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 12px;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.25);
-    text-transform: uppercase;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    z-index: 2;
-}
-
-.booking-block--own {
-    background: var(--color-destructive);
-}
-
-.booking-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    background: rgba(1, 4, 9, 0.62);
-    backdrop-filter: blur(3px);
-    z-index: 1000;
-}
-
-.booking-modal.is-open {
-    display: flex;
-}
-
-.booking-modal__dialog {
-    position: relative;
-    width: min(100%, 460px);
-    max-height: calc(100vh - 48px);
-    overflow-y: auto;
-    background: var(--surface-default);
-    color: var(--text-strong);
-    border: 1px solid var(--grid-border);
-    border-radius: 12px;
-    box-shadow: 0 24px 70px rgba(1, 4, 9, 0.45);
-}
-
-:root[data-theme="dark"] .booking-modal__dialog {
-    background: #151b23;
-    border-color: #30363d;
-    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.7);
-}
-
-.booking-modal__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    padding: 18px 20px 14px;
-    border-bottom: 1px solid var(--grid-border);
-}
-
-.booking-modal__header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    line-height: 1.2;
-    letter-spacing: 0;
-}
-
-.booking-modal__close {
-    width: 34px;
-    height: 34px;
-    min-height: 0;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-muted);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: none;
-    padding: 0;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-.booking-modal__close:hover {
-    background: var(--surface-muted);
-    border-color: var(--grid-border);
-    color: var(--text-strong);
-}
-
-#booking-form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 18px 20px 20px;
-}
-
-.booking-field {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    margin: 0;
-}
-
-.booking-field label {
-    font-size: 0.88rem;
-    font-weight: 700;
-    line-height: 1.25;
-    color: var(--text-strong);
-}
-
-.booking-field input,
-.booking-field textarea {
-    border-color: var(--grid-border);
-    border-radius: 8px;
-    background: var(--surface-default);
-}
-
-:root[data-theme="dark"] .booking-field input,
-:root[data-theme="dark"] .booking-field textarea {
-    background: #0d1117;
-    border-color: #30363d;
-}
-
-.booking-field textarea {
-    min-height: 112px;
-    resize: vertical;
-}
-
-.booking-modal__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
     flex-wrap: wrap;
-    margin-top: 4px;
-    padding-top: 2px;
 }
-
-.booking-modal__actions .button {
-    min-width: 112px;
+.datetime-picker__date {
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    background: var(--surface-default);
+    color: var(--text-strong);
+    min-height: 38px;
+    font-family: inherit;
+    flex: 1;
+    min-width: 130px;
 }
-
-@media (max-width: 1200px) {
-    .booking-page {
-        --hour-width: 72px;
-    }
-
-    .booking-toolbar {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .toolbar-section--actions {
-        width: 100%;
-        justify-content: flex-start;
-    }
+.time-picker {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
-
-@media (max-width: 768px) {
-    .booking-page {
-        --hour-width: 56px;
-        --lane-height: 64px;
-        --equipment-col-width: 180px;
-        padding: var(--space-sm);
-    }
-
-    .booking-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-sm);
-    }
-
-    .toolbar-section {
-        width: 100%;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: var(--space-xs);
-    }
-
-    .toolbar-section--search {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-xs);
-    }
-
-    .toolbar-search {
-        width: 100%;
-        flex-wrap: wrap;
-        gap: var(--space-xs);
-    }
-
-    .toolbar-search input[type="date"] {
-        width: 100%;
-    }
-
-    .toolbar-search .button,
-    .nav-chip {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .day-banner {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .timeline-hour {
-        font-size: 0.85rem;
-        padding: 8px 2px;
-    }
-
-    .booking-modal {
-        align-items: flex-end;
-        padding: 12px;
-    }
-
-    .booking-modal__dialog {
-        width: 100%;
-        max-height: calc(100vh - 24px);
-    }
-
-    .booking-modal__actions .button {
-        flex: 1;
-        min-width: 0;
-    }
+.time-picker__h,
+.time-picker__m {
+    padding: 8px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-default);
+    color: var(--text-strong);
+    font-size: 14px;
+    font-family: var(--font-family-mono);
+    min-height: 38px;
+    cursor: pointer;
+}
+.time-picker__h { width: 72px; }
+.time-picker__m { width: 68px; }
+.time-picker__sep {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: var(--font-family-mono);
+    line-height: 1;
+}
+.tline-lane[data-can-book="1"] { touch-action: none; }
+.tline-lane--admin { cursor:not-allowed; }
+.tline-lane--admin .slot { pointer-events:none; }
+@media (max-width:900px) {
+    .booking-date-form input[type="date"] { width:130px; }
+    .booking-legend { display:none; }
 }
 </style>
 
 <script>
-    var bookings = {{toJSON .Bookings}};
-    var currentUserId = {{.BasePageData.UserID}};
-    var selectedDateStr = '{{formatDateISO .SelectedDate}}';
-    var dayStart = new Date(selectedDateStr + 'T00:00:00');
-    var dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+(function () {
+    var HOUR_W = 80;
+    var modal    = document.getElementById('booking-modal');
+    var scrollEl = document.getElementById('booking-scroll');
 
-    function formatLocalInputValue(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    /* ---------- Generic modal helpers ---------- */
+    function openModalEl(el)  { el.removeAttribute('hidden'); }
+    function closeModalEl(el) { el.setAttribute('hidden', ''); }
+    function openModal()  { openModalEl(modal); }
+    function closeModal() { closeModalEl(modal); }
+
+    // Wire [data-close-modal] buttons
+    document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-close-modal');
+            var el = document.getElementById(id);
+            if (el) closeModalEl(el);
+        });
+    });
+    // Close on backdrop click or Escape
+    document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+        backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModalEl(backdrop); });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-backdrop:not([hidden])').forEach(closeModalEl);
+        }
+    });
+
+    document.getElementById('open-book-modal').addEventListener('click', function () {
+        document.getElementById('booking-modal-equip-name').textContent = '';
+        openModal();
+    });
+    document.getElementById('close-book-modal').addEventListener('click', closeModal);
+    document.getElementById('cancel-book-modal').addEventListener('click', closeModal);
+
+    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+    function toLocalDT(d) {
+        return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+            'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+    // Snap a minute value to the nearest 15-minute mark.
+    function snapMin(m) { return String(Math.round(m / 15) * 15 % 60).padStart(2, '0'); }
+
+    // Populate the date inputs and time-picker selects from YYYY-MM-DDTHH:MM strings.
+    // Both dates default to selectedISO so same-day bookings need no manual date entry.
+    function prefillModal(eqId, eqName, startDT, endDT) {
+        document.getElementById('equipment_id').value = eqId;
+
+        var sp = (startDT || '').split('T');
+        var ep = (endDT   || '').split('T');
+
+        document.getElementById('start_date').value = sp[0] || selectedISO;
+        document.getElementById('end_date').value   = ep[0] || selectedISO;
+
+        var st = (sp[1] || '09:00').split(':');
+        var et = (ep[1] || '10:00').split(':');
+
+        document.getElementById('start_h').value = st[0] || '09';
+        document.getElementById('start_m').value = snapMin(parseInt(st[1] || '0', 10));
+        document.getElementById('end_h').value   = et[0] || '10';
+        document.getElementById('end_m').value   = snapMin(parseInt(et[1] || '0', 10));
+
+        var nameEl = document.getElementById('booking-modal-equip-name');
+        if (nameEl) nameEl.textContent = eqName || '';
+
+        syncHiddenInputs();
+        openModal();
     }
 
-    function formatDisplayTime(date) {
-        return date.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
+    // Build the YYYY-MM-DDTHH:MM strings the server expects from the visible inputs.
+    function syncHiddenInputs() {
+        var sd = document.getElementById('start_date').value || selectedISO;
+        var sh = document.getElementById('start_h').value;
+        var sm = document.getElementById('start_m').value;
+        var ed = document.getElementById('end_date').value   || selectedISO;
+        var eh = document.getElementById('end_h').value;
+        var em = document.getElementById('end_m').value;
+        document.getElementById('start_time').value = sd + 'T' + sh + ':' + sm;
+        document.getElementById('end_time').value   = ed + 'T' + eh + ':' + em;
+    }
+
+    // Sync whenever any visible input changes.
+    ['start_date','start_h','start_m','end_date','end_h','end_m'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', syncHiddenInputs);
+    });
+
+    // Sync once more immediately before the form is submitted.
+    var bookingForm = document.getElementById('booking-form');
+    if (bookingForm) bookingForm.addEventListener('submit', syncHiddenInputs);
+
+    /* ---------- Render existing bookings ---------- */
+    var bookings    = {{toJSON .Bookings}};
+    var currentUID  = {{.UserID}};
+    var selectedISO = '{{formatDateISO .SelectedDate}}';
+
+    function esc(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    var isAdmin  = {{if .IsAdmin}}true{{else}}false{{end}};
+    var delOwnModal   = document.getElementById('delete-own-modal');
+    var delAdminModal = document.getElementById('delete-admin-modal');
+
+    // Local midnight of the selected day — use Date(y,m,d) constructor so it is
+    // always local time, matching how getHours() interprets booking timestamps.
+    var _p = selectedISO.split('-');
+    var dayStart   = new Date(+_p[0], +_p[1] - 1, +_p[2], 0, 0, 0, 0);
+    var dayStartMs = dayStart.getTime();
+    var dayEndMs   = dayStartMs + 86400000; // exactly 24 h later
+
+    if (bookings && bookings.length) {
+        bookings.forEach(function (b) {
+            var lane = document.querySelector('.tline-lane[data-equipment="' + b.equipment_id + '"]');
+            if (!lane) return;
+            var s = new Date(b.start_time), e = new Date(b.end_time);
+
+            // Skip bookings that don't overlap the selected day at all
+            // (GetBookingsForWeek returns the full week, not just the selected day).
+            if (e.getTime() <= dayStartMs || s.getTime() >= dayEndMs) return;
+
+            // Clamp to [00:00, 24:00] of the selected day and convert to minutes.
+            // Cross-midnight bookings are shown up to the edge of the timeline
+            // rather than being silently dropped.
+            var sm = Math.max(0,    (s.getTime() - dayStartMs) / 60000);
+            var em = Math.min(1440, (e.getTime() - dayStartMs) / 60000);
+            if (em <= sm) return;
+            var own = b.user_id === currentUID;
+            var el  = document.createElement('div');
+            el.className   = 'tline-block' + (own ? ' tline-block--own' : '');
+            el.style.left  = ((sm / 60) * HOUR_W) + 'px';
+            el.style.width = Math.max(((em - sm) / 60) * HOUR_W - 4, 24) + 'px';
+            el.innerHTML   = '<div>' + esc(b.username||'') + '</div><small>' + esc(b.purpose||'') + '</small>';
+
+            // Click to delete: owners get simple confirm, admins get password prompt
+            if (own || isAdmin) {
+                el.style.cursor = 'pointer';
+                el.setAttribute('title', 'Click to delete booking');
+                el.addEventListener('click', function (ev) {
+                    ev.stopPropagation(); // don't trigger lane drag
+                    var fmt = function (d) {
+                        return (d < 10 ? '0' : '') + d;
+                    };
+                    var st = new Date(b.start_time), en = new Date(b.end_time);
+                    var desc = esc(b.username) + ' · ' + esc(b.purpose || 'no purpose') +
+                        '\n' + fmt(st.getHours()) + ':' + fmt(st.getMinutes()) +
+                        ' – ' + fmt(en.getHours()) + ':' + fmt(en.getMinutes());
+
+                    if (own && !isAdmin) {
+                        // Owner, not admin: simple confirmation
+                        document.getElementById('del-own-id').value = b.id;
+                        document.getElementById('del-own-desc').textContent = desc;
+                        openModalEl(delOwnModal);
+                    } else if (own && isAdmin) {
+                        // Admin deleting their own booking: simple confirmation
+                        document.getElementById('del-own-id').value = b.id;
+                        document.getElementById('del-own-desc').textContent = desc;
+                        openModalEl(delOwnModal);
+                    } else {
+                        // Admin deleting someone else's booking: password required
+                        document.getElementById('del-admin-id').value = b.id;
+                        document.getElementById('del-admin-desc').textContent = desc;
+                        document.getElementById('admin-password').value = '';
+                        openModalEl(delAdminModal);
+                    }
+                });
+            }
+
+            lane.appendChild(el);
         });
     }
 
-    function formatTimeRange(start, end) {
-        return `${formatDisplayTime(start)} - ${formatDisplayTime(end)}`;
+    // Relay password from visible input to hidden form input before admin submit
+    var adminPwdInput  = document.getElementById('admin-password');
+    var adminPwdHidden = document.getElementById('del-admin-pwd');
+    var adminForm      = document.getElementById('delete-admin-form');
+    if (adminForm && adminPwdInput && adminPwdHidden) {
+        adminForm.addEventListener('submit', function () {
+            adminPwdHidden.value = adminPwdInput.value;
+        });
     }
 
-    function handleLaneCellClick(element) {
-        if (element.classList.contains('booked')) {
-            return;
-        }
+    /* ---------- Drag-to-create-range ---------- */
+    var drag = null;
+    // Width of the sticky equipment name column — must match CSS --tline-equipment-col
+    var EQUIP_COL = 180;
 
-        const equipmentId = element.dataset.equipment;
-        const startDate = new Date(element.dataset.datetime);
-        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-        openModalWithValues(equipmentId, startDate, endDate);
+    // Snap a fractional hour value to the nearest 15-minute grid position.
+    function snapQ(h) { return Math.round(h * 4) / 4; }
+
+    // Convert a clientX (viewport coordinate) to a snapped hour within the 24h lane.
+    // Uses the scroll container as the stable reference point: avoids sticky-column
+    // layout quirks that make lane.getBoundingClientRect() unreliable on mobile.
+    function clientXToHour(clientX) {
+        if (!scrollEl) return 0;
+        var scrollRect = scrollEl.getBoundingClientRect();
+        var xInScroll  = clientX - scrollRect.left;          // px from scroll container left
+        var xInLane    = xInScroll - EQUIP_COL + scrollEl.scrollLeft; // absolute px in lane
+        return Math.max(0, Math.min(24, snapQ(xInLane / HOUR_W)));
     }
 
-    function openQuickBooking() {
-        const firstLane = document.querySelector('.timeline-lane[data-equipment]');
-        if (!firstLane) {
-            return;
-        }
-
-        const startDate = new Date(dayStart.getTime());
-        startDate.setHours(9, 0, 0, 0);
-        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-        openModalWithValues(firstLane.dataset.equipment, startDate, endDate);
+    function formatHour(h) {
+        var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+        if (mm === 60) { hh++; mm = 0; }
+        return pad(hh) + ':' + pad(mm);
     }
 
-    function openModalWithValues(equipmentId, startDate, endDate) {
-        const modal = document.getElementById('booking-modal');
-        const equipmentInput = document.getElementById('equipment_id');
-        const startInput = document.getElementById('start_time');
-        const endInput = document.getElementById('end_time');
+    // Flag set by commitDrag / tap-handler to suppress the browser's synthetic
+    // click event that always fires after pointerup regardless of pointer capture
+    // or preventDefault() — suppressing it prevents the click listener from
+    // re-opening the modal with a 1-hour default, overwriting the drag range.
+    var suppressNextClick = false;
 
-        if (!modal || !equipmentInput || !startInput || !endInput) {
-            return;
-        }
+    document.querySelectorAll('.tline-lane[data-can-book="1"]').forEach(function (lane) {
+        var eqId    = lane.getAttribute('data-equipment');
+        var rowLeft = lane.parentElement.querySelector('.tline-row__left');
+        var eqName  = rowLeft ? rowLeft.querySelector('.tline-row__name').textContent.trim() : '';
 
-        equipmentInput.value = equipmentId;
-        startInput.value = formatLocalInputValue(startDate);
-        endInput.value = formatLocalInputValue(endDate);
-        modal.classList.add('is-open');
-    }
+        lane.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0) return;
+            if (e.target.closest('.tline-block')) return;
+            e.preventDefault();
+            lane.setPointerCapture(e.pointerId);
+            var startH  = clientXToHour(e.clientX);
+            var preview = document.createElement('div');
+            preview.className = 'tline-drag-preview';
+            lane.appendChild(preview);
+            drag = { lane: lane, eqId: eqId, eqName: eqName, startH: startH, endH: startH, preview: preview };
+            updatePreview();
+        });
 
-    function confirmDeleteBooking(bookingId) {
-        if (confirm('Are you sure you want to delete this booking?')) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/booking/delete';
+        lane.addEventListener('pointermove', function (e) {
+            if (!drag || drag.lane !== lane) return;
+            drag.endH = clientXToHour(e.clientX);
+            updatePreview();
+        });
 
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'booking_id';
-            input.value = bookingId;
+        lane.addEventListener('pointerup', function (e) {
+            if (!drag || drag.lane !== lane) return;
+            drag.endH = clientXToHour(e.clientX);
 
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-        }
-    }
+            var a = Math.min(drag.startH, drag.endH);
+            var b = Math.max(drag.startH, drag.endH);
 
-    function closeModal() {
-        const modal = document.getElementById('booking-modal');
-        if (modal) {
-            modal.classList.remove('is-open');
-            const form = document.getElementById('booking-form');
-            if (form) {
-                form.reset();
+            suppressNextClick = true; // always suppress the following click event
+
+            if (b - a >= 0.25) {
+                // Real drag: use the full selected range
+                commitDrag();
+            } else {
+                // Tap (no meaningful movement): open with 1-hour default from tap position
+                var h    = drag.startH;
+                var eId  = drag.eqId;
+                var eName = drag.eqName;
+                if (drag.preview) drag.preview.remove();
+                drag = null;
+                openPrefilled(eId, eName, h, Math.min(24, h + 1));
             }
-        }
-    }
+        });
 
-    window.onclick = function(event) {
-        const modal = document.getElementById('booking-modal');
-        if (event.target === modal) {
-            closeModal();
-        }
-    }
+        lane.addEventListener('pointercancel', function () {
+            if (drag && drag.lane === lane) cancelDrag();
+        });
 
-    function renderBookings() {
-        if (!bookings || !bookings.length) {
-            return;
-        }
-
-        const adjustBlockFontSize = (block, widthPercent, lane) => {
-            const laneWidth = lane.getBoundingClientRect().width || 0;
-            const blockWidthPx = (widthPercent / 100) * laneWidth;
-            let size = 14;
-            if (blockWidthPx < 80) size = 12;
-            if (blockWidthPx < 60) size = 10;
-            if (blockWidthPx < 46) size = 9;
-            block.style.fontSize = `${size}px`;
-        };
-
-        const minutesInDay = 24 * 60;
-
-        document.querySelectorAll('.timeline-lane').forEach(lane => {
-            if (!lane.dataset.equipment) {
+        // Suppress the synthetic click that the browser fires after every pointerup.
+        // Without this, a completed drag would immediately re-open the modal with a
+        // 1-hour slot at the release point, overwriting the correct drag range.
+        lane.addEventListener('click', function (e) {
+            if (suppressNextClick) {
+                suppressNextClick = false;
+                e.stopPropagation();
                 return;
             }
-
-            lane.querySelectorAll('.booking-block').forEach(el => el.remove());
-
-            const equipmentId = Number(lane.dataset.equipment);
-            const equipmentBookings = bookings.filter(b => b.equipment_id === equipmentId);
-
-            equipmentBookings.forEach(booking => {
-                const bookingStart = new Date(booking.start_time);
-                const bookingEnd = new Date(booking.end_time);
-
-                if (bookingEnd <= dayStart || bookingStart >= dayEnd) {
-                    return;
-                }
-
-                const startMs = Math.max(bookingStart.getTime(), dayStart.getTime());
-                const endMs = Math.min(bookingEnd.getTime(), dayEnd.getTime());
-
-                if (endMs <= startMs) {
-                    return;
-                }
-
-                const start = new Date(startMs);
-                const end = new Date(endMs);
-                // Use offsets from the start of the selected day to handle bookings that cross midnight
-                const startOffsetMinutes = (start.getTime() - dayStart.getTime()) / (60 * 1000);
-                const endOffsetMinutes = (end.getTime() - dayStart.getTime()) / (60 * 1000);
-                const duration = Math.max(endOffsetMinutes - startOffsetMinutes, 10);
-
-                const left = (startOffsetMinutes / minutesInDay) * 100;
-                let width = (duration / minutesInDay) * 100;
-                if (left + width > 100) {
-                    width = 100 - left;
-                }
-                width = Math.max(width, 1.5);
-
-                const block = document.createElement('div');
-                block.className = 'booking-block' + (booking.user_id === currentUserId ? ' booking-block--own' : '');
-                block.style.left = `${left}%`;
-                block.style.width = `${width}%`;
-                block.title = `${booking.username} • ${formatTimeRange(bookingStart, bookingEnd)}\n${booking.purpose}`;
-                block.textContent = booking.username.toUpperCase();
-
-                adjustBlockFontSize(block, width, lane);
-
-                if (booking.user_id === currentUserId) {
-                    block.onclick = () => confirmDeleteBooking(booking.id);
-                }
-
-                lane.appendChild(block);
-            });
+            // Fallback for keyboard / accessibility activation (no pointer events)
+            if (e.target.closest('.tline-block')) return;
+            var h = clientXToHour(e.clientX);
+            openPrefilled(eqId, eqName, h, Math.min(24, h + 1));
         });
+    });
+
+    function updatePreview() {
+        if (!drag) return;
+        var a = Math.min(drag.startH, drag.endH);
+        var b = Math.max(drag.startH, drag.endH);
+        var left  = a * HOUR_W;
+        var width = Math.max(4, (b - a) * HOUR_W);
+        drag.preview.style.left  = left + 'px';
+        drag.preview.style.width = width + 'px';
+        drag.preview.textContent = (width > 60) ? (formatHour(a) + ' – ' + formatHour(b)) : '';
     }
 
-    function bindFormValidation() {
-        const form = document.getElementById('booking-form');
-        if (!form || form.dataset.bound === 'true') {
-            return;
-        }
-
-        form.addEventListener('submit', function(e) {
-            const startTime = new Date(document.getElementById('start_time').value);
-            const endTime = new Date(document.getElementById('end_time').value);
-            const purpose = document.getElementById('purpose').value;
-
-            if (endTime <= startTime) {
-                e.preventDefault();
-                alert('End time must be after start time');
-                return;
-            }
-
-            if (!purpose.trim()) {
-                e.preventDefault();
-                alert('Purpose is required');
-                return;
-            }
-        });
-
-        form.dataset.bound = 'true';
+    function cancelDrag() {
+        if (drag && drag.preview) drag.preview.remove();
+        drag = null;
     }
 
-    function initializeBookingPage() {
-        renderBookings();
-        bindFormValidation();
+    function commitDrag() {
+        if (!drag) return;
+        var a = Math.min(drag.startH, drag.endH);
+        var b = Math.max(drag.startH, drag.endH);
+        if (b - a < 0.25) b = Math.min(24, a + 1); // safety: enforce minimum slot
+        var eqId   = drag.eqId;
+        var eqName = drag.eqName;
+        if (drag.preview) drag.preview.remove();
+        drag = null;
+        openPrefilled(eqId, eqName, a, b);
     }
 
-    initializeBookingPage();
-
-    if (window.htmx) {
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
-            if (evt.detail && evt.detail.target && evt.detail.target.id === 'page-root') {
-                initializeBookingPage();
-            }
-        });
+    function openPrefilled(eqId, eqName, startH, endH) {
+        // Use the Date(y, m, d, h, min) constructor — always local time on all
+        // browsers, unlike parsing an ISO string which older iOS Safari can treat
+        // as UTC and shift the displayed time by the timezone offset.
+        var parts = selectedISO.split('-');
+        var y  = parseInt(parts[0], 10);
+        var mo = parseInt(parts[1], 10) - 1;
+        var dy = parseInt(parts[2], 10);
+        var sh = Math.floor(startH), smin = Math.round((startH - sh) * 60);
+        var eh = Math.floor(endH),   emin = Math.round((endH   - eh) * 60);
+        if (smin === 60) { sh++; smin = 0; }
+        if (emin === 60) { eh++; emin = 0; }
+        prefillModal(eqId, eqName,
+            toLocalDT(new Date(y, mo, dy, sh, smin, 0)),
+            toLocalDT(new Date(y, mo, dy, eh, emin, 0)));
     }
+
+    /* ---------- Auto-scroll to 8am ---------- */
+    if (scrollEl) scrollEl.scrollLeft = 8 * HOUR_W;
+})();
 </script>
 {{end}}

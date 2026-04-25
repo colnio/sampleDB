@@ -38,6 +38,8 @@ const Ic = {
   Upload: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 20V8m-4 4l4-4 4 4M4 4h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   Dot: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>),
   Sparkle: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>),
+  Lock: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 11V8a4 4 0 018 0v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Eye: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/></svg>),
 };
 
 // Abstract sample thumbnail

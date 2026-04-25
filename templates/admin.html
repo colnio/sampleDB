@@ -17,6 +17,53 @@
         {{end}}
     </div>
 
+    <!-- Notification Banner Management -->
+    <section class="card admin-section" style="padding:0;margin-bottom:var(--space-lg);">
+        <div class="card-header">
+            <div>
+                <h2 class="heading-with-icon heading-with-icon--sm">
+                    <svg class="heading-with-icon__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke-linecap="round"/>
+                    </svg>
+                    <span>Site Notifications</span>
+                </h2>
+                <p class="card-subtitle" style="margin-top:4px;">Post closable banners visible to all users.</p>
+            </div>
+        </div>
+        <div class="card-body" style="padding:20px 24px;">
+            <form action="/admin/notifications" method="POST" class="notif-admin" autocomplete="off">
+                <div class="notif-composer">
+                    <textarea name="message" placeholder="Notification message…" rows="2" style="flex:1;min-height:60px;resize:vertical;" required></textarea>
+                    <div class="notif-composer-controls">
+                        <select name="level" style="min-height:38px;padding:0 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--surface-default);color:var(--text-strong);font-family:inherit;font-size:13px;">
+                            <option value="info">Info</option>
+                            <option value="warning">Warning</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                        <button type="submit" class="button button--primary button--small">Post</button>
+                    </div>
+                </div>
+            </form>
+            <div class="notif-list" style="margin-top:16px;">
+                {{if .Notifications}}
+                {{range .Notifications}}
+                <div class="notif-list__item">
+                    <span class="notif-list__level notif-list__level--{{.Level}}">{{.Level}}</span>
+                    <span class="notif-list__msg" title="{{.Message}}">{{.Message}}</span>
+                    <span class="notif-list__meta">{{.Author}} · {{.CreatedAt.Format "Jan 02, 15:04"}}</span>
+                    <form action="/admin/notifications/{{.ID}}/delete" method="POST" class="inline-form">
+                        <button type="submit" class="button button--destructive button--small">Remove</button>
+                    </form>
+                </div>
+                {{end}}
+                {{else}}
+                <div class="notif-list__empty">No notifications posted.</div>
+                {{end}}
+            </div>
+        </div>
+    </section>
+
     <div class="admin-grid">
         {{template "admin/groups" .}}
 
@@ -122,33 +169,35 @@
     {{template "admin/users" .}}
 
     <!-- Add Equipment Modal -->
-    <div id="equipment-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Add New Equipment</h3>
-                <span class="close" onclick="closeEquipmentModal()">&times;</span>
+    <div id="equipment-modal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="equip-modal-title">
+        <div class="modal">
+            <div class="modal__head">
+                <h3 id="equip-modal-title">Add New Equipment</h3>
+                <button type="button" class="modal__close" onclick="closeEquipmentModal()" aria-label="Close">&times;</button>
             </div>
-            <form action="/admin/add-equipment" method="POST" class="stacked-form">
-                <div class="form-group">
-                    <label for="equipment_name">Equipment Name</label>
-                    <input type="text" id="equipment_name" name="name" placeholder="e.g. Confocal Microscope" required>
+            <form action="/admin/add-equipment" method="POST">
+                <div class="modal__body">
+                    <div class="form-group">
+                        <label for="equipment_name">Equipment Name</label>
+                        <input type="text" id="equipment_name" name="name" placeholder="e.g. Confocal Microscope" required>
+                    </div>
                 </div>
-                <div class="form-actions">
+                <div class="modal__foot">
+                    <button type="button" class="button button--ghost" onclick="closeEquipmentModal()">Cancel</button>
                     <button type="submit" class="button button--primary">Add Equipment</button>
-                    <button type="button" class="button button--secondary" onclick="closeEquipmentModal()">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Report Modal -->
-    <div id="report-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Download Usage Report</h3>
-                <span class="close" onclick="closeReportModal()">&times;</span>
+    <div id="report-modal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+        <div class="modal">
+            <div class="modal__head">
+                <h3 id="report-modal-title">Download Usage Report</h3>
+                <button type="button" class="modal__close" onclick="closeReportModal()" aria-label="Close">&times;</button>
             </div>
-            <form class="stacked-form">
+            <div class="modal__body">
                 <div class="form-group">
                     <label for="start_date">Start Date</label>
                     <input type="date" id="start_date" name="start_date" required>
@@ -157,11 +206,11 @@
                     <label for="end_date">End Date</label>
                     <input type="date" id="end_date" name="end_date" required>
                 </div>
-                <div class="form-actions">
-                    <button type="button" onclick="downloadReport()" class="button button--primary">Download</button>
-                    <button type="button" onclick="closeReportModal()" class="button button--secondary">Cancel</button>
-                </div>
-            </form>
+            </div>
+            <div class="modal__foot">
+                <button type="button" class="button button--ghost" onclick="closeReportModal()">Cancel</button>
+                <button type="button" onclick="downloadReport()" class="button button--primary">Download</button>
+            </div>
         </div>
     </div>
 </div>
@@ -182,8 +231,12 @@
 
 .admin-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: 1fr 2fr;
     gap: var(--space-lg);
+}
+
+@media (max-width: 900px) {
+    .admin-grid { grid-template-columns: 1fr; }
 }
 
 .card {
@@ -664,11 +717,11 @@ function updateAccess(userId) {
 }
 
 function showEquipmentModal() {
-    document.getElementById('equipment-modal').style.display = 'flex';
+    document.getElementById('equipment-modal').removeAttribute('hidden');
 }
 
 function closeEquipmentModal() {
-    document.getElementById('equipment-modal').style.display = 'none';
+    document.getElementById('equipment-modal').setAttribute('hidden', '');
     document.querySelector('#equipment-modal form').reset();
 }
 
@@ -804,11 +857,11 @@ function confirmRemoveUser(userId) {
 
 function showReportModal(equipmentId) {
     currentEquipmentId = equipmentId;
-    document.getElementById('report-modal').style.display = 'flex';
+    document.getElementById('report-modal').removeAttribute('hidden');
 }
 
 function closeReportModal() {
-    document.getElementById('report-modal').style.display = 'none';
+    document.getElementById('report-modal').setAttribute('hidden', '');
     currentEquipmentId = null;
 }
 
@@ -826,12 +879,19 @@ function downloadReport() {
 }
 
 window.onclick = function(event) {
-    const modals = document.querySelectorAll('.modal');
+    const modals = document.querySelectorAll('.modal-backdrop');
     modals.forEach(modal => {
         if (event.target === modal) {
-            modal.style.display = 'none';
+            modal.setAttribute('hidden', '');
         }
     });
 }
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-backdrop:not([hidden])').forEach(function(m) {
+            m.setAttribute('hidden', '');
+        });
+    }
+});
 </script>
 {{end}}

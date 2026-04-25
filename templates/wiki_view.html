@@ -1,71 +1,73 @@
 {{define "title"}}{{.Article.Title}} - Wiki{{end}}
 
 {{define "content"}}
-<div class="wiki-article">
-    <a href="/wiki" class="back-link back-link--top">← Back to Wiki</a>
-    <div class="article-header">
-        <span class="section-label">
-            <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                <rect x="4.5" y="5" width="8" height="14" rx="1.75" ry="1.75" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
-                <path d="M12.5 5.75H17a1.75 1.75 0 011.75 1.75v11.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                <path d="M7.25 9h3.25m-3.25 3h2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-            </svg>
-            <span>Wiki</span>
-        </span>
-        <h1>{{.Article.Title}}</h1>
-        <div class="article-actions">
-            {{if .EditingContent}}
-            <button class="button button--ghost button--small"
-                    type="button"
-                    hx-get="/wiki/view/{{urlEscape .Article.Title}}"
-                    hx-target="#article-content-panel"
-                    hx-select="#article-content-panel"
-                    hx-swap="outerHTML">Cancel</button>
-            {{else}}
-            <button class="button button--primary button--small"
-                    type="button"
-                    hx-get="/wiki/edit/{{urlEscape .Article.Title}}"
-                    hx-target="#article-content-panel"
-                    hx-select="#article-content-panel"
-                    hx-swap="outerHTML">Edit</button>
+<a href="/wiki" class="back-link-quiet">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Back to Wiki
+</a>
+
+<div class="page-topbar">
+    <div class="page-topbar__left">
+        <div class="flex-center gap-sm" style="margin-bottom:6px;">
+            {{if .Article.Tags}}
+                {{range .Article.Tags}}<span class="status-chip status-chip--progress">{{.}}</span>{{end}}
             {{end}}
-            <form action="/wiki/delete/{{urlEscape .Article.Title}}" method="POST" class="inline-form">
-                <button type="submit" class="button button--destructive button--small" onclick="return confirm('Are you sure you want to delete this article?')">Delete</button>
-            </form>
+            <span class="muted" style="font-size:12px;">{{.Article.CreatedAt.Format "Jan 02, 2006"}}{{if not .Article.LastModifiedAt.IsZero}} · edited {{.Article.LastModifiedAt.Format "Jan 02"}}{{end}}</span>
         </div>
+        <h1 style="margin:0 0 0;">{{.Article.Title}}</h1>
     </div>
-
-    <div class="article-meta">
-        <span>Created: {{.Article.CreatedAt.Format "Jan 02, 2006 15:04"}}</span>
-        {{if not .Article.LastModifiedAt.IsZero}}
-        <span>· Last modified: {{.Article.LastModifiedAt.Format "Jan 02, 2006 15:04"}}</span>
+    <div class="page-topbar__actions">
+        {{if .EditingContent}}
+        <button class="button button--ghost"
+                type="button"
+                hx-get="/wiki/view/{{urlEscape .Article.Title}}"
+                hx-target="#article-content-panel"
+                hx-select="#article-content-panel"
+                hx-swap="outerHTML">Cancel</button>
+        {{else}}
+        <button class="button button--secondary"
+                type="button"
+                hx-get="/wiki/edit/{{urlEscape .Article.Title}}"
+                hx-target="#article-content-panel"
+                hx-select="#article-content-panel"
+                hx-swap="outerHTML">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" stroke-linejoin="round"/>
+                <path d="M14.5 6.5l3 3" stroke-linecap="round"/>
+            </svg>
+            Edit
+        </button>
         {{end}}
+        <form action="/wiki/delete/{{urlEscape .Article.Title}}" method="POST" class="inline-form">
+            <button type="submit" class="button button--ghost" onclick="return confirm('Delete this article?')"
+                style="color:var(--color-destructive);border-color:var(--color-destructive-border);">Delete</button>
+        </form>
     </div>
+</div>
 
-    <div class="article-layout">
-        <div class="article-layout__main">
-            {{template "article_content_panel" .}}
-
-            {{template "wiki_attachments_section" .}}
+<div class="wiki-article-grid">
+    <div class="stack-md">
+        {{template "article_content_panel" .}}
+        {{template "wiki_attachments_section" .}}
+    </div>
+    {{if .TOC}}
+    <aside class="wiki-toc" aria-label="On this page">
+        <div class="card" style="padding:18px 20px;position:sticky;top:16px;">
+            <div class="eyebrow" style="margin-bottom:10px;">On this page</div>
+            <nav>
+                <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;">
+                    {{range .TOC}}
+                    <li style="{{if eq .Level 3}}padding-left:12px;{{end}}">
+                        <a href="#{{.Anchor}}" style="display:block;padding:4px 0;font-size:13px;color:var(--text-muted);text-decoration:none;border-left:2px solid transparent;padding-left:8px;margin-left:-8px;">{{.Title}}</a>
+                    </li>
+                    {{end}}
+                </ul>
+            </nav>
         </div>
-        {{if .TOC}}
-        <aside class="article-toc" aria-label="On this page">
-            <div class="article-toc__card card">
-                <h2 class="article-toc__title">On this page</h2>
-                <nav class="article-toc__nav">
-                    <ul class="article-toc__list">
-                        {{range .TOC}}
-                        <li class="article-toc__item article-toc__item--h{{.Level}}">
-                            <a href="#{{.Anchor}}" class="article-toc__link">{{.Title}}</a>
-                        </li>
-                        {{end}}
-                    </ul>
-                </nav>
-            </div>
-        </aside>
-        {{end}}
-    </div>
-
+    </aside>
+    {{end}}
 </div>
 
 <!-- Syntax highlighting — loaded inside content so HTMX swap picks it up -->
@@ -78,134 +80,27 @@
 </script>
 
 <style>
-.wiki-article {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: var(--space-xl) var(--space-lg);
-}
-
-.back-link--top {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: var(--font-size-sm);
-    margin-bottom: var(--space-md);
-}
-
-.back-link--top:hover {
-    color: var(--color-primary);
-}
-
-.article-layout {
+.wiki-article-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
-    gap: var(--space-xl);
+    grid-template-columns: minmax(0, 3fr) 240px;
+    gap: 18px;
     align-items: start;
 }
 
-.article-layout__main {
-    min-width: 0;
-}
-
-.article-toc {
-    position: sticky;
-    top: var(--space-lg);
-}
-
-.article-toc__card {
-    padding: var(--space-md);
-}
-
-.article-toc__title {
-    margin: 0 0 var(--space-sm);
-    font-size: var(--font-size-sm);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-    font-weight: 600;
-}
-
-.article-toc__nav {
-    font-size: var(--font-size-sm);
-}
-
-.article-toc__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.article-toc__item--h3 {
-    padding-left: var(--space-md);
-}
-
-.article-toc__link {
-    display: block;
-    padding: 4px 0;
-    color: var(--text-default);
-    text-decoration: none;
-    line-height: 1.35;
-    border-left: 2px solid transparent;
-    padding-left: var(--space-sm);
-    margin-left: calc(-1 * var(--space-sm));
-}
-
-.article-toc__link:hover {
-    color: var(--color-primary);
-    border-left-color: var(--color-primary);
-}
-
-@media (max-width: 960px) {
-    .article-layout {
+@media (max-width: 900px) {
+    .wiki-article-grid {
         grid-template-columns: 1fr;
     }
-    .article-toc {
-        position: static;
+    .wiki-toc {
+        display: none;
     }
-}
-
-.article-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-md);
-    margin-bottom: var(--space-lg);
-}
-
-.article-header h1 {
-    margin: 0;
-    font-size: var(--font-size-3xl);
-    line-height: var(--line-height-heading);
-}
-
-.article-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-    margin-bottom: var(--space-xl);
-}
-
-.article-content {
-    background: var(--surface-default);
-    padding: var(--space-xl);
-    border-radius: var(--radius-md);
-    box-shadow: var(--card-shadow);
-    margin-bottom: var(--space-xl);
 }
 
 .article-content-panel {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-    margin-bottom: var(--space-xl);
+    margin-bottom: 0;
 }
 
 .article-content-panel__header {
@@ -214,10 +109,11 @@
     align-items: center;
     flex-wrap: wrap;
     gap: var(--space-sm);
+    padding: 18px 22px 0;
 }
 
 .article-content-panel__body {
-    padding-top: var(--space-sm);
+    padding: 0 22px 22px;
 }
 
 .markdown-body {
@@ -536,10 +432,7 @@ figure.attachment-preview {
 {{define "article_content_panel"}}
 <section id="article-content-panel" class="card article-content-panel">
     <header class="article-content-panel__header">
-        <div>
-            <h2>Content</h2>
-            <p class="section-hint">Supports GitHub-flavored Markdown for headings, code, and tables.</p>
-        </div>
+        <div class="eyebrow" style="margin:0;">Content</div>
     </header>
     <div class="article-content-panel__body">
         {{with .Flash}}
@@ -592,66 +485,67 @@ figure.attachment-preview {
 {{end}}
 
 {{define "wiki_attachments_section"}}
-<div id="wiki-attachments-section">
+<div id="wiki-attachments-section" class="card" style="padding:18px 22px;">
     {{with .Flash}}<div class="alert alert-success">{{.}}</div>{{end}}
     {{with .Error}}<div class="alert alert-error">{{.}}</div>{{end}}
+
+    <div class="flex-between" style="margin-bottom:14px;">
+        <div class="eyebrow" style="margin:0;">Attachments{{if .Article.Attachments}} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:12px;">· {{len .Article.Attachments}}</span>{{end}}</div>
+        <label class="button button--ghost button--small" style="cursor:pointer;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Upload
+            <input type="file" name="files" multiple style="display:none;"
+                   data-upload-zone-trigger
+                   data-upload-endpoint="/wiki/upload/{{.Article.ID}}"
+                   data-upload-target="#wiki-attachments-section">
+        </label>
+    </div>
+
     {{if .Article.Attachments}}
-    <div class="attachments-container">
-        <h2>Attachments</h2>
-        <!-- Image thumbnail gallery — gallery.js opens lightbox on click -->
-        <div class="gallery-set">
-            {{range .Article.Attachments}}{{if .IsImage}}
-            <figure class="gallery-item">
-                <button type="button" class="gallery-thumb"
-                        data-gallery-src="/wiki/attachment/{{.ID}}"
-                        data-gallery-name="{{.OriginalName}}"
-                        aria-label="View {{.OriginalName}}">
-                    <img src="/wiki/attachment/{{.ID}}" alt="{{.OriginalName}}" loading="lazy">
-                </button>
-                <figcaption class="gallery-item__caption">
-                    <span class="gallery-item__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
-                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
-                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
-                    </form>
-                </figcaption>
-            </figure>
-            {{end}}{{end}}
+    <div class="wiki-attach-list">
+        {{range .Article.Attachments}}
+        {{$ext := ""}}
+        {{if .IsImage}}{{$ext = "image"}}{{end}}
+        <div class="wiki-attach">
+            {{if .IsImage}}
+            <div class="wiki-attach__icon wiki-attach__icon--image">IMG</div>
+            {{else}}
+            <div class="wiki-attach__icon">FILE</div>
+            {{end}}
+            <div class="wiki-attach__meta">
+                <strong>{{.OriginalName}}</strong>
+                <div>{{.UploadedAt.Format "Jan 02, 2006"}}</div>
+            </div>
+            <div class="wiki-attach__actions">
+                <a href="/wiki/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
+                    <button type="submit" class="button button--ghost button--small"
+                            style="color:var(--color-destructive);"
+                            onclick="return confirm('Delete this attachment?')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </form>
+            </div>
         </div>
-        <!-- Non-image file list -->
-        <ul class="attachment-file-list">
-            {{range .Article.Attachments}}{{if not .IsImage}}
-            <li class="attachment-file-list__item">
-                <span class="attachment-file-list__icon">📄</span>
-                <span class="attachment-file-list__name" title="{{.OriginalName}}">{{.OriginalName}}</span>
-                <div class="attachment-file-list__actions">
-                    <a href="/wiki/attachment/{{.ID}}" download="{{.OriginalName}}" class="button button--ghost button--small">Download</a>
-                    <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
-                        <button type="submit" class="button button--destructive button--small" onclick="return confirm('Delete this attachment?')">Delete</button>
-                    </form>
-                </div>
-            </li>
-            {{end}}{{end}}
-        </ul>
+        {{end}}
     </div>
     {{end}}
 
-    <div class="upload-form">
-        <h3>Add Attachment</h3>
-        <form action="/wiki/upload/{{.Article.ID}}" method="POST" enctype="multipart/form-data">
-            <input type="file" name="files" multiple>
-            <button type="submit" class="button button--primary">Upload</button>
-        </form>
-        <div class="upload-drop-zone"
-             data-upload-zone
-             data-upload-endpoint="/wiki/upload/{{.Article.ID}}"
-             data-upload-target="#wiki-attachments-section">
-            <p class="upload-drop-zone__hint">Drop files here or paste images (Ctrl+V / ⌘V)</p>
-            <div class="upload-progress" data-upload-progress style="display:none">
-                <div class="upload-progress__track">
-                    <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
-                </div>
-                <span class="upload-progress__label" data-upload-progress-label></span>
+    <div class="upload-drop-zone"
+         style="margin-top:12px;"
+         data-upload-zone
+         data-upload-endpoint="/wiki/upload/{{.Article.ID}}"
+         data-upload-target="#wiki-attachments-section">
+        <p class="upload-drop-zone__hint">Drop files here or paste images (Ctrl+V / ⌘V)</p>
+        <div class="upload-progress" data-upload-progress style="display:none">
+            <div class="upload-progress__track">
+                <div class="upload-progress__bar" data-upload-progress-bar style="width:0"></div>
             </div>
+            <span class="upload-progress__label" data-upload-progress-label></span>
         </div>
     </div>
 </div>

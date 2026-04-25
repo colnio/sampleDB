@@ -47,6 +47,11 @@ type Service interface {
 
 	// API
 	ListAPIUsers(ctx context.Context) ([]APIUser, error)
+
+	// Notifications
+	ListNotifications(ctx context.Context) ([]Notification, error)
+	CreateNotification(ctx context.Context, message, level, author string) (Notification, error)
+	DeleteNotification(ctx context.Context, id int64) error
 }
 
 // DBService is the concrete Service implementation backed by PostgreSQL.
@@ -467,6 +472,46 @@ func (s *DBService) ListAPIUsers(ctx context.Context) ([]APIUser, error) {
 		return nil, err
 	}
 	return users, nil
+}
+
+// ListNotifications returns all notifications ordered by newest first.
+func (s *DBService) ListNotifications(ctx context.Context) ([]Notification, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT id, message, level, author, created_at
+         FROM notifications
+         ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	notifs := make([]Notification, 0)
+	for rows.Next() {
+		var n Notification
+		if err := rows.Scan(&n.ID, &n.Message, &n.Level, &n.Author, &n.CreatedAt); err != nil {
+			return nil, err
+		}
+		notifs = append(notifs, n)
+	}
+	return notifs, rows.Err()
+}
+
+// CreateNotification inserts a new notification and returns it with its assigned ID and timestamp.
+func (s *DBService) CreateNotification(ctx context.Context, message, level, author string) (Notification, error) {
+	var n Notification
+	err := s.db.QueryRow(ctx,
+		`INSERT INTO notifications (message, level, author)
+         VALUES ($1, $2, $3)
+         RETURNING id, message, level, author, created_at`,
+		message, level, author,
+	).Scan(&n.ID, &n.Message, &n.Level, &n.Author, &n.CreatedAt)
+	return n, err
+}
+
+// DeleteNotification removes the notification with the given ID.
+func (s *DBService) DeleteNotification(ctx context.Context, id int64) error {
+	_, err := s.db.Exec(ctx, `DELETE FROM notifications WHERE id = $1`, id)
+	return err
 }
 
 // generateNumericPassword returns a cryptographically random numeric string of

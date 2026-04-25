@@ -101,7 +101,7 @@ func TestDashboardPage_RendersAggregatedData(t *testing.T) {
 	}
 	body := rr.Body.String()
 	for _, want := range []string{
-		"Welcome back, msmith",
+		"msmith",
 		">42<",           // total samples
 		">3<",            // active bookings
 		">8<",            // wiki articles

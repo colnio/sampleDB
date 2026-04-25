@@ -492,6 +492,15 @@ func (m *mockService) Create(_ context.Context, _ booking.CreateParams) (int, er
 func (m *mockService) Delete(_ context.Context, _, _ int, _ bool) error {
 	return m.deleteErr
 }
+func (m *mockService) GetBooking(_ context.Context, _ int) (booking.Booking, error) {
+	if m.bookings != nil && len(m.bookings) > 0 {
+		return m.bookings[0], nil
+	}
+	return booking.Booking{}, nil
+}
+func (m *mockService) VerifyUserPassword(_ context.Context, _ int, _ string) (bool, error) {
+	return true, nil
+}
 
 // newAuthenticatedRequest creates a request with an auth session in its context.
 func newAuthenticatedRequest(method, target string, body url.Values) *http.Request {
@@ -548,8 +557,12 @@ func TestDeleteBooking_NonOwnerForbidden(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.DeleteBooking(rr, req)
 
-	if rr.Code != http.StatusForbidden {
-		t.Errorf("expected 403, got %d", rr.Code)
+	// Handler now redirects with an error message instead of returning 403 directly.
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); loc == "" {
+		t.Error("expected redirect Location header")
 	}
 }
 
@@ -562,8 +575,12 @@ func TestDeleteBooking_NotFound(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.DeleteBooking(rr, req)
 
-	if rr.Code != http.StatusNotFound {
-		t.Errorf("expected 404, got %d", rr.Code)
+	// Handler now redirects with an error message instead of returning 404 directly.
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); loc == "" {
+		t.Error("expected redirect Location header")
 	}
 }
 

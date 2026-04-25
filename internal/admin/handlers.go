@@ -49,17 +49,24 @@ func (h *Handlers) AdminPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	notifs, err := h.svc.ListNotifications(r.Context())
+	if err != nil {
+		log.Printf("admin: list notifications: %v", err)
+		notifs = nil
+	}
+
 	data := AdminPageData{
 		BasePageData: BasePageData{
 			Username: session.Username,
 			UserID:   session.UserID,
 			IsAdmin:  true, // guaranteed by RequireAdmin middleware
 		},
-		Users:     users,
-		Equipment: equipment,
-		Groups:    groups,
-		Error:     r.URL.Query().Get("error"),
-		Success:   r.URL.Query().Get("success"),
+		Users:         users,
+		Equipment:     equipment,
+		Groups:        groups,
+		Notifications: notifs,
+		Error:         r.URL.Query().Get("error"),
+		Success:       r.URL.Query().Get("success"),
 	}
 
 	if err := h.renderer.Render(w, "admin", data); err != nil {
@@ -620,6 +627,74 @@ func (h *Handlers) APIEquipment(w http.ResponseWriter, r *http.Request) {
 		"items": items,
 		"total": len(items),
 	})
+}
+
+// ListNotifications handles GET /api/notifications — returns active notifications as JSON.
+func (h *Handlers) ListNotifications(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	notifs, err := h.svc.ListNotifications(r.Context())
+	if err != nil {
+		log.Printf("admin: list notifications: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		return
+	}
+	writeJSON(w, http.StatusOK, notifs)
+}
+
+// CreateNotification handles POST /admin/notifications.
+func (h *Handlers) CreateNotification(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	session := auth.MustSessionFromContext(r.Context())
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/admin?error=invalid+request", http.StatusSeeOther)
+		return
+	}
+	msg := strings.TrimSpace(r.FormValue("message"))
+	level := r.FormValue("level")
+	if msg == "" {
+		http.Redirect(w, r, "/admin?error=message+required", http.StatusSeeOther)
+		return
+	}
+	if level != "info" && level != "warning" && level != "critical" {
+		level = "info"
+	}
+	if _, err := h.svc.CreateNotification(r.Context(), msg, level, session.Username); err != nil {
+		log.Printf("admin: create notification: %v", err)
+		http.Redirect(w, r, "/admin?error=could+not+save+notification", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Notification+posted", http.StatusSeeOther)
+}
+
+// DeleteNotification handles POST /admin/notifications/{id}/delete.
+func (h *Handlers) DeleteNotification(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	// path: admin/notifications/{id}/delete
+	if len(parts) < 4 {
+		http.NotFound(w, r)
+		return
+	}
+	id, err := strconv.ParseInt(parts[len(parts)-2], 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := h.svc.DeleteNotification(r.Context(), id); err != nil {
+		log.Printf("admin: delete notification %d: %v", id, err)
+		http.Redirect(w, r, "/admin?error=could+not+delete+notification", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Notification+removed", http.StatusSeeOther)
 }
 
 // writeJSON is a package-local helper for JSON responses.

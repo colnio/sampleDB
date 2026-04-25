@@ -256,7 +256,9 @@ function C_WikiArticle({ setScreen }) {
 }
 
 function C_Booking() {
-  const hours = Array.from({length:12},(_,i)=>i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
+  const scrollRef = React.useRef(null);
+  React.useEffect(()=>{ if(scrollRef.current) scrollRef.current.scrollLeft = 8 * 90; }, []);
   return (
     <div className="main">
       <div className="section-head">
@@ -264,25 +266,43 @@ function C_Booking() {
         <div><h1 className="section-head__title">Equipment.</h1><p className="section-head__sub">Click a lane to book. Drag the block edge to adjust.</p></div>
         <div className="section-head__actions"><button className="btn btn--sm">‹ Prev</button><button className="btn btn--sm">Today</button><button className="btn btn--sm">Next ›</button></div>
       </div>
-      <div className="timeline-wrap">
+      <div className="timeline-wrap" ref={scrollRef}>
         <div className="tline">
           <div className="tline-head">
             <div className="tline-head__left">Equipment</div>
             <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
           </div>
-          {EQUIPMENT.map(eq=>(
-            <div className="tline-row" key={eq.id}>
-              <div className="tline-row__left">{eq.name}</div>
-              <div className="tline-lane">
-                {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                  const left=(b.start-8)*90, w=(b.end-b.start)*90;
-                  return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
-                    <div style={{fontWeight:600}}>{b.user}</div><small>{b.purpose}</small>
-                  </div>;
-                })}
+          {EQUIPMENT.map(eq=>{
+            const access = eq.access || 'open';
+            const rowCls = 'tline-row' + (access === 'no-access' ? ' tline-row--noaccess' : '');
+            return (
+            <div className={rowCls} key={eq.id}>
+              <div className="tline-row__left">
+                <span className="tline-row__name">{eq.name}</span>
+                {access === 'admin-view' && <span className="tline-row__access-badge">View only</span>}
+                {access === 'no-access' && <Ic.Lock className="tline-row__lock"/>}
               </div>
+              {access === 'no-access' ? (
+                <div className="tline-lane tline-lane--noaccess">
+                  <div className="lane-locked-msg">
+                    <Ic.Lock style={{width:13, height:13}}/>
+                    <span>{eq.accessNote || 'Restricted'}</span>
+                    <button className="btn-request">Request</button>
+                  </div>
+                </div>
+              ) : (
+                <div className={'tline-lane' + (access === 'admin-view' ? ' tline-lane--admin' : '')} title={access === 'admin-view' ? 'View-only · admin' : undefined}>
+                  {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                    const left=b.start*90, w=(b.end-b.start)*90;
+                    return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
+                      <div style={{fontWeight:600}}>{b.user}</div><small>{b.purpose}</small>
+                    </div>;
+                  })}
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -357,6 +377,13 @@ function C_Admin() {
           </tr>
         ))}</tbody></table>
       </div>
+      <div style={{marginTop:48}}>
+        <div className="panel__title">Notifications</div>
+        <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:'var(--c-muted)',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:16}}>banner posted until each user dismisses</div>
+        <div style={{border:'1px solid var(--c-line)',borderRadius:4,padding:16,background:'var(--c-cream)'}}>
+          <NotifAdminPanel direction="C"/>
+        </div>
+      </div>
     </div>
   );
 }
@@ -366,6 +393,7 @@ function DirectionC({ screen, setScreen, activeSample, setActiveSample }) {
     <div className="dirC">
       <div className="stage-bg">
         <C_Ribbon screen={screen} setScreen={setScreen}/>
+        <div style={{maxWidth:1400, margin:'0 auto', padding:'0 48px'}}><C_NotifBanner/></div>
         {screen==='dashboard' && <C_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
         {screen==='samples' && <C_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
         {screen==='detail' && <C_Detail sample={activeSample} setScreen={setScreen}/>}

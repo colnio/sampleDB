@@ -128,6 +128,13 @@ func buildMainFuncMap(extraFuncs template.FuncMap) template.FuncMap {
 		// markdown default: pass-through so templates parse in test environments
 		// without the gomarkdown library.  Production callers override via extraFuncs.
 		"markdown": func(s string) template.HTML { return template.HTML(s) },
+		"toJSON": func(v interface{}) template.JS {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return template.JS("null")
+			}
+			return template.JS(b)
+		},
 		"split":    strings.Split,
 		"trim":     strings.TrimSpace,
 		"ownerSelected": func(ownerUserID *int, userID int) bool {
@@ -349,7 +356,7 @@ func buildBookingFuncMap(loc *time.Location) template.FuncMap {
 			return t.Format("Monday")
 		},
 		"formatTime": func(t time.Time) string {
-			return t.Format("3:04 PM")
+			return t.Format("15:04")
 		},
 		"formatTime24": func(t time.Time) string {
 			return t.Format("15:04")

@@ -3,7 +3,7 @@
 {{define "content"}}
 <div class="page-topbar">
     <div class="page-topbar__left">
-        <h1>Welcome back, {{.Username}}</h1>
+        <h1>{{if lt .Now.Hour 12}}Good morning{{else if lt .Now.Hour 17}}Good afternoon{{else}}Good evening{{end}}, {{.Username}}</h1>
         <div class="page-topbar__crumbs">{{.Now.Format "Monday · January 2, 2006"}}</div>
     </div>
     <div class="page-topbar__actions">
@@ -78,43 +78,137 @@
             <h2>Activity</h2>
         </div>
         {{if .Activity}}
-        <ul class="stack-sm" style="list-style:none;padding:0;margin:0;">
+        <div>
             {{range .Activity}}
-            <li class="flex gap-sm" style="align-items:flex-start;">
-                <span class="status-chip__dot" aria-hidden="true" style="margin-top:7px;background:var(--color-primary);"></span>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:13px;color:var(--text-strong);">
-                        <strong>{{.ActorUsername}}</strong>
-                        {{activityPhrase .Verb .TargetType .TargetLabel}}
-                    </div>
-                    <div class="recent-item__meta" style="margin-top:2px;">{{.CreatedAt.Format "Jan 02, 15:04"}}</div>
+            <div class="activity-item">
+                <div class="activity-item__dot-col" aria-hidden="true"></div>
+                <div class="activity-item__body">
+                    <div class="activity-item__text"><strong>{{.ActorUsername}}</strong> {{activityPhrase .Verb .TargetType .TargetLabel}}</div>
+                    <div class="activity-item__meta">{{.CreatedAt.Format "Jan 02, 15:04"}}</div>
                 </div>
-            </li>
+            </div>
             {{end}}
-        </ul>
+        </div>
         {{else}}
         <p class="muted" style="margin:0;">No activity yet.</p>
         {{end}}
     </article>
 </div>
 
-<article class="card" style="margin-top:18px;">
+<article class="card" style="margin-top:18px;padding:20px 24px;">
     <div class="panel-head">
         <h2>Today&#39;s bookings</h2>
         <a href="/booking" class="panel-head__link">Open schedule &rarr;</a>
     </div>
     {{if .TodayBookings}}
-    <ul class="stack-sm" style="list-style:none;padding:0;margin:0;">
-        {{range .TodayBookings}}
-        <li class="flex gap-sm" style="align-items:center;padding:8px 0;border-bottom:1px solid var(--border-subtle);">
-            <div style="flex:1;min-width:0;">
-                <div style="font-weight:600;color:var(--text-strong);font-size:13.5px;">{{.EquipmentName}}</div>
-                <div class="recent-item__meta">{{.Username}}{{if .Purpose}} · {{.Purpose}}{{end}}</div>
+    <div class="timeline-wrap" id="dashboard-mini-timeline">
+        <div class="timeline-wrap__scroll" id="dashboard-mini-scroll">
+            <div class="tline">
+                <div class="tline-head">
+                    <div class="tline-head__left">Equipment</div>
+                    <div class="tline-hours" id="dashboard-mini-hours"></div>
+                </div>
+                <div id="dashboard-mini-body">
+                {{range .TodayBookings}}
+                <div class="tline-row" data-equipment-name="{{.EquipmentName}}"
+                     data-start="{{.StartTime.UTC.Format "2006-01-02T15:04:05Z"}}"
+                     data-end="{{.EndTime.UTC.Format "2006-01-02T15:04:05Z"}}"
+                     data-user="{{.Username}}"
+                     data-purpose="{{.Purpose}}"
+                     data-own="{{if eq .UserID $.UserID}}1{{else}}0{{end}}">
+                </div>
+                {{end}}
+                </div>
             </div>
-            <span class="mono muted" style="font-size:12.5px;">{{.StartTime.Format "15:04"}} – {{.EndTime.Format "15:04"}}</span>
-        </li>
-        {{end}}
-    </ul>
+        </div>
+    </div>
+    <script>
+    (function () {
+        var HOUR_W = 80, HOURS = 24;
+        var hoursEl = document.getElementById('dashboard-mini-hours');
+        var bodyEl  = document.getElementById('dashboard-mini-body');
+        var scrollEl = document.getElementById('dashboard-mini-scroll');
+        if (!hoursEl || !bodyEl) return;
+
+        // Build hour headers
+        for (var h = 0; h < HOURS; h++) {
+            var d = document.createElement('div');
+            d.className = 'tline-hour';
+            d.textContent = (h < 10 ? '0' : '') + h + ':00';
+            hoursEl.appendChild(d);
+        }
+
+        // Group rows by equipment name, render lanes
+        var seen = {};
+        var rows = bodyEl.querySelectorAll('[data-equipment-name]');
+        rows.forEach(function(r) { bodyEl.removeChild(r); });
+        rows.forEach(function(r) {
+            var name = r.getAttribute('data-equipment-name');
+            if (!seen[name]) {
+                seen[name] = true;
+                var row = document.createElement('div');
+                row.className = 'tline-row';
+                var left = document.createElement('div');
+                left.className = 'tline-row__left';
+                left.innerHTML = '<span class="tline-row__dot"></span><span class="tline-row__name">' + esc(name) + '</span>';
+                var lane = document.createElement('div');
+                lane.className = 'tline-lane';
+                lane.setAttribute('data-eq-name', name);
+                var slots = document.createElement('div');
+                slots.className = 'slots';
+                for (var i = 0; i < HOURS; i++) {
+                    var s = document.createElement('div');
+                    s.className = 'slot';
+                    slots.appendChild(s);
+                }
+                lane.appendChild(slots);
+                row.appendChild(left);
+                row.appendChild(lane);
+                bodyEl.appendChild(row);
+            }
+        });
+
+        // Place booking blocks — use full UTC timestamps so cross-midnight
+        // bookings are displayed correctly instead of being silently dropped.
+        var todayISO = '{{.Now.Format "2006-01-02"}}';
+        var todayP   = todayISO.split('-');
+        var todayStart   = new Date(+todayP[0], +todayP[1] - 1, +todayP[2], 0, 0, 0, 0);
+        var todayStartMs = todayStart.getTime();
+        var todayEndMs   = todayStartMs + 86400000;
+
+        rows.forEach(function(r) {
+            var name  = r.getAttribute('data-equipment-name');
+            var start = r.getAttribute('data-start');
+            var end   = r.getAttribute('data-end');
+            var user  = r.getAttribute('data-user');
+            var purp  = r.getAttribute('data-purpose');
+            var own   = r.getAttribute('data-own') === '1';
+            var lane  = bodyEl.querySelector('[data-eq-name="' + name + '"]');
+            if (!lane || !start || !end) return;
+
+            var s = new Date(start), e = new Date(end);
+            if (isNaN(s) || isNaN(e)) return;
+            if (e.getTime() <= todayStartMs || s.getTime() >= todayEndMs) return;
+
+            var sm = Math.max(0,    (s.getTime() - todayStartMs) / 60000);
+            var em = Math.min(1440, (e.getTime() - todayStartMs) / 60000);
+            if (em <= sm) return;
+
+            var block = document.createElement('div');
+            block.className = 'tline-block' + (own ? ' tline-block--own' : '');
+            block.style.left  = ((sm / 60) * HOUR_W) + 'px';
+            block.style.width = Math.max(((em - sm) / 60) * HOUR_W - 4, 24) + 'px';
+            block.innerHTML   = '<div>' + esc(user) + '</div><small>' + esc(purp) + '</small>';
+            lane.appendChild(block);
+        });
+
+        if (scrollEl) scrollEl.scrollLeft = 8 * HOUR_W;
+
+        function esc(s) {
+            return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    })();
+    </script>
     {{else}}
     <p class="muted" style="margin:0;">No bookings scheduled for today.</p>
     {{end}}

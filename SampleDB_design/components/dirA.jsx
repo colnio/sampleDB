@@ -50,7 +50,7 @@ function A_Dashboard({ setScreen, setActiveSample }) {
           <button className="btn btn--primary" onClick={()=>setScreen('new')}><Ic.Plus/> New Sample</button>
         </div>
       </div>
-      <div className="stats">
+      <div className="stats stats-grid">
         {[
           {l:'Total Samples',v:'247',d:'+12 this week'},
           {l:'Active Bookings',v:'8',d:'2 upcoming today'},
@@ -64,7 +64,7 @@ function A_Dashboard({ setScreen, setActiveSample }) {
           </div>
         ))}
       </div>
-      <div style={{display:'grid', gridTemplateColumns: '2fr 1fr', gap: 18}}>
+      <div className="dashboard-grid" style={{display:'grid', gridTemplateColumns: '2fr 1fr', gap: 18}}>
         <div className="card" style={{padding: '20px 24px'}}>
           <div className="u-between" style={{marginBottom: 16}}>
             <h3 style={{margin:0,fontSize:15}}>Recent samples</h3>
@@ -116,31 +116,52 @@ function A_Dashboard({ setScreen, setActiveSample }) {
 }
 
 function A_MiniBooking() {
-  const hours = Array.from({length: 12}, (_,i) => i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
+  const miniRef = React.useRef(null);
+  React.useEffect(()=>{ if(miniRef.current) miniRef.current.scrollLeft = 8 * 80; }, []);
   return (
     <div className="timeline-wrap">
-      <div className="timeline-wrap__scroll">
+      <div className="timeline-wrap__scroll" ref={miniRef}>
         <div className="tline">
           <div className="tline-head">
             <div className="tline-head__left">Equipment</div>
-            <div className="tline-hours">{hours.map(h => <div key={h} className="tline-hour">{h}:00</div>)}</div>
+            <div className="tline-hours">{hours.map(h => <div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
           </div>
-          {EQUIPMENT.slice(0,4).map(eq => (
-            <div className="tline-row" key={eq.id}>
-              <div className="tline-row__left"><span className="tline-row__dot"/>{eq.name}</div>
-              <div className="tline-lane">
-                <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
-                {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                  const left = (b.start - 8) * 80;
-                  const w = (b.end - b.start) * 80;
-                  return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width: w-4}}>
-                    <div>{b.user}</div>
-                    <small>{b.purpose}</small>
-                  </div>;
-                })}
+          {EQUIPMENT.slice(0,4).map(eq => {
+            const access = eq.access || 'open';
+            const rowCls = 'tline-row' + (access === 'admin-view' ? ' tline-row--admin' : '') + (access === 'no-access' ? ' tline-row--noaccess' : '');
+            return (
+            <div className={rowCls} key={eq.id}>
+              <div className="tline-row__left">
+                <span className="tline-row__dot"/>
+                <span className="tline-row__name">{eq.name}</span>
+                {access === 'admin-view' && <span className="tline-row__access-badge">Admin</span>}
+                {access === 'no-access' && <Ic.Lock className="tline-row__lock"/>}
               </div>
+              {access === 'no-access' ? (
+                <div className="tline-lane tline-lane--noaccess">
+                  <div className="lane-locked-msg">
+                    <Ic.Lock style={{width:13, height:13}}/>
+                    <span>{eq.accessNote || 'Restricted'}</span>
+                    <button className="btn-request">Request access</button>
+                  </div>
+                </div>
+              ) : (
+                <div className={'tline-lane' + (access === 'admin-view' ? ' tline-lane--admin' : '')}>
+                  <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
+                  {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                    const left = b.start * 80;
+                    const w = (b.end - b.start) * 80;
+                    return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width: w-4}}>
+                      <div>{b.user}</div>
+                      <small>{b.purpose}</small>
+                    </div>;
+                  })}
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -225,6 +246,26 @@ function A_SampleDetail({ sample, setScreen }) {
   const [editing, setEditing] = React.useState(null);
   const [name, setName] = React.useState(s.name);
   const [desc, setDesc] = React.useState(s.description);
+  const [keywords, setKeywords] = React.useState(s.keywords || []);
+  const [steps, setSteps] = React.useState(STEPS);
+  const [status, setStatus] = React.useState(s.status);
+  const [owner, setOwner] = React.useState(s.owner);
+
+  const [kwOpen, setKwOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [shareOpen, setShareOpen] = React.useState(false);
+  const [delOpen, setDelOpen] = React.useState(false);
+  const [stepModal, setStepModal] = React.useState({ open: false, mode: 'add', step: null, index: null });
+  const [delStep, setDelStep] = React.useState({ open: false, index: null });
+
+  const removeKeyword = (k) => setKeywords(arr => arr.filter(x => x !== k));
+  const onSampleSave = (next) => { setName(next.name); setStatus(next.status); setOwner(next.owner); };
+  const onStepSave = (data, idx) => {
+    if (idx == null) setSteps(arr => [...arr, data]);
+    else setSteps(arr => arr.map((s, i) => i === idx ? data : s));
+  };
+  const onStepDelete = () => setSteps(arr => arr.filter((_, i) => i !== delStep.index));
+
   return (
     <div>
       <a style={{fontSize:12.5, color:'var(--text-muted)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap: 6, marginBottom: 10}} onClick={()=>setScreen('samples')}><Ic.ArrowLeft style={{width:14,height:14}}/> Back to samples</a>
@@ -232,22 +273,23 @@ function A_SampleDetail({ sample, setScreen }) {
         <div className="topbar__left" style={{flex:1}}>
           <div className="u-center u-gap-md" style={{marginBottom: 4}}>
             <span style={{fontFamily:'var(--font-family-mono)', fontSize:12, color:'var(--text-muted)'}}>{s.id}</span>
-            {dirAStatusChip(s.status)}
+            {dirAStatusChip(status)}
           </div>
           {editing==='name' ? (
             <input autoFocus className="u-mono" style={{fontSize: 22, fontWeight: 700, width: '100%', padding: '4px 8px', border:'1px solid var(--color-primary)', borderRadius: 8, background:'var(--surface-default)', color:'var(--text-strong)'}} value={name} onChange={e=>setName(e.target.value)} onBlur={()=>setEditing(null)} onKeyDown={e=>{if(e.key==='Enter')setEditing(null)}}/>
           ) : (
             <h1 onClick={()=>setEditing('name')} style={{cursor:'text', color:'var(--text-strong)'}} title="Click to edit">{name}</h1>
           )}
-          <div className="crumbs">Created {s.createdAt} · Owner <strong>{s.owner}</strong> · {s.attachments} files · {s.steps} fabrication steps</div>
+          <div className="crumbs">Created {s.createdAt} · Owner <strong>{owner}</strong> · {s.attachments} files · {steps.length} fabrication steps</div>
         </div>
         <div className="topbar__actions">
           <button className="btn btn--ghost"><Ic.Download/> Export</button>
-          <button className="btn btn--secondary"><Ic.Edit/> Edit</button>
-          <button className="btn btn--primary"><Ic.Sparkle/> Share</button>
+          <button className="btn btn--danger" onClick={()=>setDelOpen(true)}><Ic.Trash/> Delete</button>
+          <button className="btn btn--secondary" onClick={()=>setEditOpen(true)}><Ic.Edit/> Edit</button>
+          <button className="btn btn--primary" onClick={()=>setShareOpen(true)}><Ic.Sparkle/> Share</button>
         </div>
       </div>
-      <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap: 18}}>
+      <div className="detail-grid" style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap: 18}}>
         <div style={{display:'flex', flexDirection:'column', gap:18}}>
           <div className="card" style={{padding:'18px 22px'}}>
             <div className="u-eyebrow" style={{marginBottom: 10}}>Description</div>
@@ -257,17 +299,22 @@ function A_SampleDetail({ sample, setScreen }) {
               <p style={{margin:0, lineHeight: 1.7, cursor:'text'}} onClick={()=>setEditing('desc')} title="Click to edit">{desc}</p>
             )}
             <div style={{display:'flex', gap:6, marginTop: 14, flexWrap:'wrap'}}>
-              {s.keywords.map(k=> <span key={k} style={{fontSize:12, padding:'3px 10px', borderRadius:999, background:'var(--color-secondary-bg)', color:'var(--color-secondary-text)', fontWeight:500}}>{k}</span>)}
-              <span style={{fontSize:12, padding:'3px 10px', borderRadius:999, border:'1px dashed var(--border-subtle)', color:'var(--text-muted)', cursor:'pointer'}}>+ Add</span>
+              {keywords.map(k=> (
+                <span key={k} className="kw-chip" style={{display:'inline-flex', alignItems:'center', gap: 6, fontSize:12, padding:'3px 4px 3px 10px', borderRadius:999, background:'var(--color-secondary-bg)', color:'var(--color-secondary-text)', fontWeight:500}}>
+                  {k}
+                  <button onClick={()=>removeKeyword(k)} title="Remove" style={{border:'none', background:'transparent', cursor:'pointer', color:'inherit', opacity:0.5, padding:'2px 4px', borderRadius:4, lineHeight:1, display:'inline-flex', alignItems:'center'}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=0.5}>×</button>
+                </span>
+              ))}
+              <span style={{fontSize:12, padding:'3px 10px', borderRadius:999, border:'1px dashed var(--border-subtle)', color:'var(--text-muted)', cursor:'pointer'}} onClick={()=>setKwOpen(true)}>+ Add</span>
             </div>
           </div>
           <div className="card" style={{padding:'18px 22px'}}>
             <div className="u-between" style={{marginBottom: 14}}>
               <div className="u-eyebrow">Fabrication Steps</div>
-              <button className="btn btn--ghost btn--sm"><Ic.Plus/> Add Step</button>
+              <button className="btn btn--ghost btn--sm" onClick={()=>setStepModal({ open:true, mode:'add', step:null, index:null })}><Ic.Plus/> Add Step</button>
             </div>
             <div className="fab-timeline">
-              {STEPS.map((st, i) => (
+              {steps.map((st, i) => (
                 <div key={i} className="fab-step">
                   <div style={{display:'flex', alignItems:'center', gap: 8}}>
                     <Ic.Drag style={{width: 12}} className="fab-step__grab"/>
@@ -280,8 +327,8 @@ function A_SampleDetail({ sample, setScreen }) {
                       {st.notes && <span style={{fontStyle:'italic'}}>{st.notes}</span>}
                     </div>
                     <div className="fab-step__actions">
-                      <button className="btn btn--ghost btn--sm"><Ic.Edit/></button>
-                      <button className="btn btn--danger btn--sm"><Ic.Trash/></button>
+                      <button className="btn btn--ghost btn--sm" onClick={()=>setStepModal({ open:true, mode:'edit', step:st, index:i })}><Ic.Edit/></button>
+                      <button className="btn btn--danger btn--sm" onClick={()=>setDelStep({ open:true, index:i })}><Ic.Trash/></button>
                     </div>
                   </div>
                 </div>
@@ -331,10 +378,16 @@ function A_SampleDetail({ sample, setScreen }) {
           <div className="card" style={{padding:'18px 22px', borderTopColor: 'var(--color-destructive)'}}>
             <div className="u-eyebrow" style={{marginBottom: 8, color:'var(--color-destructive)'}}>Danger Zone</div>
             <p style={{fontSize:12.5, color:'var(--text-muted)', margin:'0 0 10px'}}>Permanently delete this sample and all fabrication steps + attachments.</p>
-            <button className="btn btn--danger"><Ic.Trash/> Delete sample</button>
+            <button className="btn btn--danger" onClick={()=>setDelOpen(true)}><Ic.Trash/> Delete sample</button>
           </div>
         </div>
       </div>
+      <A_AddKeywordModal open={kwOpen} onClose={()=>setKwOpen(false)} existing={keywords} onAdd={(arr)=>setKeywords(prev => [...prev, ...arr.filter(k => !prev.includes(k))])}/>
+      <A_EditSampleModal open={editOpen} onClose={()=>setEditOpen(false)} sample={{ ...s, name, status, owner }} onSave={onSampleSave}/>
+      <A_ShareSampleModal open={shareOpen} onClose={()=>setShareOpen(false)} sample={s}/>
+      <A_DeleteConfirmModal open={delOpen} onClose={()=>setDelOpen(false)} title="Delete sample?" body={{ requireType: s.id, message: <>This will permanently delete <strong>{s.id}</strong> ({name}), including all {steps.length} fabrication steps and {s.attachments} attachments. This cannot be undone.</> }} confirmLabel="Delete sample" onConfirm={()=>setScreen('samples')}/>
+      <A_StepModal open={stepModal.open} onClose={()=>setStepModal({ open:false, mode:'add', step:null, index:null })} step={stepModal.step} index={stepModal.index} mode={stepModal.mode} onSave={onStepSave}/>
+      <A_DeleteConfirmModal open={delStep.open} onClose={()=>setDelStep({ open:false, index:null })} title="Delete fabrication step?" body={delStep.index!=null ? <>Remove step <strong>{String(delStep.index+1).padStart(2,'0')} — {steps[delStep.index]?.title}</strong> from this sample? Other steps will be renumbered automatically.</> : ''} confirmLabel="Delete step" onConfirm={onStepDelete}/>
     </div>
   );
 }
@@ -476,10 +529,111 @@ function A_WikiArticle({ setScreen }) {
   );
 }
 
+function A_BookingLane({ eq, hours, onCommit }) {
+  const access = eq.access || 'open';
+  const COL_W = 80;
+  const STEP = 0.25;
+  const HOUR_START = hours[0];
+  const HOUR_END = hours[hours.length - 1] + 1;
+  const laneRef = React.useRef(null);
+  const dragRef = React.useRef(null);
+  const [drag, setDrag] = React.useState(null);
+
+  const interactive = access === 'open';
+
+  const xToHour = (clientX) => {
+    const rect = laneRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const h = HOUR_START + (x / COL_W);
+    return Math.max(HOUR_START, Math.min(HOUR_END, Math.round(h / STEP) * STEP));
+  };
+
+  const onPointerDown = (e) => {
+    if (!interactive) return;
+    if (e.target.closest('.tline-block')) return;
+    e.preventDefault();
+    const h = xToHour(e.clientX);
+    try { laneRef.current.setPointerCapture?.(e.pointerId); } catch(_) {}
+    const next = { startH: h, endH: h, pointerId: e.pointerId };
+    dragRef.current = next;
+    setDrag(next);
+  };
+  const onPointerMove = (e) => {
+    if (!dragRef.current) return;
+    const h = xToHour(e.clientX);
+    const next = { ...dragRef.current, endH: h };
+    dragRef.current = next;
+    setDrag(next);
+  };
+  const onPointerUp = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    dragRef.current = null;
+    setDrag(null);
+    const a = Math.min(d.startH, d.endH);
+    const b = Math.max(d.startH, d.endH);
+    const start = a;
+    const end = (b - a < STEP) ? Math.min(HOUR_END, a + 1) : b;
+    onCommit(start, end);
+  };
+  const onPointerCancel = () => { dragRef.current = null; setDrag(null); };
+
+  const previewLeft = drag ? (Math.min(drag.startH, drag.endH) - HOUR_START) * COL_W : 0;
+  const previewWidth = drag ? Math.max(8, Math.abs(drag.endH - drag.startH) * COL_W) : 0;
+
+  // No-access lane: show locked overlay only
+  if (access === 'no-access') {
+    return (
+      <div className="tline-lane tline-lane--noaccess">
+        <div className="lane-locked-msg">
+          <Ic.Lock style={{width:13, height:13}}/>
+          <span>{eq.accessNote || 'Restricted equipment'}</span>
+          <button className="btn-request">Request access</button>
+        </div>
+      </div>
+    );
+  }
+
+  const adminView = access === 'admin-view';
+
+  return (
+    <div
+      className={'tline-lane' + (adminView ? ' tline-lane--admin' : '')}
+      ref={laneRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      style={{ touchAction: 'none', cursor: adminView ? 'not-allowed' : (drag ? 'col-resize' : 'crosshair') }}
+      title={adminView ? (eq.accessNote || 'You can view but not book this equipment') : undefined}
+    >
+      <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
+      {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+        const left=(b.start-HOUR_START)*COL_W, w=(b.end-b.start)*COL_W;
+        return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-4}}>
+          <div>{b.user}</div><small>{b.purpose}</small>
+        </div>;
+      })}
+      {drag && (
+        <div style={{position:'absolute', top: 4, bottom: 4, left: previewLeft, width: previewWidth, background: 'rgba(37,99,235,0.18)', border: '1.5px dashed var(--color-primary)', borderRadius: 6, pointerEvents:'none', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', fontFamily: 'var(--font-family-mono)'}}>
+          {(() => {
+            const a = Math.min(drag.startH, drag.endH);
+            const b = Math.max(drag.startH, drag.endH);
+            const fmt = (h) => `${String(Math.floor(h)).padStart(2,'0')}:${String(Math.round((h%1)*60)).padStart(2,'0')}`;
+            return previewWidth > 60 ? `${fmt(a)} – ${fmt(b)}` : '';
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function A_Booking({ setScreen }) {
-  const hours = Array.from({length: 12}, (_,i) => i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
   const [bookOpen, setBookOpen] = React.useState(false);
   const [prefill, setPrefill] = React.useState(null);
+  const scrollRef = React.useRef(null);
+  React.useEffect(()=>{ if(scrollRef.current) scrollRef.current.scrollLeft = 8 * 80; }, []);
   return (
     <div>
       <A_BookSlotModal open={bookOpen} onClose={()=>setBookOpen(false)} prefill={prefill} onSave={()=>{}}/>
@@ -497,29 +651,36 @@ function A_Booking({ setScreen }) {
         <div className="filter-chip">My bookings</div>
         <div className="filter-chip">Available now</div>
         <div style={{flex:1}}/>
-        <div style={{fontSize:12.5, color:'var(--text-muted)'}}>Click a cell to book · drag to create a range</div>
+        <div style={{display:'flex', gap:14, alignItems:'center', fontSize:11.5, color:'var(--text-muted)'}}>
+          <span style={{display:'inline-flex', alignItems:'center', gap:6}}><span style={{width:10,height:10,borderRadius:'50%',background:'var(--color-primary)'}}/>Open</span>
+          <span style={{display:'inline-flex', alignItems:'center', gap:6}}><span style={{width:10,height:10,borderRadius:'50%',background:'#f59e0b'}}/>Restricted · admin view-only</span>
+          <span style={{display:'inline-flex', alignItems:'center', gap:6}}><Ic.Lock style={{width:12,height:12}}/>No access</span>
+        </div>
       </div>
       <div className="timeline-wrap">
-        <div className="timeline-wrap__scroll">
+        <div className="timeline-wrap__scroll" ref={scrollRef}>
           <div className="tline">
             <div className="tline-head">
               <div className="tline-head__left">Equipment</div>
-              <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{h}:00</div>)}</div>
+              <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
             </div>
-            {EQUIPMENT.map(eq => (
-              <div className="tline-row" key={eq.id}>
-                <div className="tline-row__left"><span className="tline-row__dot"/>{eq.name}</div>
-                <div className="tline-lane">
-                  <div className="slots">{hours.map(h => <div key={h} className="slot" onClick={()=>{ setPrefill({eq: eq.id, start: h, end: h+1}); setBookOpen(true); }}/>)}</div>
-                  {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                    const left=(b.start-8)*80, w=(b.end-b.start)*80;
-                    return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-4}}>
-                      <div>{b.user}</div><small>{b.purpose}</small>
-                    </div>;
-                  })}
+            {EQUIPMENT.map(eq => {
+              const access = eq.access || 'open';
+              const rowCls = 'tline-row' +
+                (access === 'admin-view' ? ' tline-row--admin' : '') +
+                (access === 'no-access' ? ' tline-row--noaccess' : '');
+              return (
+              <div className={rowCls} key={eq.id}>
+                <div className="tline-row__left">
+                  <span className="tline-row__dot"/>
+                  <span className="tline-row__name">{eq.name}</span>
+                  {access === 'admin-view' && <span className="tline-row__access-badge" title={eq.accessNote}>Admin</span>}
+                  {access === 'no-access' && <Ic.Lock className="tline-row__lock"/>}
                 </div>
+                <A_BookingLane eq={eq} hours={hours} onCommit={(start, end)=>{ setPrefill({ eq: eq.id, start, end }); setBookOpen(true); }}/>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -531,7 +692,7 @@ function A_Tokens() {
   return (
     <div>
       <div className="topbar"><div className="topbar__left"><h1>API Tokens</h1><div className="crumbs">Personal access tokens for programmatic access</div></div></div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18}}>
+      <div className="tokens-grid" style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18}}>
         <div className="card form-card">
           <h3 style={{margin:'0 0 4px', fontSize: 15, color:'var(--color-primary)'}}>Generate new token</h3>
           <p style={{fontSize:13, color:'var(--text-muted)', margin: '0 0 16px'}}>Tokens have full account permissions. Keep them secret.</p>
@@ -628,6 +789,15 @@ function A_Admin() {
           </tbody>
         </table>
       </div>
+      <div className="card" style={{padding: 0, marginTop: 18}}>
+        <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div>
+            <strong style={{fontSize:14}}>Notifications</strong>
+            <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>Posted as a banner on every page until each user dismisses it.</div>
+          </div>
+        </div>
+        <NotifAdminPanel direction="A"/>
+      </div>
       <A_AddGroupModal open={groupOpen} onClose={()=>setGroupOpen(false)} onSave={g => setExtraGroups(s => [...s, g.name])}/>
       <A_AddEquipmentModal open={equipOpen} onClose={()=>setEquipOpen(false)} onSave={e => setExtraEquip(s => [...s, e.name])}/>
       <A_EditUserModal open={!!editUser} user={editUser} onClose={()=>setEditUser(null)} onSave={()=>{}}/>
@@ -641,6 +811,7 @@ function DirectionA({ screen, setScreen, activeSample, setActiveSample }) {
       <div className="app-shell">
         <A_Sidebar screen={screen} setScreen={setScreen}/>
         <div className="main">
+          <A_NotifBanner/>
           {screen === 'dashboard' && <A_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen === 'samples' && <A_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen === 'detail' && <A_SampleDetail sample={activeSample} setScreen={setScreen}/>}

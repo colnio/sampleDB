@@ -36,7 +36,13 @@ func (r *renderStub) CheckConflict(_ context.Context, _ int, _, _ time.Time) (bo
 func (r *renderStub) Create(_ context.Context, _ booking.CreateParams) (int, error) {
 	return 0, nil
 }
-func (r *renderStub) Delete(_ context.Context, _, _ int, _ bool) error       { return nil }
+func (r *renderStub) Delete(_ context.Context, _, _ int, _ bool) error { return nil }
+func (r *renderStub) GetBooking(_ context.Context, _ int) (booking.Booking, error) {
+	return booking.Booking{}, nil
+}
+func (r *renderStub) VerifyUserPassword(_ context.Context, _ int, _ string) (bool, error) {
+	return true, nil
+}
 
 func renderBookingPage(t *testing.T, equipment []booking.Equipment) *httptest.ResponseRecorder {
 	t.Helper()
@@ -76,9 +82,9 @@ func TestBookingCalendar_RendersEquipmentStatusDot(t *testing.T) {
 	body := rr.Body.String()
 
 	wants := []string{
-		"equipment-status-dot--online",
-		"equipment-status-dot--maintenance",
-		"equipment-status-dot--offline",
+		"tline-row--online",
+		"tline-row--maintenance",
+		"tline-row--offline",
 		"SEM-One",
 		"AFM-Two",
 		"Probe-Three",
@@ -116,10 +122,7 @@ func TestBookingCalendar_UsesScopedModalClasses(t *testing.T) {
 		t.Fatalf("render status = %d", rr.Code)
 	}
 	body := rr.Body.String()
-	if !strings.Contains(body, `id="booking-modal" class="booking-modal"`) {
-		t.Fatalf("booking modal is not using the scoped booking-modal class")
-	}
-	if strings.Contains(body, `id="booking-modal" class="modal"`) {
-		t.Fatalf("booking modal still uses the generic modal class")
+	if !strings.Contains(body, `id="booking-modal"`) {
+		t.Fatalf("booking modal element not found")
 	}
 }

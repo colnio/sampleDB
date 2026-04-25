@@ -160,10 +160,13 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/delete-group/", withAuth(adminMW(adminHdlrs.DeleteGroup)))
 	mux.HandleFunc("/admin/equipment-report", withAuth(adminMW(adminHdlrs.EquipmentReport)))
 	mux.HandleFunc("/admin/delete-user", withAuth(adminMW(adminHdlrs.DeleteUser)))
+	mux.HandleFunc("/admin/notifications", withAuth(adminMW(adminHdlrs.CreateNotification)))
+	mux.HandleFunc("/admin/notifications/", withAuth(adminMW(adminHdlrs.DeleteNotification)))
 
 	// REST API v1 — users / equipment (any authenticated user, matching original contract)
 	mux.HandleFunc("/api/v1/users", withAuth(adminHdlrs.APIUsers))
 	mux.HandleFunc("/api/v1/equipment", withAuth(adminHdlrs.APIEquipment))
+	mux.HandleFunc("/api/notifications", withAuth(adminHdlrs.ListNotifications))
 	apiNotFound := a.APINotFoundHandler
 	if apiNotFound == nil {
 		apiNotFound = http.NotFound

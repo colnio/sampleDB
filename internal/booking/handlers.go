@@ -105,7 +105,9 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hasPermission := make(map[int]bool)
+	hasBookPermission := make(map[int]bool) // can the current user create a booking?
+	hasPermission := make(map[int]bool)      // can the current user see the lane?
+
 	for _, eq := range equipment {
 		permitted, err := h.svc.CheckUserPermission(r.Context(), session.UserID, eq.ID)
 		if err != nil {
@@ -113,7 +115,29 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Error checking permissions", http.StatusInternalServerError)
 			return
 		}
-		hasPermission[eq.ID] = permitted
+
+		// Booking access depends on status:
+		//   offline      → nobody can book (equipment is down)
+		//   maintenance  → admin + group access only (scheduled maintenance)
+		//   online       → normal group-access check
+		switch eq.Status {
+		case "offline":
+			hasBookPermission[eq.ID] = false
+		case "maintenance":
+			hasBookPermission[eq.ID] = isAdmin && permitted
+		default:
+			hasBookPermission[eq.ID] = permitted
+		}
+
+		// Lane visibility: maintenance/offline equipment is shown to everyone so
+		// users can see its status. Online equipment is only shown to users who
+		// have group access (or are admins).
+		switch eq.Status {
+		case "offline", "maintenance":
+			hasPermission[eq.ID] = true
+		default:
+			hasPermission[eq.ID] = isAdmin || permitted
+		}
 	}
 
 	bookings, err := h.svc.GetBookingsForWeek(r.Context(), weekStart, weekEnd)
@@ -123,10 +147,11 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := BookingPageData{
-		BasePageData:  BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
-		Equipment:     equipment,
-		Bookings:      bookings,
-		HasPermission: hasPermission,
+		BasePageData:      BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin},
+		Equipment:         equipment,
+		Bookings:          bookings,
+		HasPermission:     hasPermission,
+		HasBookPermission: hasBookPermission,
 		TimeSlots:     timeSlots,
 		Hours:         hours,
 		WeekStart:     weekStart,
@@ -257,7 +282,7 @@ func (h *Handlers) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 	bookingID, err := strconv.Atoi(r.FormValue("booking_id"))
 	if err != nil {
-		http.Error(w, "Invalid booking ID", http.StatusBadRequest)
+		http.Redirect(w, r, "/booking?error=Invalid+booking", http.StatusSeeOther)
 		return
 	}
 
@@ -268,14 +293,46 @@ func (h *Handlers) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If an admin is deleting someone else's booking, require password confirmation.
+	if isAdmin {
+		existing, err := h.svc.GetBooking(r.Context(), bookingID)
+		if err != nil {
+			if errors.Is(err, web.ErrNotFound) {
+				http.Redirect(w, r, "/booking?error=Booking+not+found", http.StatusSeeOther)
+			} else {
+				log.Printf("booking: GetBooking %d: %v", bookingID, err)
+				http.Redirect(w, r, "/booking?error=Could+not+load+booking", http.StatusSeeOther)
+			}
+			return
+		}
+		if existing.UserID != session.UserID {
+			adminPwd := r.FormValue("admin_password")
+			if adminPwd == "" {
+				http.Redirect(w, r, "/booking?error=Password+required+to+delete+another+user%27s+booking", http.StatusSeeOther)
+				return
+			}
+			ok, err := h.svc.VerifyUserPassword(r.Context(), session.UserID, adminPwd)
+			if err != nil {
+				log.Printf("booking: password verify error for admin %d: %v", session.UserID, err)
+				http.Redirect(w, r, "/booking?error=Internal+error+verifying+password", http.StatusSeeOther)
+				return
+			}
+			if !ok {
+				http.Redirect(w, r, "/booking?error=Incorrect+password", http.StatusSeeOther)
+				return
+			}
+		}
+	}
+
 	if err := h.svc.Delete(r.Context(), bookingID, session.UserID, isAdmin); err != nil {
 		switch {
 		case errors.Is(err, web.ErrNotFound):
-			http.Error(w, "Booking not found", http.StatusNotFound)
+			http.Redirect(w, r, "/booking?error=Booking+not+found", http.StatusSeeOther)
 		case errors.Is(err, web.ErrForbidden):
-			http.Error(w, "Not authorized to delete this booking", http.StatusForbidden)
+			http.Redirect(w, r, "/booking?error=Not+authorized+to+delete+this+booking", http.StatusSeeOther)
 		default:
-			http.Error(w, "Error deleting booking", http.StatusInternalServerError)
+			log.Printf("booking: delete error: %v", err)
+			http.Redirect(w, r, "/booking?error=Error+deleting+booking", http.StatusSeeOther)
 		}
 		return
 	}

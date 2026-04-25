@@ -79,27 +79,33 @@
                 </div>
                 <div class="fab-step__meta">
                     {{if .StepDate}}<span class="fab-step__meta-item mono">{{formatDate .StepDate}}</span>{{end}}
-                    {{if .PersonUsername}}<span class="fab-step__meta-item">{{.PersonUsername}}</span>{{end}}
+                    {{if .PersonUsername}}<span class="fab-step__meta-item">by {{.PersonUsername}}</span>{{end}}
                     {{if .EquipmentText}}<span class="fab-step__meta-item">{{.EquipmentText}}</span>{{else if .EquipmentName}}<span class="fab-step__meta-item">{{.EquipmentName}}</span>{{end}}
                 </div>
                 {{if and .Description (gt (len .Description) 120)}}
                 <p class="fab-step__description">{{.Description}}</p>
                 {{end}}
-            </div>
-            <div class="fab-step__actions">
-                <button class="button button--ghost button--small"
-                        hx-get="/steps/{{.ID}}/edit"
-                        hx-target="#fabrication-steps-panel"
-                        hx-select="#fabrication-steps-panel"
-                        hx-swap="outerHTML">Edit</button>
-                <form method="POST" action="/steps/{{.ID}}/delete" class="inline-form"
-                      hx-post="/steps/{{.ID}}/delete"
-                      hx-target="#fabrication-steps-panel"
-                      hx-select="#fabrication-steps-panel"
-                      hx-swap="outerHTML"
-                      hx-confirm="Delete this step?">
-                    <button type="submit" class="button button--destructive button--small">Delete</button>
-                </form>
+                <div class="fab-step__actions">
+                    <button class="button button--ghost button--small"
+                            hx-get="/steps/{{.ID}}/edit"
+                            hx-target="#fabrication-steps-panel"
+                            hx-select="#fabrication-steps-panel"
+                            hx-swap="outerHTML">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" stroke-linejoin="round"/><path d="M14.5 6.5l3 3" stroke-linecap="round"/></svg>
+                        Edit
+                    </button>
+                    <form method="POST" action="/steps/{{.ID}}/delete" class="inline-form"
+                          hx-post="/steps/{{.ID}}/delete"
+                          hx-target="#fabrication-steps-panel"
+                          hx-select="#fabrication-steps-panel"
+                          hx-swap="outerHTML"
+                          hx-confirm="Delete this step?">
+                        <button type="submit" class="button button--ghost button--small" style="color:var(--color-destructive);">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Delete
+                        </button>
+                    </form>
+                </div>
             </div>
             {{end}}
         </li>

@@ -53,6 +53,8 @@ var schemaStatements = []string{
 	createActivityLogTable,
 	createActivityLogCreatedAtIndex,
 	createActivityLogTargetIndex,
+	// Migration 010 – admin notification banners
+	createNotificationsTable,
 }
 
 var dataStatements = []string{
@@ -315,6 +317,16 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_created_at
 const createActivityLogTargetIndex = `
 CREATE INDEX IF NOT EXISTS idx_activity_log_target
     ON activity_log (target_type, target_id);`
+
+const createNotificationsTable = `
+CREATE TABLE IF NOT EXISTS notifications (
+    id           BIGSERIAL PRIMARY KEY,
+    message      TEXT NOT NULL,
+    level        VARCHAR(20) NOT NULL DEFAULT 'info'
+                     CHECK (level IN ('info', 'warning', 'critical')),
+    author       TEXT NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`
 
 // seedEquipment inserts the default equipment rows when the database is blank
 // (no users, no samples, and no equipment present yet).  Matches the seed block

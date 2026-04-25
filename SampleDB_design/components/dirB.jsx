@@ -327,7 +327,9 @@ function B_WikiArticle({ setScreen }) {
 }
 
 function B_Booking() {
-  const hours = Array.from({length:12},(_,i)=>i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
+  const scrollRef = React.useRef(null);
+  React.useEffect(()=>{ if(scrollRef.current) scrollRef.current.scrollLeft = 8 * 72; }, []);
   return (
     <>
       <B_Topbar title="Equipment" crumbs="Friday, Apr 19" actions={<><button className="btn btn--sm">‹</button><button className="btn btn--sm">Today</button><button className="btn btn--sm">›</button><button className="btn btn--primary"><Ic.Plus/>Book</button></>}/>
@@ -336,25 +338,43 @@ function B_Booking() {
       </div>
       <div className="content">
         <div className="timeline-wrap">
-          <div className="timeline-wrap__scroll">
+          <div className="timeline-wrap__scroll" ref={scrollRef}>
             <div className="tline">
               <div className="tline-head">
                 <div className="tline-head__left">Equipment</div>
                 <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
               </div>
-              {EQUIPMENT.map(eq=>(
-                <div className="tline-row" key={eq.id}>
-                  <div className="tline-row__left"><Ic.Beaker style={{width:13,height:13,color:'var(--text-muted)'}}/>{eq.name}</div>
-                  <div className="tline-lane">
-                    {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                      const left=(b.start-8)*72, w=(b.end-b.start)*72;
-                      return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
-                        <strong style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{b.user}</strong><span style={{opacity:.7, fontSize:11, marginLeft:4}}>{b.purpose}</span>
-                      </div>;
-                    })}
+              {EQUIPMENT.map(eq=>{
+                const access = eq.access || 'open';
+                const rowCls = 'tline-row' + (access === 'no-access' ? ' tline-row--noaccess' : '');
+                return (
+                <div className={rowCls} key={eq.id}>
+                  <div className="tline-row__left">
+                    {access === 'no-access' ? <Ic.Lock className="tline-row__lock"/> : <Ic.Beaker style={{width:13,height:13,color:'var(--text-muted)',flexShrink:0}}/>}
+                    <span className="tline-row__name">{eq.name}</span>
+                    {access === 'admin-view' && <span className="tline-row__access-badge">view</span>}
                   </div>
+                  {access === 'no-access' ? (
+                    <div className="tline-lane tline-lane--noaccess">
+                      <div className="lane-locked-msg">
+                        <Ic.Lock style={{width:11, height:11}}/>
+                        <span>{eq.accessNote || 'restricted'}</span>
+                        <button className="btn-request">request</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={'tline-lane' + (access === 'admin-view' ? ' tline-lane--admin' : '')} title={access === 'admin-view' ? 'View-only · admin' : undefined}>
+                      {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                        const left=b.start*72, w=(b.end-b.start)*72;
+                        return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
+                          <strong style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{b.user}</strong><span style={{opacity:.7, fontSize:11, marginLeft:4}}>{b.purpose}</span>
+                        </div>;
+                      })}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -437,6 +457,13 @@ function B_Admin() {
             ))}</tbody>
           </table>
         </div>
+        <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8, marginTop:16}}>
+          <div style={{padding:'10px 14px',borderBottom:'1px solid var(--b-border)'}}>
+            <strong style={{fontSize:13}}>Notifications</strong>
+            <div style={{fontSize:11.5,color:'var(--text-muted)',marginTop:2,fontFamily:'JetBrains Mono,monospace'}}>banner shown until each user dismisses</div>
+          </div>
+          <NotifAdminPanel direction="B"/>
+        </div>
       </div>
     </>
   );
@@ -448,6 +475,7 @@ function DirectionB({ screen, setScreen, activeSample, setActiveSample }) {
       <div className="app-shell">
         <B_Sidebar screen={screen} setScreen={setScreen}/>
         <div className="main">
+          <B_NotifBanner/>
           {screen==='dashboard' && <B_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen==='samples' && <B_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen==='detail' && <B_Detail sample={activeSample} setScreen={setScreen}/>}

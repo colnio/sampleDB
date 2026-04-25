@@ -132,6 +132,13 @@ func (m *mockService) GetEquipmentReport(_ context.Context, _ int, _, _ string) 
 func (m *mockService) ListAPIUsers(_ context.Context) ([]admin.APIUser, error) {
 	return m.apiUsers, m.listUsersErr
 }
+func (m *mockService) ListNotifications(_ context.Context) ([]admin.Notification, error) {
+	return nil, nil
+}
+func (m *mockService) CreateNotification(_ context.Context, _, _, _ string) (admin.Notification, error) {
+	return admin.Notification{}, nil
+}
+func (m *mockService) DeleteNotification(_ context.Context, _ int64) error { return nil }
 
 // ---------------------------------------------------------------------------
 // Service tests — GetAllEquipment

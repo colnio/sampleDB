@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"golang.org/x/crypto/bcrypt"
 
 	"sampleDB/internal/dbiface"
 	"sampleDB/internal/web"
@@ -22,9 +23,13 @@ type Service interface {
 
 	// Bookings
 	GetBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, error)
+	GetBooking(ctx context.Context, bookingID int) (Booking, error)
 	CheckConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error)
 	Create(ctx context.Context, p CreateParams) (int, error)
 	Delete(ctx context.Context, bookingID, userID int, isAdmin bool) error
+
+	// Auth helpers
+	VerifyUserPassword(ctx context.Context, userID int, password string) (bool, error)
 }
 
 // DBService is the concrete Service implementation backed by PostgreSQL.
@@ -180,6 +185,38 @@ func (s *DBService) Create(ctx context.Context, p CreateParams) (int, error) {
 // Delete removes a booking. Admins may delete any booking; non-admins must own it.
 // Returns web.ErrNotFound if the booking doesn't exist, web.ErrForbidden if
 // the user is not the owner and is not an admin.
+// GetBooking returns a single booking by ID.
+func (s *DBService) GetBooking(ctx context.Context, bookingID int) (Booking, error) {
+	var b Booking
+	err := s.db.QueryRow(ctx,
+		`SELECT b.booking_id, b.equipment_id, b.user_id, COALESCE(u.username,''),
+		        b.start_time, b.end_time, COALESCE(b.purpose,''), b.created_at
+		 FROM bookings b
+		 LEFT JOIN users u ON b.user_id = u.user_id
+		 WHERE b.booking_id = $1`, bookingID,
+	).Scan(&b.ID, &b.EquipmentID, &b.UserID, &b.Username,
+		&b.StartTime, &b.EndTime, &b.Purpose, &b.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return b, web.ErrNotFound
+	}
+	return b, err
+}
+
+// VerifyUserPassword checks the given password against the stored bcrypt hash for the user.
+func (s *DBService) VerifyUserPassword(ctx context.Context, userID int, password string) (bool, error) {
+	var hash string
+	err := s.db.QueryRow(ctx,
+		"SELECT password_hash FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
+		userID).Scan(&hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil, nil
+}
+
 func (s *DBService) Delete(ctx context.Context, bookingID, userID int, isAdmin bool) error {
 	var ownerID int
 	err := s.db.QueryRow(ctx,

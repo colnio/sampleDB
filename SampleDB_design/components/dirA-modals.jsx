@@ -177,7 +177,7 @@ function A_BookSlotModal({ open, onClose, onSave, prefill }) {
       <div className="field">
         <label>Equipment</label>
         <select value={equipment} onChange={e=>setEquipment(Number(e.target.value))}>
-          {EQUIPMENT.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+          {EQUIPMENT.filter(e=>e.access!=='no-access' && e.access!=='admin-view').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
       </div>
       <div className="field-row">
@@ -187,11 +187,15 @@ function A_BookSlotModal({ open, onClose, onSave, prefill }) {
         </div>
         <div className="field">
           <label>Start time</label>
-          <input type="time" value={start} onChange={e=>setStart(e.target.value)}/>
+          <select value={start} onChange={e=>setStart(e.target.value)}>
+            {Array.from({length: 24*4}, (_,i)=>{ const h=Math.floor(i/4), m=(i%4)*15; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }).map(t=> <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div className="field">
           <label>End time</label>
-          <input type="time" value={end} onChange={e=>setEnd(e.target.value)}/>
+          <select value={end} onChange={e=>setEnd(e.target.value)}>
+            {Array.from({length: 24*4}, (_,i)=>{ const h=Math.floor(i/4), m=(i%4)*15; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }).map(t=> <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
       </div>
       <div className="field">
@@ -259,3 +263,184 @@ function A_AddEquipmentModal({ open, onClose, onSave }) {
 }
 
 Object.assign(window, { A_Modal, A_AddGroupModal, A_EditUserModal, A_BookSlotModal, A_AddEquipmentModal });
+
+
+// ===========================================================
+// Sample detail action modals
+// ===========================================================
+
+function A_AddKeywordModal({ open, onClose, onAdd, existing = [] }) {
+  const [val, setVal] = React.useState('');
+  const [picked, setPicked] = React.useState([]);
+  React.useEffect(() => { if (open) { setVal(''); setPicked([]); } }, [open]);
+  const SUGGEST = ['MBE','CVD','heterostructure','quantum','2D','photovoltaic','superconductor','low-T','optical','electrical','spectroscopy','characterization','annealed'];
+  const togglePick = (k) => setPicked(p => p.includes(k) ? p.filter(x=>x!==k) : [...p,k]);
+  const submit = () => {
+    const all = [...picked];
+    const trimmed = val.trim();
+    if (trimmed && !all.includes(trimmed)) all.push(trimmed);
+    if (all.length) onAdd(all);
+    onClose();
+  };
+  return (
+    <A_Modal open={open} onClose={onClose} title="Add keywords" subtitle="Tag this sample to make it easier to find. Comma-separate multiple keywords or pick from suggestions." width={500}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className="btn btn--primary" onClick={submit} disabled={!val.trim() && !picked.length}>Add {picked.length + (val.trim()?1:0)} keyword{(picked.length + (val.trim()?1:0))===1?'':'s'}</button></>}>
+      <div className="field">
+        <label>New keyword</label>
+        <input autoFocus value={val} onChange={e=>setVal(e.target.value)} placeholder="e.g. graphene, MBE, transport" onKeyDown={e=>{if(e.key==='Enter')submit();}}/>
+      </div>
+      <div>
+        <label style={{fontSize:12, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.04em'}}>Suggestions</label>
+        <div className="dirA-modal__chips">
+          {SUGGEST.filter(s => !existing.includes(s)).map(s => (
+            <label key={s} className="dirA-modal__chip">
+              <input type="checkbox" checked={picked.includes(s)} onChange={()=>togglePick(s)}/>
+              {s}
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_EditSampleModal({ open, onClose, sample, onSave }) {
+  const s = sample || {};
+  const [name, setName] = React.useState(s.name || '');
+  const [status, setStatus] = React.useState(s.status || 'active');
+  const [owner, setOwner] = React.useState(s.owner || '');
+  const [palette, setPalette] = React.useState(s.palette || 'blue');
+  React.useEffect(() => { if (open && sample) { setName(sample.name); setStatus(sample.status); setOwner(sample.owner); setPalette(sample.palette); } }, [open, sample]);
+  const submit = () => { onSave({ ...sample, name, status, owner, palette }); onClose(); };
+  return (
+    <A_Modal open={open} onClose={onClose} title="Edit sample" subtitle={s.id ? `Update sample ${s.id}` : 'Update sample details'} width={540}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className="btn btn--primary" onClick={submit}>Save changes</button></>}>
+      <div className="field"><label>Name</label><input autoFocus value={name} onChange={e=>setName(e.target.value)}/></div>
+      <div className="field-row">
+        <div className="field"><label>Owner</label>
+          <select value={owner} onChange={e=>setOwner(e.target.value)}>{['msmith','j.chen','a.patel','k.nakamura','r.ivanov','l.okafor'].map(u=><option key={u}>{u}</option>)}</select>
+        </div>
+        <div className="field"><label>Status</label>
+          <select value={status} onChange={e=>setStatus(e.target.value)}>
+            <option value="active">Active</option><option value="progress">In Progress</option>
+            <option value="archived">Archived</option><option value="pending">Pending</option>
+          </select>
+        </div>
+      </div>
+      <div className="field"><label>Thumbnail palette</label>
+        <div className="dirA-modal__chips">
+          {['blue','teal','violet','emerald','amber','rose'].map(p => (
+            <label key={p} className="dirA-modal__chip" style={{borderColor: palette===p ? 'var(--color-primary)' : undefined, background: palette===p ? 'rgba(37,99,235,0.08)' : undefined, color: palette===p ? 'var(--color-primary)' : undefined, fontWeight: palette===p?600:400}}>
+              <input type="radio" name="palette" checked={palette===p} onChange={()=>setPalette(p)}/>{p}
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_ShareSampleModal({ open, onClose, sample }) {
+  const s = sample || {};
+  const link = typeof window !== 'undefined' ? `${window.location.origin}/samples/${s.id || 'SMP-000'}` : '';
+  const [copied, setCopied] = React.useState(false);
+  const [scope, setScope] = React.useState('group');
+  const [users, setUsers] = React.useState(['j.chen']);
+  React.useEffect(() => { if (open) { setCopied(false); setScope('group'); setUsers(['j.chen']); } }, [open]);
+  const toggleUser = (u) => setUsers(arr => arr.includes(u) ? arr.filter(x=>x!==u) : [...arr,u]);
+  const copy = () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(link).catch(()=>{});
+    setCopied(true); setTimeout(()=>setCopied(false), 1500);
+  };
+  return (
+    <A_Modal open={open} onClose={onClose} title="Share sample" subtitle={`Give others access to ${s.id || 'this sample'}`} width={540}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Close</button><button className="btn btn--primary" onClick={onClose}>Done</button></>}>
+      <div className="field"><label>Direct link</label>
+        <div style={{display:'flex', gap: 8}}>
+          <input readOnly value={link} style={{flex:1, fontFamily:'var(--font-family-mono)', fontSize:12.5}}/>
+          <button className="btn btn--secondary" onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
+        </div>
+      </div>
+      <div>
+        <label style={{fontSize:12, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.04em'}}>Access</label>
+        <div className="dirA-modal__radios">
+          {[
+            {v:'private', t:'Private', d:'Only you and admins can see this sample.'},
+            {v:'group',   t:'My group (Barbaros)', d:'All members of your lab group can view.'},
+            {v:'lab',     t:'Whole lab', d:'Anyone in the institution with access to SampleDB.'},
+            {v:'link',    t:'Anyone with the link', d:'Read-only public access — useful for collaborators outside the lab.'},
+          ].map(o => (
+            <label key={o.v} className={'dirA-modal__radio ' + (scope===o.v?'active':'')}>
+              <input type="radio" name="scope" checked={scope===o.v} onChange={()=>setScope(o.v)}/>
+              <div><strong>{o.t}</strong><div>{o.d}</div></div>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>Invite specific users</label>
+        <div className="dirA-modal__chips">
+          {['j.chen','a.patel','k.nakamura','r.ivanov','l.okafor'].map(u => (
+            <label key={u} className="dirA-modal__chip">
+              <input type="checkbox" checked={users.includes(u)} onChange={()=>toggleUser(u)}/>{u}
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_DeleteConfirmModal({ open, onClose, onConfirm, title='Delete?', body='This cannot be undone.', confirmLabel='Delete', danger=true }) {
+  const [val, setVal] = React.useState('');
+  const requiresType = typeof body === 'object' && body.requireType;
+  const expected = requiresType ? body.requireType : null;
+  React.useEffect(() => { if (open) setVal(''); }, [open]);
+  return (
+    <A_Modal open={open} onClose={onClose} title={title} width={460}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className={'btn ' + (danger?'btn--danger':'btn--primary')} onClick={()=>{ onConfirm(); onClose(); }} disabled={requiresType && val !== expected} style={danger?{background:'var(--color-destructive)', color:'#fff', borderColor:'var(--color-destructive)'}:undefined}>{confirmLabel}</button></>}>
+      <div style={{fontSize: 14, lineHeight: 1.55, color:'var(--text-strong)'}}>
+        {requiresType ? body.message : body}
+      </div>
+      {requiresType && (
+        <div className="field">
+          <label>Type <code style={{background:'var(--surface-muted)', padding:'1px 6px', borderRadius:4, fontFamily:'var(--font-family-mono)'}}>{expected}</code> to confirm</label>
+          <input autoFocus value={val} onChange={e=>setVal(e.target.value)}/>
+        </div>
+      )}
+    </A_Modal>
+  );
+}
+
+function A_StepModal({ open, onClose, onSave, step, index, mode }) {
+  const [title, setTitle] = React.useState('');
+  const [date, setDate] = React.useState('');
+  const [by, setBy] = React.useState('msmith');
+  const [tool, setTool] = React.useState('');
+  const [notes, setNotes] = React.useState('');
+  React.useEffect(() => {
+    if (!open) return;
+    if (step) { setTitle(step.title||''); setDate(step.date||''); setBy(step.by||'msmith'); setTool(step.tool||''); setNotes(step.notes||''); }
+    else { setTitle(''); setDate(new Date().toISOString().slice(0,10)); setBy('msmith'); setTool(''); setNotes(''); }
+  }, [open, step]);
+  const submit = () => { onSave({ title, date, by, tool, notes }, index); onClose(); };
+  const isEdit = mode === 'edit';
+  return (
+    <A_Modal open={open} onClose={onClose} title={isEdit ? `Edit step ${String((index||0)+1).padStart(2,'0')}` : 'Add fabrication step'} subtitle={isEdit ? 'Update the recipe entry for this fabrication step.' : 'Record a new step in the fabrication recipe.'} width={580}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className="btn btn--primary" onClick={submit} disabled={!title.trim()}>{isEdit ? 'Save step' : 'Add step'}</button></>}>
+      <div className="field"><label>Step title</label><input autoFocus value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. CA2DM Optical Lithography"/></div>
+      <div className="field-row">
+        <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+        <div className="field"><label>Performed by</label>
+          <select value={by} onChange={e=>setBy(e.target.value)}>{['msmith','j.chen','a.patel','k.nakamura','r.ivanov','l.okafor'].map(u=><option key={u}>{u}</option>)}</select>
+        </div>
+        <div className="field"><label>Tool / station</label><input value={tool} onChange={e=>setTool(e.target.value)} placeholder="e.g. Bench 3, MBE-A"/></div>
+      </div>
+      <div className="field"><label>Notes <span style={{fontWeight:400, color:'var(--text-muted)'}}>(optional)</span></label>
+        <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Recipe parameters, observations, deviations..." style={{minHeight: 90, resize:'vertical'}}/>
+      </div>
+    </A_Modal>
+  );
+}
+
+Object.assign(window, { A_AddKeywordModal, A_EditSampleModal, A_ShareSampleModal, A_DeleteConfirmModal, A_StepModal });

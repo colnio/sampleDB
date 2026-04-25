@@ -4,6 +4,15 @@ package admin
 
 import "time"
 
+// Notification is an admin-posted banner shown to all users.
+type Notification struct {
+	ID        int64     `json:"id"`
+	Message   string    `json:"message"`
+	Level     string    `json:"level"`
+	Author    string    `json:"author"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // Equipment represents a piece of lab equipment.
 type Equipment struct {
 	ID          int      `json:"id"`
@@ -41,11 +50,12 @@ type BasePageData struct {
 // AdminPageData is the template data for the admin page.
 type AdminPageData struct {
 	BasePageData
-	Users     []UserAccess
-	Equipment []Equipment
-	Groups    []Group
-	Error     string
-	Success   string
+	Users         []UserAccess
+	Equipment     []Equipment
+	Groups        []Group
+	Notifications []Notification
+	Error         string
+	Success       string
 }
 
 // BookingRecord is a single row in the equipment usage CSV report.

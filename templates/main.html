@@ -97,27 +97,27 @@
 <section id="samples-panel" class="samples-panel" aria-live="polite">
     {{if .Samples}}
         {{if eq .View "table"}}
-        <div class="card" style="padding:0;overflow:hidden;">
-            <table class="samples-table" style="width:100%;border-collapse:collapse;">
+        <div class="data-table-wrap">
+            <table class="data-table">
                 <thead>
-                    <tr style="background:var(--surface-muted);text-align:left;">
-                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">ID</th>
-                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Name</th>
-                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Owner</th>
-                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Status</th>
-                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Files</th>
-                        <th style="padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Created</th>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Owner</th>
+                        <th>Status</th>
+                        <th>Files</th>
+                        <th>Created</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{range .Samples}}
-                    <tr style="border-top:1px solid var(--border-subtle);">
-                        <td class="mono" style="padding:10px 14px;font-size:12.5px;color:var(--text-muted);">SMP-{{printf "%03d" .ID}}</td>
-                        <td style="padding:10px 14px;"><a href="/samples/{{.ID}}" style="color:var(--text-strong);font-weight:500;">{{.Name}}</a></td>
-                        <td style="padding:10px 14px;">{{if .OwnerUsername}}{{.OwnerUsername}}{{else if .Owner}}{{.Owner}}{{else}}Unassigned{{end}}</td>
-                        <td style="padding:10px 14px;"><span class="status-chip status-chip--{{statusChipClass .Status}}"><span class="status-chip__dot"></span>{{statusLabel .Status}}</span></td>
-                        <td style="padding:10px 14px;">{{if .FirstImageID}}&ge;1{{else}}0{{end}}</td>
-                        <td class="mono" style="padding:10px 14px;font-size:12.5px;color:var(--text-muted);">{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <tr>
+                        <td class="cell--id">SMP-{{printf "%03d" .ID}}</td>
+                        <td><a href="/samples/{{.ID}}" style="color:var(--text-strong);font-weight:500;">{{.Name}}</a></td>
+                        <td>{{if .OwnerUsername}}{{.OwnerUsername}}{{else if .Owner}}{{.Owner}}{{else}}Unassigned{{end}}</td>
+                        <td><span class="status-chip status-chip--{{statusChipClass .Status}}"><span class="status-chip__dot"></span>{{statusLabel .Status}}</span></td>
+                        <td>{{if .FirstImageID}}&ge;1{{else}}0{{end}}</td>
+                        <td class="cell--mono">{{.CreatedAt.Format "2006-01-02"}}</td>
                     </tr>
                     {{end}}
                 </tbody>

@@ -15,56 +15,55 @@
     </div>
 </div>
 
-<section class="sample-detail" style="max-width:860px;">
-    <section class="form-container card" style="padding:24px;">
+<div style="max-width:860px;">
+    <div class="card" style="padding:24px;">
         <h3 style="margin:0 0 4px;font-size:15px;color:var(--color-primary);">Sample Details</h3>
         <p class="muted" style="font-size:13px;margin:0 0 20px;">Fill in the basics. You'll add fabrication steps after saving.</p>
         <form action="/samples/new" method="POST" class="stacked-form">
             <div class="form-group">
                 <label for="sample-name">Sample Name</label>
-                <input id="sample-name" type="text" name="name" required>
+                <input id="sample-name" type="text" name="name" placeholder="e.g. GaAs Wafer Batch 001" required>
             </div>
 
             <div class="form-group">
                 <label for="sample-description">Description</label>
-                <textarea id="sample-description" name="description"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="sample-keywords">Keywords (comma-separated)</label>
-                <input id="sample-keywords" type="text" name="keywords">
+                <textarea id="sample-description" name="description" placeholder="Growth conditions, substrate, key parameters…"></textarea>
             </div>
 
             {{if .IsAdmin}}
-            <div class="form-group">
-                <label for="owner-select">Owner</label>
-                <select id="owner-select" name="owner_user_id">
-                    <option value="">-- Unassigned --</option>
-                    {{range .Users}}
-                    <option value="{{.ID}}">{{.Username}}</option>
-                    {{end}}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="status-select">Status</label>
-                <select id="status-select" name="status">
-                    <option value="active" selected>Active</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="archived">Archived</option>
-                </select>
-                <p class="form-hint">Admin only — defaults to Active.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label for="owner-select">Owner</label>
+                    <select id="owner-select" name="owner_user_id">
+                        <option value="">-- Unassigned --</option>
+                        {{range .Users}}
+                        <option value="{{.ID}}">{{.Username}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="status-select">Status</label>
+                    <select id="status-select" name="status">
+                        <option value="active" selected>Active</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
             </div>
             {{end}}
 
-            <div class="form-actions">
-                <button type="submit" class="button button--primary button--block">Create Sample</button>
+            <div class="form-group">
+                <label for="sample-keywords">Keywords (comma-separated)</label>
+                <input id="sample-keywords" type="text" name="keywords" placeholder="GaAs, MBE, heterostructure">
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                <a href="/samples" class="button button--ghost">Cancel</a>
+                <button type="submit" class="button button--primary">Create Sample</button>
             </div>
         </form>
-    </section>
-
-    <a href="/samples" class="back-link">← Back to samples</a>
-</section>
+    </div>
+</div>
 {{end}}
 
 {{template "base" .}}

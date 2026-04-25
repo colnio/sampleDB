@@ -36,6 +36,7 @@
     <div class="app-shell">
         {{template "header" .}}
         <main id="page-root" class="app-main" role="main">
+            <div id="notif-area" aria-live="polite"></div>
             {{template "content" .}}
         </main>
     </div>
@@ -57,6 +58,68 @@
     })();
     </script>
     {{block "footer_scripts" .}}{{end}}
+    <script>
+    (function () {
+        var STORAGE_KEY = 'sdb_dismissed_notifs';
+        function getDismissed() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; }
+        }
+        function addDismissed(id) {
+            var d = getDismissed();
+            if (d.indexOf(id) < 0) { d.push(id); }
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch(e) {}
+        }
+        var levelLabel = { info: 'Info', warning: 'Warning', critical: 'Critical' };
+        function renderBanners(notifs) {
+            var area = document.getElementById('notif-area');
+            if (!area) return;
+            var dismissed = getDismissed();
+            var visible = notifs.filter(function(n) { return dismissed.indexOf(n.id) < 0; });
+            if (!visible.length) { area.innerHTML = ''; return; }
+            var html = '<div class="notif-stack">';
+            visible.forEach(function(n) {
+                var lbl = levelLabel[n.level] || n.level;
+                var date = n.created_at ? new Date(n.created_at).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : '';
+                html += '<div class="notif-banner notif-banner--' + n.level + '" data-notif-id="' + n.id + '">' +
+                    '<div class="notif-banner__bar"></div>' +
+                    '<div class="notif-banner__body">' +
+                        '<div class="notif-banner__head">' +
+                            '<span class="notif-banner__level">' + lbl + '</span>' +
+                            '<span class="notif-banner__msg">' + escHtml(n.message) + '</span>' +
+                        '</div>' +
+                        '<div class="notif-banner__meta">posted by ' + escHtml(n.author) + (date ? ' · ' + date : '') + '</div>' +
+                    '</div>' +
+                    '<button class="notif-banner__close" aria-label="Dismiss" data-dismiss="' + n.id + '">&times;</button>' +
+                '</div>';
+            });
+            html += '</div>';
+            area.innerHTML = html;
+            area.querySelectorAll('[data-dismiss]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = parseInt(this.getAttribute('data-dismiss'), 10);
+                    addDismissed(id);
+                    var banner = area.querySelector('[data-notif-id="' + id + '"]');
+                    if (banner) { banner.style.opacity = '0'; banner.style.transform = 'translateY(-4px)'; banner.style.transition = 'opacity 0.15s,transform 0.15s'; setTimeout(function() { banner.remove(); }, 160); }
+                });
+            });
+        }
+        function escHtml(s) {
+            return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function loadNotifications() {
+            fetch('/api/notifications', { credentials: 'same-origin' })
+                .then(function(r) { return r.ok ? r.json() : []; })
+                .then(renderBanners)
+                .catch(function() {});
+        }
+        document.addEventListener('DOMContentLoaded', loadNotifications);
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail && evt.detail.target && evt.detail.target.id === 'page-root') {
+                loadNotifications();
+            }
+        });
+    })();
+    </script>
 </body>
 </html>
 {{end}}

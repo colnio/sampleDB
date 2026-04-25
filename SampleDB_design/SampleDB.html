@@ -435,24 +435,42 @@ button { font-family: inherit; }
 .dirA .tline {
   --equipment-col: 180px;
   --hour-w: 80px;
-  --lane-w: calc(var(--hour-w) * 12);
+  --lane-w: calc(var(--hour-w) * 24);
   min-width: calc(var(--equipment-col) + var(--lane-w));
 }
-.dirA .tline-head { display:flex; position: sticky; top: 0; z-index: 2; }
-.dirA .tline-head__left { width: var(--equipment-col); min-width: var(--equipment-col); padding: 14px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); }
-.dirA .tline-hours { display: grid; grid-template-columns: repeat(12, var(--hour-w)); background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); border-left: 1px solid var(--border-subtle); }
+.dirA .tline-head { display:flex; position: sticky; top: 0; z-index: 3; }
+.dirA .tline-head__left { width: var(--equipment-col); min-width: var(--equipment-col); padding: 14px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); position: sticky; left: 0; z-index: 4; }
+.dirA .tline-hours { display: grid; grid-template-columns: repeat(24, var(--hour-w)); background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); border-left: 1px solid var(--border-subtle); }
 .dirA .tline-hour { padding: 14px 8px; font-size: 12px; font-weight: 600; color: var(--text-muted); border-right: 1px solid var(--border-subtle); }
 .dirA .tline-row { display:flex; }
-.dirA .tline-row__left { width: var(--equipment-col); min-width: var(--equipment-col); padding: 14px; font-size: 13px; font-weight: 600; color: var(--text-strong); border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); display:flex; align-items:center; gap:8px; }
-.dirA .tline-row__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); }
+.dirA .tline-row__left { width: var(--equipment-col); min-width: var(--equipment-col); padding: 14px; font-size: 13px; font-weight: 600; color: var(--text-strong); border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); display:flex; align-items:center; gap:8px; background: var(--surface-default); position: sticky; left: 0; z-index: 2; box-shadow: 1px 0 0 var(--border-subtle); }
+.dirA .tline-row__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); flex-shrink:0; }
+.dirA .tline-row__name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dirA .tline-row__lock { color: var(--text-muted); width:13px; height:13px; flex-shrink:0; }
+.dirA .tline-row--admin .tline-row__dot { background: #f59e0b; }
+.dirA .tline-row--noaccess { opacity: 0.55; }
+.dirA .tline-row--noaccess .tline-row__dot { background: var(--text-muted); }
 .dirA .tline-lane { position: relative; width: var(--lane-w); min-width: var(--lane-w); height: 64px; border-bottom: 1px solid var(--border-subtle); border-left: 1px solid var(--border-subtle); background: var(--surface-default); }
-.dirA .tline-lane .slots { position:absolute; inset: 0; display: grid; grid-template-columns: repeat(12, var(--hour-w)); }
+.dirA .tline-lane .slots { position:absolute; inset: 0; display: grid; grid-template-columns: repeat(24, var(--hour-w)); pointer-events: none; }
 .dirA .tline-lane .slot { border-right: 1px dashed var(--border-subtle); }
-.dirA .tline-lane .slot:hover { background: rgba(37,99,235,0.06); }
 .dirA .tline-block { position: absolute; top: 8px; height: 48px; border-radius: 8px; background: var(--color-primary); color: #fff; padding: 6px 12px; display:flex; flex-direction: column; justify-content:center; font-size: 12px; font-weight: 600; box-shadow: 0 6px 14px rgba(37,99,235,0.35); overflow: hidden; }
 .dirA .tline-block--own { background: linear-gradient(135deg, #14532d, #16a34a); box-shadow: 0 6px 14px rgba(22,163,74,0.35); }
 .dirA .tline-block small { font-size: 10.5px; opacity: 0.85; font-weight: 500; }
 .dirA .tline-lane.locked { background: repeating-linear-gradient(-45deg, var(--surface-subtle) 0 10px, var(--surface-muted) 10px 20px); }
+
+/* Access states — admin viewing restricted equipment (read-only) */
+.dirA .tline-lane--admin { cursor: not-allowed; background:
+  repeating-linear-gradient(-45deg, transparent 0 9px, rgba(245,158,11,0.06) 9px 10px), var(--surface-default); }
+.dirA .tline-lane--admin .tline-block { opacity: 0.78; box-shadow: none; background: #b45309; }
+.dirA .tline-lane--admin .tline-block--own { background: linear-gradient(135deg,#14532d,#16a34a); }
+.dirA .tline-row__access-badge { font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; padding:3px 7px; border-radius:4px; background: rgba(245,158,11,0.12); color:#b45309; border:1px solid rgba(245,158,11,0.3); }
+:root[data-theme="dark"] .dirA .tline-row__access-badge { background: rgba(245,158,11,0.18); color:#fbbf24; border-color: rgba(245,158,11,0.4); }
+/* Access — no access (regular user) */
+.dirA .tline-lane--noaccess { cursor: not-allowed; background:
+  repeating-linear-gradient(-45deg, var(--surface-subtle) 0 10px, transparent 10px 20px); display:flex; align-items:center; justify-content:center; gap:10px; }
+.dirA .tline-lane--noaccess .lane-locked-msg { font-size: 12px; color: var(--text-muted); display:flex; align-items:center; gap:8px; position: sticky; left: calc(var(--equipment-col) + 16px); }
+.dirA .tline-lane--noaccess .btn-request { font-size: 11px; padding: 5px 10px; background: var(--surface-default); border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-strong); cursor:pointer; font-weight: 600; }
+.dirA .tline-lane--noaccess .btn-request:hover { background: var(--surface-muted); }
 
 /* ===========================================================
    DIRECTION B — Linear-inspired (dense, monospace, subtle)
@@ -615,14 +633,27 @@ button { font-family: inherit; }
 /* booking — dirB */
 .dirB .timeline-wrap { background: var(--surface-default); border: 1px solid var(--b-border); border-radius: 8px; overflow: hidden; }
 .dirB .timeline-wrap__scroll { overflow-x: auto; }
-.dirB .tline { --equipment-col: 160px; --hour-w: 72px; --lane-w: calc(var(--hour-w) * 12); min-width: calc(var(--equipment-col) + var(--lane-w)); }
+.dirB .tline { --equipment-col: 160px; --hour-w: 72px; --lane-w: calc(var(--hour-w) * 24); min-width: calc(var(--equipment-col) + var(--lane-w)); }
 .dirB .tline-head { display:flex; background: var(--surface-subtle); border-bottom: 1px solid var(--b-border); }
 .dirB .tline-head__left { width: var(--equipment-col); padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.dirB .tline-hours { display:grid; grid-template-columns: repeat(12, var(--hour-w)); border-left: 1px solid var(--b-border); }
+.dirB .tline-hours { display:grid; grid-template-columns: repeat(24, var(--hour-w)); border-left: 1px solid var(--b-border); }
 .dirB .tline-hour { padding: 10px 8px; font-size: 11.5px; color: var(--text-muted); border-right: 1px solid var(--b-border); font-family: 'JetBrains Mono', monospace; }
 .dirB .tline-row { display:flex; }
-.dirB .tline-row__left { width: var(--equipment-col); padding: 10px 14px; font-size: 12.5px; color: var(--text-strong); border-right: 1px solid var(--b-border); border-bottom: 1px solid var(--b-border); font-weight: 500; display:flex; align-items:center; gap: 8px; }
+.dirB .tline-row__left { width: var(--equipment-col); padding: 10px 14px; font-size: 12.5px; color: var(--text-strong); border-right: 1px solid var(--b-border); border-bottom: 1px solid var(--b-border); font-weight: 500; display:flex; align-items:center; gap: 8px; background: var(--surface-default); position: sticky; left: 0; z-index: 2; }
+.dirB .tline-head__left { position: sticky; left: 0; z-index: 4; background: var(--surface-subtle); }
+.dirB .tline-row__name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dirB .tline-row__lock { width: 12px; height: 12px; color: var(--text-muted); flex-shrink:0; }
+.dirB .tline-row--noaccess { opacity: 0.6; }
 .dirB .tline-lane { position: relative; width: var(--lane-w); height: 48px; border-bottom: 1px solid var(--b-border); background-image: linear-gradient(to right, var(--b-border) 1px, transparent 1px); background-size: var(--hour-w) 100%; }
+.dirB .tline-lane--admin { background-color: rgba(245,158,11,0.04); cursor: not-allowed; }
+.dirB .tline-lane--admin .tline-block { background: rgba(245,158,11,0.14); color:#92400e; border-color: rgba(245,158,11,0.4); }
+:root[data-theme="dark"] .dirB .tline-lane--admin .tline-block { color: #fbbf24; }
+.dirB .tline-lane--noaccess { background:
+  repeating-linear-gradient(-45deg, var(--surface-subtle) 0 8px, transparent 8px 16px); cursor: not-allowed; display:flex; align-items:center; padding-left: 16px; gap:10px; }
+.dirB .tline-lane--noaccess .lane-locked-msg { font-size: 11px; color: var(--text-muted); position: sticky; left: calc(var(--equipment-col) + 14px); display:flex; align-items:center; gap: 6px; }
+.dirB .tline-lane--noaccess .btn-request { font-size: 10.5px; padding: 3px 8px; font-family: 'JetBrains Mono', monospace; background: transparent; border: 1px solid var(--b-border); border-radius: 4px; color: var(--text-strong); cursor:pointer; }
+.dirB .tline-row__access-badge { font-size: 9.5px; font-weight: 500; padding: 1px 6px; border-radius: 3px; background: rgba(245,158,11,0.12); color:#b45309; border: 1px solid rgba(245,158,11,0.3); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing:0.04em; }
+:root[data-theme="dark"] .dirB .tline-row__access-badge { color: #fbbf24; background: rgba(245,158,11,0.18); }
 .dirB .tline-block { position: absolute; top: 6px; height: 36px; border-radius: 5px; background: var(--b-accent-soft); color: var(--b-accent); border: 1px solid rgba(99,102,241,0.3); padding: 5px 10px; font-size: 12px; font-weight: 500; display:flex; align-items: center; gap: 6px; overflow: hidden; }
 .dirB .tline-block--own { background: rgba(16,185,129,0.12); color: #047857; border-color: rgba(16,185,129,0.3); }
 :root[data-theme="dark"] .dirB .tline-block--own { color: #34d399; }
@@ -765,14 +796,25 @@ button { font-family: inherit; }
 
 /* booking C */
 .dirC .timeline-wrap { overflow-x: auto; border-top: 2px solid var(--c-ink); border-bottom: 1px solid var(--c-line); }
-.dirC .tline { --equipment-col: 180px; --hour-w: 90px; --lane-w: calc(var(--hour-w) * 12); min-width: calc(var(--equipment-col) + var(--lane-w)); }
+.dirC .tline { --equipment-col: 180px; --hour-w: 90px; --lane-w: calc(var(--hour-w) * 24); min-width: calc(var(--equipment-col) + var(--lane-w)); }
 .dirC .tline-head { display:flex; border-bottom: 1px solid var(--c-line); }
 .dirC .tline-head__left { width: var(--equipment-col); padding: 14px 20px 14px 0; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.1em; }
-.dirC .tline-hours { display:grid; grid-template-columns: repeat(12, var(--hour-w)); }
+.dirC .tline-hours { display:grid; grid-template-columns: repeat(24, var(--hour-w)); }
 .dirC .tline-hour { padding: 14px 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); border-left: 1px solid var(--c-line); }
 .dirC .tline-row { display:flex; }
-.dirC .tline-row__left { width: var(--equipment-col); padding: 16px 20px 16px 0; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--c-ink); border-bottom: 1px solid var(--c-line); }
+.dirC .tline-row__left { width: var(--equipment-col); padding: 16px 20px 16px 0; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--c-ink); border-bottom: 1px solid var(--c-line); background: var(--c-paper); position: sticky; left: 0; z-index: 2; display:flex; align-items:center; gap:10px; }
+.dirC .tline-head__left { background: var(--c-paper); position: sticky; left: 0; z-index: 4; }
+.dirC .tline-row__name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dirC .tline-row__lock { width: 14px; height: 14px; color: var(--c-muted); flex-shrink: 0; }
+.dirC .tline-row--noaccess { opacity: 0.6; }
+.dirC .tline-row__access-badge { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; padding: 2px 7px; border: 1px solid var(--c-amber); color: var(--c-amber); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
 .dirC .tline-lane { position: relative; width: var(--lane-w); height: 70px; border-bottom: 1px solid var(--c-line); background-image: linear-gradient(to right, var(--c-line) 1px, transparent 1px); background-size: var(--hour-w) 100%; }
+.dirC .tline-lane--admin { background-color: var(--c-amber-bg); cursor: not-allowed; }
+.dirC .tline-lane--admin .tline-block { background: var(--c-amber); opacity: 0.85; }
+.dirC .tline-lane--noaccess { background:
+  repeating-linear-gradient(135deg, transparent 0 9px, var(--c-line) 9px 10px); cursor:not-allowed; display:flex; align-items:center; padding-left: 20px; }
+.dirC .tline-lane--noaccess .lane-locked-msg { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.08em; position: sticky; left: calc(var(--equipment-col) + 20px); display:flex; align-items:center; gap: 10px; }
+.dirC .tline-lane--noaccess .btn-request { background: var(--c-ink); color: var(--c-paper); border: none; padding: 5px 12px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; }
 .dirC .tline-block { position: absolute; top: 10px; height: 50px; border-radius: 0; background: var(--c-teal); color: #fff; padding: 8px 12px; font-size: 12px; display:flex; flex-direction: column; justify-content: center; overflow: hidden; }
 .dirC .tline-block--own { background: var(--c-amber); }
 .dirC .tline-block small { font-size: 10.5px; opacity: 0.85; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
@@ -785,6 +827,234 @@ button { font-family: inherit; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+
+/* ===========================================================
+   Direction A — Modal dialogs
+   =========================================================== */
+.dirA-modal__backdrop {
+  position: fixed; inset: 0; background: rgba(8, 12, 22, 0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+  padding: 20px; animation: dirA-fade 0.15s ease-out;
+}
+@keyframes dirA-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dirA-pop { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }
+.dirA-modal {
+  background: var(--surface-default); color: var(--text-strong);
+  border: 1px solid var(--border-subtle); border-radius: 14px;
+  width: 100%; max-height: calc(100vh - 40px); overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2);
+  border-top: 3px solid var(--color-primary);
+  display: flex; flex-direction: column;
+  animation: dirA-pop 0.18s ease-out;
+}
+.dirA-modal__head { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 22px 14px; border-bottom: 1px solid var(--border-subtle); }
+.dirA-modal__head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.01em; }
+.dirA-modal__sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+.dirA-modal__close { width: 30px; height: 30px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.dirA-modal__close:hover { background: var(--surface-muted); color: var(--text-strong); }
+.dirA-modal__body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.dirA-modal__body .field { margin: 0; }
+.dirA-modal__body .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.dirA-modal__foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--border-subtle); background: var(--surface-subtle); }
+.dirA-modal__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dirA-modal__chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-subtle); background: var(--surface-default); font-size: 12.5px; cursor: pointer; }
+.dirA-modal__chip:has(input:checked) { border-color: var(--color-primary); background: rgba(37, 99, 235, 0.08); color: var(--color-primary); font-weight: 600; }
+.dirA-modal__chip input { accent-color: var(--color-primary); }
+.dirA-modal__radios { display: flex; flex-direction: column; gap: 8px; }
+.dirA-modal__radio { display: flex; gap: 12px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-subtle); cursor: pointer; align-items: flex-start; }
+.dirA-modal__radio.active { border-color: var(--color-primary); background: rgba(37, 99, 235, 0.06); }
+.dirA-modal__radio input { margin-top: 4px; accent-color: var(--color-primary); }
+.dirA-modal__radio strong { display:block; font-size: 13.5px; }
+.dirA-modal__radio div > div { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.45; }
+.dirA-modal__userhead { display:flex; align-items:center; gap: 12px; padding: 12px; background: var(--surface-subtle); border-radius: 8px; }
+.dirA-modal__notice { padding: 12px 14px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 8px; font-size: 12.5px; color: var(--text-strong); line-height: 1.5; }
+.dirA-modal__notice strong { color: var(--color-primary); }
+
+/* ===========================================================
+   Direction A — Wiki attachments
+   =========================================================== */
+.wiki-attachments { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-subtle); }
+.wiki-attach-list { display: flex; flex-direction: column; gap: 8px; }
+.wiki-attach { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-subtle); }
+.wiki-attach:hover { border-color: var(--color-primary); }
+.wiki-attach__icon { width: 42px; height: 42px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; flex: none; letter-spacing: 0.04em; }
+.wiki-attach__icon--pdf { background: #dc2626; }
+.wiki-attach__icon--video { background: #7c3aed; }
+.wiki-attach__icon--xlsx { background: #15803d; }
+.wiki-attach__icon--docx { background: #2563eb; }
+.wiki-attach__icon--png, .wiki-attach__icon--jpg { background: #d97706; }
+.wiki-attach__meta { flex: 1; min-width: 0; }
+.wiki-attach__meta strong { display: block; font-size: 13.5px; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wiki-attach__meta div { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+.wiki-attach-drop { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border: 1.5px dashed var(--border-subtle); border-radius: 8px; font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
+.wiki-attach-drop:hover { border-color: var(--color-primary); color: var(--text-strong); cursor: pointer; }
+
+/* ===========================================================
+   Direction A — Mobile responsive
+   =========================================================== */
+@media (max-width: 900px) {
+  .direction-bar { flex-wrap: wrap; padding: 6px 10px; gap: 8px; }
+  .direction-bar__screens { flex-wrap: wrap; max-width: 100%; }
+  .direction-bar__label { display: none; }
+  .dirA .app-shell { grid-template-columns: 1fr; }
+  .dirA .sidebar { display: none; }
+  .dirA .main { padding: 16px 14px; max-height: calc(100vh - 50px); }
+  .dirA .topbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .dirA .topbar h1 { font-size: 22px; }
+  .dirA .topbar__actions { width: 100%; flex-wrap: wrap; }
+  .dirA .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+  .dirA .dashboard-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+  .dirA .detail-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+  .dirA .tokens-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+  .dirA .samples-grid { grid-template-columns: 1fr !important; }
+  .dirA .field-row { grid-template-columns: 1fr !important; gap: 10px !important; }
+  .dirA .wiki-grid { grid-template-columns: 1fr !important; }
+  .dirA .admin-grid { grid-template-columns: 1fr !important; }
+  .dirA .toolbar { flex-wrap: wrap; gap: 6px; }
+  .dirA .toolbar > .seg { margin-left: auto; }
+  .dirA .timeline-wrap { overflow-x: auto; }
+  .dirA .timeline { min-width: 800px; }
+  .dirA .data-table-wrap, .dirA .card table { overflow-x: auto; display: block; }
+  .dirA .card { padding: 16px !important; }
+  .dirA-modal { max-width: calc(100vw - 32px) !important; }
+  .dirA-modal__foot { flex-wrap: wrap; gap: 6px; }
+  .dirA-modal__foot .btn { flex: 1; min-width: 100px; }
+  .dirA-modal__foot .btn[style*="margin-right"] { flex-basis: 100%; }
+  .dirA .form-card { padding: 18px !important; }
+}
+@media (max-width: 600px) {
+  .direction-bar { font-size: 11px; }
+  .direction-bar__seg { padding: 4px 8px; font-size: 11px; }
+  .direction-bar__screens button { padding: 4px 8px; font-size: 11px; }
+  .dirA .stats-grid { grid-template-columns: 1fr !important; }
+  .dirA .topbar h1 { font-size: 20px; }
+  .dirA-modal__head { padding: 16px 18px 12px; }
+  .dirA-modal__body { padding: 14px 18px; }
+  .dirA-modal__foot { padding: 12px 18px; }
+}
+
+/* === Notifications =================================================== */
+
+/* Direction A — soft cards with colored accent bar */
+.a-notif-stack { display: flex; flex-direction: column; gap: 8px; margin: 0 0 18px; }
+.a-notif {
+  display: flex; align-items: stretch; gap: 0;
+  border: 1px solid; border-radius: 8px; overflow: hidden;
+  position: relative;
+}
+.a-notif__bar { width: 3px; flex-shrink: 0; }
+.a-notif__body { flex: 1; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
+.a-notif__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.a-notif__level {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  padding: 1px 8px; border: 1px solid; border-radius: 4px;
+  text-transform: uppercase; background: var(--surface-default);
+}
+.a-notif__msg { font-size: 13.5px; color: var(--text-strong); line-height: 1.45; }
+.a-notif__meta { font-size: 11.5px; color: var(--text-muted); }
+.a-notif__close {
+  width: 28px; height: 28px; align-self: flex-start; margin: 8px 8px 0 0;
+  background: transparent; border: 0; border-radius: 4px; cursor: pointer;
+  color: var(--text-muted); display: flex; align-items: center; justify-content: center;
+}
+.a-notif__close:hover { background: rgba(0,0,0,0.05); color: var(--text-strong); }
+
+/* Direction B — single dense line */
+.b-notif-stack { display: flex; flex-direction: column; border-bottom: 1px solid var(--b-border); }
+.b-notif {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 24px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  border-bottom: 1px solid var(--b-border);
+  background: var(--surface-default);
+}
+.b-notif:last-child { border-bottom: 0; }
+.b-notif--info     { background: rgba(99,102,241,0.04); }
+.b-notif--warning  { background: rgba(245,158,11,0.06); }
+.b-notif--critical { background: rgba(220,38,38,0.06); }
+.b-notif__tag {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+.b-notif--info     .b-notif__tag { color: #4f46e5; background: rgba(99,102,241,0.12); }
+.b-notif--warning  .b-notif__tag { color: #b45309; background: rgba(245,158,11,0.16); }
+.b-notif--critical .b-notif__tag { color: #b91c1c; background: rgba(220,38,38,0.14); }
+.b-notif__msg  { flex: 1; color: var(--text-strong); font-family: var(--b-font-sans, inherit); }
+.b-notif__meta { color: var(--text-muted); flex-shrink: 0; }
+.b-notif__close {
+  width: 22px; height: 22px; background: transparent; border: 0; border-radius: 3px;
+  cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center;
+}
+.b-notif__close:hover { background: rgba(0,0,0,0.05); color: var(--text-strong); }
+
+/* Direction C — editorial framed notice */
+.c-notif-stack { display: flex; flex-direction: column; gap: 14px; margin: 16px 0 8px; }
+.c-notif {
+  display: grid; grid-template-columns: 4px 1fr auto; gap: 0; align-items: stretch;
+  background: var(--c-paper); border: 1px solid var(--c-line);
+}
+.c-notif__rule { background: var(--c-teal, #0f766e); }
+.c-notif--warning  .c-notif__rule { background: var(--c-amber, #b45309); }
+.c-notif--critical .c-notif__rule { background: #b91c1c; }
+.c-notif__body { padding: 14px 20px; display: flex; flex-direction: column; gap: 4px; }
+.c-notif__eyebrow {
+  font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-muted);
+}
+.c-notif--warning  .c-notif__eyebrow { color: var(--c-amber, #b45309); }
+.c-notif--critical .c-notif__eyebrow { color: #b91c1c; }
+.c-notif__msg { font-family: 'Fraunces', serif; font-size: 16px; line-height: 1.45; color: var(--text-strong); }
+.c-notif__close {
+  width: 36px; align-self: stretch; background: transparent; border: 0; border-left: 1px solid var(--c-line);
+  cursor: pointer; color: var(--c-muted); display: flex; align-items: center; justify-content: center;
+}
+.c-notif__close:hover { background: rgba(0,0,0,0.04); color: var(--text-strong); }
+
+/* Shared admin composer */
+.notif-admin { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.notif-admin__composer { display: flex; flex-direction: column; gap: 10px; }
+.notif-admin__composer textarea {
+  width: 100%; resize: vertical; padding: 10px 12px;
+  border: 1px solid var(--border-subtle, var(--b-border, var(--c-line))); border-radius: 6px;
+  font-family: inherit; font-size: 13.5px; line-height: 1.45;
+  background: var(--surface-default, #fff); color: var(--text-strong); box-sizing: border-box;
+}
+.notif-admin__composer textarea:focus { outline: 2px solid var(--accent, #2563eb); outline-offset: -1px; }
+.notif-admin__row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+.notif-admin__row select {
+  padding: 6px 10px; border: 1px solid var(--border-subtle, var(--b-border, var(--c-line)));
+  border-radius: 6px; font-size: 13px; background: var(--surface-default, #fff);
+}
+.notif-admin__list { display: flex; flex-direction: column; gap: 6px; }
+.notif-admin__empty { font-size: 12.5px; color: var(--text-muted); padding: 12px 0; text-align: center; }
+.notif-admin__item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--border-subtle, var(--b-border, var(--c-line))); border-radius: 6px;
+  background: var(--surface-default, #fff);
+}
+.notif-admin__dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.notif-admin__item-body { flex: 1; min-width: 0; }
+.notif-admin__item-msg { font-size: 13px; color: var(--text-strong); line-height: 1.4; }
+.notif-admin__item-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Direction-specific admin tweaks */
+.dirB .notif-admin__composer textarea,
+.dirB .notif-admin__row select,
+.dirB .notif-admin__item-msg { font-family: var(--b-font-sans, inherit); }
+.dirB .notif-admin { padding: 14px; }
+.dirB .notif-admin__item { border-radius: 4px; }
+
+.dirC .notif-admin { padding: 0; }
+.dirC .notif-admin__composer textarea {
+  background: var(--c-paper); border: 1px solid var(--c-line); border-radius: 0;
+  font-family: 'Inter', sans-serif; color: var(--c-ink);
+}
+.dirC .notif-admin__row select { border-radius: 0; background: var(--c-paper); color: var(--c-ink); }
+.dirC .notif-admin__item { border-radius: 0; background: var(--c-paper); }
+.dirC .c-notif__msg { color: var(--c-ink); }
+.dirC .notif-admin__item-msg { color: var(--c-ink); }
+.dirC .notif-admin__item-meta { font-family: 'JetBrains Mono', monospace; }
+
 </style>
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -822,13 +1092,16 @@ const ARTICLES = [
   { slug: 'q2-meeting', title: 'Lab Meeting Rotation (Q2 2026)', createdAt: 'Mar 22, 2026', author: 'msmith', tag: 'Admin', summary: 'Who presents when — updated every quarter.' },
 ];
 
+// access: 'open'        — anyone can book
+//         'admin-view'   — restricted; current user is admin → can see, cannot book
+//         'no-access'    — restricted; current user not allowed → row blurred, must request access
 const EQUIPMENT = [
-  { id: 1, name: 'AFM Dimension Icon' },
-  { id: 2, name: 'Zeiss Merlin SEM' },
-  { id: 3, name: 'Raman Spectrometer' },
-  { id: 4, name: 'E-beam Evaporator' },
-  { id: 5, name: 'Probe Station' },
-  { id: 6, name: 'Keithley 6517B' },
+  { id: 1, name: 'AFM Dimension Icon',   access: 'open' },
+  { id: 2, name: 'Zeiss Merlin SEM',     access: 'open' },
+  { id: 3, name: 'Raman Spectrometer',   access: 'open' },
+  { id: 4, name: 'E-beam Evaporator',    access: 'admin-view', accessNote: 'Cleanroom certification required' },
+  { id: 5, name: 'Probe Station',        access: 'no-access',  accessNote: 'Ahmet group only' },
+  { id: 6, name: 'Keithley 6517B',       access: 'open' },
 ];
 
 const BOOKINGS = [
@@ -911,6 +1184,8 @@ const Ic = {
   Upload: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 20V8m-4 4l4-4 4 4M4 4h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   Dot: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>),
   Sparkle: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>),
+  Lock: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 11V8a4 4 0 018 0v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
+  Eye: (p={}) => (<svg {...p} viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/></svg>),
 };
 
 // Abstract sample thumbnail
@@ -950,6 +1225,601 @@ function SampleThumb({ seed = 1, palette = 'blue', style }) {
 }
 
 Object.assign(window, { Ic, SampleThumb });
+
+  </script>
+  <script type="text/babel" data-presets="react">
+// Notifications — shared store + per-direction banner + admin panel
+(function(){
+  const KEY_DISMISS = 'sampledb_dismissed_notifs';
+  let id = 4;
+  let _notifs = [
+    { id: 1, level: 'info',     message: 'Maintenance window scheduled Sat Apr 26, 22:00 — all booking writes will pause for ~30 min.', author: 'msmith', createdAt: '2026-04-19 09:12' },
+    { id: 2, level: 'warning',  message: 'Raman Spectrometer laser power calibration drifted — re-run baselines until further notice.', author: 'msmith', createdAt: '2026-04-18 16:40' },
+  ];
+  const listeners = new Set();
+  const emit = () => listeners.forEach(fn => fn());
+  function getDismissed() { try { return new Set(JSON.parse(localStorage.getItem(KEY_DISMISS) || '[]')); } catch { return new Set(); } }
+  function setDismissed(set) { try { localStorage.setItem(KEY_DISMISS, JSON.stringify([...set])); } catch {} }
+  window.NotifStore = {
+    list: () => _notifs.slice(),
+    add: (n) => { _notifs = [{ id: id++, level: 'info', author: 'msmith', createdAt: new Date().toISOString().slice(0,16).replace('T',' '), ...n }, ..._notifs]; emit(); },
+    remove: (nid) => { _notifs = _notifs.filter(n => n.id !== nid); emit(); },
+    dismiss: (nid) => { const d = getDismissed(); d.add(nid); setDismissed(d); emit(); },
+    isDismissed: (nid) => getDismissed().has(nid),
+    subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
+  };
+})();
+
+function useNotifs() {
+  const [, force] = React.useReducer(x => x+1, 0);
+  React.useEffect(() => window.NotifStore.subscribe(force), []);
+  return {
+    all: window.NotifStore.list(),
+    visible: window.NotifStore.list().filter(n => !window.NotifStore.isDismissed(n.id)),
+    add: window.NotifStore.add,
+    remove: window.NotifStore.remove,
+    dismiss: window.NotifStore.dismiss,
+  };
+}
+
+function A_NotifBanner() {
+  const { visible, dismiss } = useNotifs();
+  if (!visible.length) return null;
+  const palette = {
+    info:     { bg:'rgba(37,99,235,0.06)',  bd:'rgba(37,99,235,0.20)',  accent:'#2563eb', label:'Info' },
+    warning:  { bg:'rgba(245,158,11,0.08)', bd:'rgba(245,158,11,0.28)', accent:'#b45309', label:'Warning' },
+    critical: { bg:'rgba(220,38,38,0.08)',  bd:'rgba(220,38,38,0.28)',  accent:'#dc2626', label:'Critical' },
+  };
+  return (
+    <div className="a-notif-stack">
+      {visible.map(n => {
+        const p = palette[n.level] || palette.info;
+        return (
+          <div key={n.id} className="a-notif" style={{ background: p.bg, borderColor: p.bd }}>
+            <div className="a-notif__bar" style={{ background: p.accent }}/>
+            <div className="a-notif__body">
+              <div className="a-notif__head">
+                <span className="a-notif__level" style={{ color: p.accent, borderColor: p.bd }}>{p.label}</span>
+                <span className="a-notif__msg">{n.message}</span>
+              </div>
+              <div className="a-notif__meta">posted by {n.author} · {n.createdAt}</div>
+            </div>
+            <button className="a-notif__close" onClick={() => dismiss(n.id)} aria-label="Dismiss"><Ic.Close/></button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function B_NotifBanner() {
+  const { visible, dismiss } = useNotifs();
+  if (!visible.length) return null;
+  return (
+    <div className="b-notif-stack">
+      {visible.map(n => (
+        <div key={n.id} className={'b-notif b-notif--' + n.level}>
+          <span className="b-notif__tag">{n.level.toUpperCase()}</span>
+          <span className="b-notif__msg">{n.message}</span>
+          <span className="b-notif__meta">{n.author} · {n.createdAt}</span>
+          <button className="b-notif__close" onClick={() => dismiss(n.id)} aria-label="Dismiss"><Ic.Close style={{width:11,height:11}}/></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function C_NotifBanner() {
+  const { visible, dismiss } = useNotifs();
+  if (!visible.length) return null;
+  return (
+    <div className="c-notif-stack">
+      {visible.map(n => (
+        <div key={n.id} className={'c-notif c-notif--' + n.level}>
+          <div className="c-notif__rule"/>
+          <div className="c-notif__body">
+            <div className="c-notif__eyebrow">{n.level === 'info' ? 'Notice' : n.level === 'warning' ? 'Advisory' : 'Critical'} · {n.createdAt}</div>
+            <div className="c-notif__msg">{n.message}</div>
+          </div>
+          <button className="c-notif__close" onClick={() => dismiss(n.id)} aria-label="Dismiss"><Ic.Close style={{width:14,height:14}}/></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NotifAdminPanel({ direction }) {
+  const { all, add, remove } = useNotifs();
+  const [msg, setMsg] = React.useState('');
+  const [level, setLevel] = React.useState('info');
+  const submit = () => { if (!msg.trim()) return; add({ message: msg.trim(), level }); setMsg(''); setLevel('info'); };
+  const palette = { info:'#2563eb', warning:'#b45309', critical:'#dc2626' };
+  const monoStyle = direction === 'B' ? { fontFamily:'JetBrains Mono, monospace', fontSize:12.5 } : {};
+  return (
+    <div className={'notif-admin notif-admin--' + (direction || 'A')}>
+      <div className="notif-admin__composer">
+        <textarea
+          value={msg}
+          onChange={e=>setMsg(e.target.value)}
+          placeholder="Post a brief note — appears as a banner on every page until each user dismisses it."
+          style={{minHeight: 60, ...monoStyle}}
+        />
+        <div className="notif-admin__row">
+          <select value={level} onChange={e=>setLevel(e.target.value)} style={monoStyle}>
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+            <option value="critical">Critical</option>
+          </select>
+          <button className="btn btn--primary btn--sm" onClick={submit} disabled={!msg.trim()}><Ic.Plus/>Post</button>
+        </div>
+      </div>
+      <div className="notif-admin__list">
+        {all.length === 0 && <div className="notif-admin__empty">No notifications posted.</div>}
+        {all.map(n => (
+          <div key={n.id} className="notif-admin__item">
+            <span className="notif-admin__dot" style={{ background: palette[n.level] }}/>
+            <div className="notif-admin__item-body">
+              <div className="notif-admin__item-msg">{n.message}</div>
+              <div className="notif-admin__item-meta">{n.level} · {n.author} · {n.createdAt}</div>
+            </div>
+            <button className="btn btn--ghost btn--sm" onClick={() => remove(n.id)} aria-label="Remove"><Ic.Trash/></button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { useNotifs, A_NotifBanner, B_NotifBanner, C_NotifBanner, NotifAdminPanel });
+
+  </script>
+  <script type="text/babel" data-presets="react">
+// Direction A modals - reusable Modal + 4 specific dialogs
+function A_Modal({ open, onClose, title, subtitle, children, footer, width = 520 }) {
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div className="dirA-modal__backdrop" onClick={onClose}>
+      <div className="dirA-modal" style={{maxWidth: width}} onClick={e => e.stopPropagation()}>
+        <div className="dirA-modal__head">
+          <div>
+            <h3>{title}</h3>
+            {subtitle && <div className="dirA-modal__sub">{subtitle}</div>}
+          </div>
+          <button className="dirA-modal__close" onClick={onClose} aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+        <div className="dirA-modal__body">{children}</div>
+        {footer && <div className="dirA-modal__foot">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+function A_AddGroupModal({ open, onClose, onSave }) {
+  const [name, setName] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const reset = () => { setName(''); setDescription(''); };
+  return (
+    <A_Modal
+      open={open}
+      onClose={() => { reset(); onClose(); }}
+      title="Create group"
+      subtitle="Groups define equipment access and sample visibility scope."
+      footer={
+        <>
+          <button className="btn btn--ghost" onClick={() => { reset(); onClose(); }}>Cancel</button>
+          <button className="btn btn--primary" disabled={!name.trim()} onClick={() => { onSave({ name, description }); reset(); onClose(); }}>Create group</button>
+        </>
+      }
+    >
+      <div className="field">
+        <label>Group name</label>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Quantum Devices" autoFocus/>
+        <div className="field-help">Use a short, recognisable lab or PI name.</div>
+      </div>
+      <div className="field">
+        <label>Description (optional)</label>
+        <textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="What does this group work on?" rows="3"/>
+      </div>
+      <div className="field">
+        <label>Equipment access</label>
+        <div className="dirA-modal__chips">
+          {EQUIPMENT.map(e => (
+            <label key={e.id} className="dirA-modal__chip">
+              <input type="checkbox" defaultChecked={e.id<=3}/>
+              <span>{e.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_EditUserModal({ open, onClose, user, onSave }) {
+  const [group, setGroup] = React.useState(user?.group || 'Barbaros');
+  const [admin, setAdmin] = React.useState(user?.admin || false);
+  const [status, setStatus] = React.useState(user?.status || 'approved');
+  const [equipment, setEquipment] = React.useState({1:true,2:true,3:true,4:false,5:true,6:false});
+  React.useEffect(() => {
+    if (user) { setGroup(user.group); setAdmin(user.admin); setStatus(user.status); }
+  }, [user]);
+  if (!user) return null;
+  return (
+    <A_Modal
+      open={open}
+      onClose={onClose}
+      title={`Edit ${user.user}`}
+      subtitle="Manage role, group, and equipment permissions."
+      width={600}
+      footer={
+        <>
+          <button className="btn btn--danger" style={{marginRight:'auto'}}>Suspend user</button>
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" onClick={() => { onSave({ ...user, group, admin, status }); onClose(); }}>Save changes</button>
+        </>
+      }
+    >
+      <div className="dirA-modal__userhead">
+        <div className="avatar" style={{width:44, height:44, fontSize:16}}>{user.user[0].toUpperCase()}</div>
+        <div>
+          <strong style={{fontSize:15}}>{user.user}</strong>
+          <div style={{fontSize:12, color:'var(--text-muted)'}}>{user.user}@lab.example</div>
+        </div>
+      </div>
+      <div className="field-row">
+        <div className="field">
+          <label>Group</label>
+          <select value={group} onChange={e=>setGroup(e.target.value)}>
+            {['Barbaros','Ahmet','NewGroup','No group'].map(g=><option key={g}>{g}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>Status</label>
+          <select value={status} onChange={e=>setStatus(e.target.value)}>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending approval</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </div>
+      </div>
+      <div className="field">
+        <label>Role</label>
+        <div className="dirA-modal__radios">
+          <label className={'dirA-modal__radio' + (!admin ? ' active' : '')}>
+            <input type="radio" name="role" checked={!admin} onChange={()=>setAdmin(false)}/>
+            <div>
+              <strong>Member</strong>
+              <div>Create samples, book equipment, edit own work.</div>
+            </div>
+          </label>
+          <label className={'dirA-modal__radio' + (admin ? ' active' : '')}>
+            <input type="radio" name="role" checked={admin} onChange={()=>setAdmin(true)}/>
+            <div>
+              <strong>Admin</strong>
+              <div>All member rights, plus user / group / equipment management.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div className="field">
+        <label>Equipment access</label>
+        <div className="dirA-modal__chips">
+          {EQUIPMENT.map(e => (
+            <label key={e.id} className="dirA-modal__chip">
+              <input type="checkbox" checked={!!equipment[e.id]} onChange={ev => setEquipment(s => ({...s, [e.id]: ev.target.checked}))}/>
+              <span>{e.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_BookSlotModal({ open, onClose, onSave, prefill }) {
+  const [equipment, setEquipment] = React.useState(prefill?.eq || EQUIPMENT[0].id);
+  const [date, setDate] = React.useState('2026-04-19');
+  const [start, setStart] = React.useState(prefill?.start ? `${String(Math.floor(prefill.start)).padStart(2,'0')}:${prefill.start%1?'30':'00'}` : '09:00');
+  const [end, setEnd] = React.useState(prefill?.end ? `${String(Math.floor(prefill.end)).padStart(2,'0')}:${prefill.end%1?'30':'00'}` : '11:00');
+  const [purpose, setPurpose] = React.useState('');
+  React.useEffect(() => {
+    if (prefill?.eq) setEquipment(prefill.eq);
+    if (prefill?.start) setStart(`${String(Math.floor(prefill.start)).padStart(2,'0')}:${prefill.start%1?'30':'00'}`);
+    if (prefill?.end) setEnd(`${String(Math.floor(prefill.end)).padStart(2,'0')}:${prefill.end%1?'30':'00'}`);
+  }, [prefill]);
+  return (
+    <A_Modal
+      open={open}
+      onClose={onClose}
+      title="Book equipment slot"
+      subtitle="Reserve time on a tool. Conflicts are checked at submit."
+      width={560}
+      footer={
+        <>
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" disabled={!purpose.trim()} onClick={() => { onSave({ equipment, date, start, end, purpose }); onClose(); }}>Confirm booking</button>
+        </>
+      }
+    >
+      <div className="field">
+        <label>Equipment</label>
+        <select value={equipment} onChange={e=>setEquipment(Number(e.target.value))}>
+          {EQUIPMENT.filter(e=>e.access!=='no-access' && e.access!=='admin-view').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
+      </div>
+      <div className="field-row">
+        <div className="field">
+          <label>Date</label>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)}/>
+        </div>
+        <div className="field">
+          <label>Start time</label>
+          <select value={start} onChange={e=>setStart(e.target.value)}>
+            {Array.from({length: 24*4}, (_,i)=>{ const h=Math.floor(i/4), m=(i%4)*15; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }).map(t=> <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>End time</label>
+          <select value={end} onChange={e=>setEnd(e.target.value)}>
+            {Array.from({length: 24*4}, (_,i)=>{ const h=Math.floor(i/4), m=(i%4)*15; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }).map(t=> <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="field">
+        <label>Purpose / sample</label>
+        <input value={purpose} onChange={e=>setPurpose(e.target.value)} placeholder="e.g. SMP-042 follow-up Raman"/>
+        <div className="field-help">Visible to admins. Helps trace tool usage to projects.</div>
+      </div>
+      <div className="dirA-modal__notice">
+        <strong>Heads up</strong> — Slot will be visible to your group immediately. Cancellations &lt;2h before start time count toward the no-show quota.
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_AddEquipmentModal({ open, onClose, onSave }) {
+  const [name, setName] = React.useState('');
+  const [model, setModel] = React.useState('');
+  const [location, setLocation] = React.useState('Cleanroom A');
+  const [groups, setGroups] = React.useState({Barbaros:true, Ahmet:false, NewGroup:false});
+  const reset = () => { setName(''); setModel(''); setLocation('Cleanroom A'); setGroups({Barbaros:true, Ahmet:false, NewGroup:false}); };
+  return (
+    <A_Modal
+      open={open}
+      onClose={() => { reset(); onClose(); }}
+      title="Add equipment"
+      subtitle="Register a new tool in the lab catalogue."
+      width={560}
+      footer={
+        <>
+          <button className="btn btn--ghost" onClick={() => { reset(); onClose(); }}>Cancel</button>
+          <button className="btn btn--primary" disabled={!name.trim()} onClick={() => { onSave({ name, model, location, groups }); reset(); onClose(); }}>Add equipment</button>
+        </>
+      }
+    >
+      <div className="field">
+        <label>Equipment name</label>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Raman Spectrometer 2" autoFocus/>
+      </div>
+      <div className="field-row">
+        <div className="field">
+          <label>Model / part #</label>
+          <input value={model} onChange={e=>setModel(e.target.value)} placeholder="Renishaw inVia"/>
+        </div>
+        <div className="field">
+          <label>Location</label>
+          <select value={location} onChange={e=>setLocation(e.target.value)}>
+            <option>Cleanroom A</option><option>Cleanroom B</option><option>Lab 1.04</option><option>Lab 2.12</option>
+          </select>
+        </div>
+      </div>
+      <div className="field">
+        <label>Group access</label>
+        <div className="dirA-modal__chips">
+          {Object.keys(groups).map(g => (
+            <label key={g} className="dirA-modal__chip">
+              <input type="checkbox" checked={groups[g]} onChange={ev => setGroups(s => ({...s, [g]: ev.target.checked}))}/>
+              <span>{g}</span>
+            </label>
+          ))}
+        </div>
+        <div className="field-help">Only members of the selected groups can book this equipment.</div>
+      </div>
+    </A_Modal>
+  );
+}
+
+Object.assign(window, { A_Modal, A_AddGroupModal, A_EditUserModal, A_BookSlotModal, A_AddEquipmentModal });
+
+
+// ===========================================================
+// Sample detail action modals
+// ===========================================================
+
+function A_AddKeywordModal({ open, onClose, onAdd, existing = [] }) {
+  const [val, setVal] = React.useState('');
+  const [picked, setPicked] = React.useState([]);
+  React.useEffect(() => { if (open) { setVal(''); setPicked([]); } }, [open]);
+  const SUGGEST = ['MBE','CVD','heterostructure','quantum','2D','photovoltaic','superconductor','low-T','optical','electrical','spectroscopy','characterization','annealed'];
+  const togglePick = (k) => setPicked(p => p.includes(k) ? p.filter(x=>x!==k) : [...p,k]);
+  const submit = () => {
+    const all = [...picked];
+    const trimmed = val.trim();
+    if (trimmed && !all.includes(trimmed)) all.push(trimmed);
+    if (all.length) onAdd(all);
+    onClose();
+  };
+  return (
+    <A_Modal open={open} onClose={onClose} title="Add keywords" subtitle="Tag this sample to make it easier to find. Comma-separate multiple keywords or pick from suggestions." width={500}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className="btn btn--primary" onClick={submit} disabled={!val.trim() && !picked.length}>Add {picked.length + (val.trim()?1:0)} keyword{(picked.length + (val.trim()?1:0))===1?'':'s'}</button></>}>
+      <div className="field">
+        <label>New keyword</label>
+        <input autoFocus value={val} onChange={e=>setVal(e.target.value)} placeholder="e.g. graphene, MBE, transport" onKeyDown={e=>{if(e.key==='Enter')submit();}}/>
+      </div>
+      <div>
+        <label style={{fontSize:12, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.04em'}}>Suggestions</label>
+        <div className="dirA-modal__chips">
+          {SUGGEST.filter(s => !existing.includes(s)).map(s => (
+            <label key={s} className="dirA-modal__chip">
+              <input type="checkbox" checked={picked.includes(s)} onChange={()=>togglePick(s)}/>
+              {s}
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_EditSampleModal({ open, onClose, sample, onSave }) {
+  const s = sample || {};
+  const [name, setName] = React.useState(s.name || '');
+  const [status, setStatus] = React.useState(s.status || 'active');
+  const [owner, setOwner] = React.useState(s.owner || '');
+  const [palette, setPalette] = React.useState(s.palette || 'blue');
+  React.useEffect(() => { if (open && sample) { setName(sample.name); setStatus(sample.status); setOwner(sample.owner); setPalette(sample.palette); } }, [open, sample]);
+  const submit = () => { onSave({ ...sample, name, status, owner, palette }); onClose(); };
+  return (
+    <A_Modal open={open} onClose={onClose} title="Edit sample" subtitle={s.id ? `Update sample ${s.id}` : 'Update sample details'} width={540}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className="btn btn--primary" onClick={submit}>Save changes</button></>}>
+      <div className="field"><label>Name</label><input autoFocus value={name} onChange={e=>setName(e.target.value)}/></div>
+      <div className="field-row">
+        <div className="field"><label>Owner</label>
+          <select value={owner} onChange={e=>setOwner(e.target.value)}>{['msmith','j.chen','a.patel','k.nakamura','r.ivanov','l.okafor'].map(u=><option key={u}>{u}</option>)}</select>
+        </div>
+        <div className="field"><label>Status</label>
+          <select value={status} onChange={e=>setStatus(e.target.value)}>
+            <option value="active">Active</option><option value="progress">In Progress</option>
+            <option value="archived">Archived</option><option value="pending">Pending</option>
+          </select>
+        </div>
+      </div>
+      <div className="field"><label>Thumbnail palette</label>
+        <div className="dirA-modal__chips">
+          {['blue','teal','violet','emerald','amber','rose'].map(p => (
+            <label key={p} className="dirA-modal__chip" style={{borderColor: palette===p ? 'var(--color-primary)' : undefined, background: palette===p ? 'rgba(37,99,235,0.08)' : undefined, color: palette===p ? 'var(--color-primary)' : undefined, fontWeight: palette===p?600:400}}>
+              <input type="radio" name="palette" checked={palette===p} onChange={()=>setPalette(p)}/>{p}
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_ShareSampleModal({ open, onClose, sample }) {
+  const s = sample || {};
+  const link = typeof window !== 'undefined' ? `${window.location.origin}/samples/${s.id || 'SMP-000'}` : '';
+  const [copied, setCopied] = React.useState(false);
+  const [scope, setScope] = React.useState('group');
+  const [users, setUsers] = React.useState(['j.chen']);
+  React.useEffect(() => { if (open) { setCopied(false); setScope('group'); setUsers(['j.chen']); } }, [open]);
+  const toggleUser = (u) => setUsers(arr => arr.includes(u) ? arr.filter(x=>x!==u) : [...arr,u]);
+  const copy = () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(link).catch(()=>{});
+    setCopied(true); setTimeout(()=>setCopied(false), 1500);
+  };
+  return (
+    <A_Modal open={open} onClose={onClose} title="Share sample" subtitle={`Give others access to ${s.id || 'this sample'}`} width={540}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Close</button><button className="btn btn--primary" onClick={onClose}>Done</button></>}>
+      <div className="field"><label>Direct link</label>
+        <div style={{display:'flex', gap: 8}}>
+          <input readOnly value={link} style={{flex:1, fontFamily:'var(--font-family-mono)', fontSize:12.5}}/>
+          <button className="btn btn--secondary" onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
+        </div>
+      </div>
+      <div>
+        <label style={{fontSize:12, fontWeight:600, color:'var(--text-muted)', display:'block', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.04em'}}>Access</label>
+        <div className="dirA-modal__radios">
+          {[
+            {v:'private', t:'Private', d:'Only you and admins can see this sample.'},
+            {v:'group',   t:'My group (Barbaros)', d:'All members of your lab group can view.'},
+            {v:'lab',     t:'Whole lab', d:'Anyone in the institution with access to SampleDB.'},
+            {v:'link',    t:'Anyone with the link', d:'Read-only public access — useful for collaborators outside the lab.'},
+          ].map(o => (
+            <label key={o.v} className={'dirA-modal__radio ' + (scope===o.v?'active':'')}>
+              <input type="radio" name="scope" checked={scope===o.v} onChange={()=>setScope(o.v)}/>
+              <div><strong>{o.t}</strong><div>{o.d}</div></div>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>Invite specific users</label>
+        <div className="dirA-modal__chips">
+          {['j.chen','a.patel','k.nakamura','r.ivanov','l.okafor'].map(u => (
+            <label key={u} className="dirA-modal__chip">
+              <input type="checkbox" checked={users.includes(u)} onChange={()=>toggleUser(u)}/>{u}
+            </label>
+          ))}
+        </div>
+      </div>
+    </A_Modal>
+  );
+}
+
+function A_DeleteConfirmModal({ open, onClose, onConfirm, title='Delete?', body='This cannot be undone.', confirmLabel='Delete', danger=true }) {
+  const [val, setVal] = React.useState('');
+  const requiresType = typeof body === 'object' && body.requireType;
+  const expected = requiresType ? body.requireType : null;
+  React.useEffect(() => { if (open) setVal(''); }, [open]);
+  return (
+    <A_Modal open={open} onClose={onClose} title={title} width={460}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className={'btn ' + (danger?'btn--danger':'btn--primary')} onClick={()=>{ onConfirm(); onClose(); }} disabled={requiresType && val !== expected} style={danger?{background:'var(--color-destructive)', color:'#fff', borderColor:'var(--color-destructive)'}:undefined}>{confirmLabel}</button></>}>
+      <div style={{fontSize: 14, lineHeight: 1.55, color:'var(--text-strong)'}}>
+        {requiresType ? body.message : body}
+      </div>
+      {requiresType && (
+        <div className="field">
+          <label>Type <code style={{background:'var(--surface-muted)', padding:'1px 6px', borderRadius:4, fontFamily:'var(--font-family-mono)'}}>{expected}</code> to confirm</label>
+          <input autoFocus value={val} onChange={e=>setVal(e.target.value)}/>
+        </div>
+      )}
+    </A_Modal>
+  );
+}
+
+function A_StepModal({ open, onClose, onSave, step, index, mode }) {
+  const [title, setTitle] = React.useState('');
+  const [date, setDate] = React.useState('');
+  const [by, setBy] = React.useState('msmith');
+  const [tool, setTool] = React.useState('');
+  const [notes, setNotes] = React.useState('');
+  React.useEffect(() => {
+    if (!open) return;
+    if (step) { setTitle(step.title||''); setDate(step.date||''); setBy(step.by||'msmith'); setTool(step.tool||''); setNotes(step.notes||''); }
+    else { setTitle(''); setDate(new Date().toISOString().slice(0,10)); setBy('msmith'); setTool(''); setNotes(''); }
+  }, [open, step]);
+  const submit = () => { onSave({ title, date, by, tool, notes }, index); onClose(); };
+  const isEdit = mode === 'edit';
+  return (
+    <A_Modal open={open} onClose={onClose} title={isEdit ? `Edit step ${String((index||0)+1).padStart(2,'0')}` : 'Add fabrication step'} subtitle={isEdit ? 'Update the recipe entry for this fabrication step.' : 'Record a new step in the fabrication recipe.'} width={580}
+      footer={<><button className="btn btn--ghost" onClick={onClose}>Cancel</button><button className="btn btn--primary" onClick={submit} disabled={!title.trim()}>{isEdit ? 'Save step' : 'Add step'}</button></>}>
+      <div className="field"><label>Step title</label><input autoFocus value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. CA2DM Optical Lithography"/></div>
+      <div className="field-row">
+        <div className="field"><label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+        <div className="field"><label>Performed by</label>
+          <select value={by} onChange={e=>setBy(e.target.value)}>{['msmith','j.chen','a.patel','k.nakamura','r.ivanov','l.okafor'].map(u=><option key={u}>{u}</option>)}</select>
+        </div>
+        <div className="field"><label>Tool / station</label><input value={tool} onChange={e=>setTool(e.target.value)} placeholder="e.g. Bench 3, MBE-A"/></div>
+      </div>
+      <div className="field"><label>Notes <span style={{fontWeight:400, color:'var(--text-muted)'}}>(optional)</span></label>
+        <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Recipe parameters, observations, deviations..." style={{minHeight: 90, resize:'vertical'}}/>
+      </div>
+    </A_Modal>
+  );
+}
+
+Object.assign(window, { A_AddKeywordModal, A_EditSampleModal, A_ShareSampleModal, A_DeleteConfirmModal, A_StepModal });
 
   </script>
   <script type="text/babel" data-presets="react">
@@ -1005,7 +1875,7 @@ function A_Dashboard({ setScreen, setActiveSample }) {
           <button className="btn btn--primary" onClick={()=>setScreen('new')}><Ic.Plus/> New Sample</button>
         </div>
       </div>
-      <div className="stats">
+      <div className="stats stats-grid">
         {[
           {l:'Total Samples',v:'247',d:'+12 this week'},
           {l:'Active Bookings',v:'8',d:'2 upcoming today'},
@@ -1019,7 +1889,7 @@ function A_Dashboard({ setScreen, setActiveSample }) {
           </div>
         ))}
       </div>
-      <div style={{display:'grid', gridTemplateColumns: '2fr 1fr', gap: 18}}>
+      <div className="dashboard-grid" style={{display:'grid', gridTemplateColumns: '2fr 1fr', gap: 18}}>
         <div className="card" style={{padding: '20px 24px'}}>
           <div className="u-between" style={{marginBottom: 16}}>
             <h3 style={{margin:0,fontSize:15}}>Recent samples</h3>
@@ -1071,31 +1941,52 @@ function A_Dashboard({ setScreen, setActiveSample }) {
 }
 
 function A_MiniBooking() {
-  const hours = Array.from({length: 12}, (_,i) => i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
+  const miniRef = React.useRef(null);
+  React.useEffect(()=>{ if(miniRef.current) miniRef.current.scrollLeft = 8 * 80; }, []);
   return (
     <div className="timeline-wrap">
-      <div className="timeline-wrap__scroll">
+      <div className="timeline-wrap__scroll" ref={miniRef}>
         <div className="tline">
           <div className="tline-head">
             <div className="tline-head__left">Equipment</div>
-            <div className="tline-hours">{hours.map(h => <div key={h} className="tline-hour">{h}:00</div>)}</div>
+            <div className="tline-hours">{hours.map(h => <div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
           </div>
-          {EQUIPMENT.slice(0,4).map(eq => (
-            <div className="tline-row" key={eq.id}>
-              <div className="tline-row__left"><span className="tline-row__dot"/>{eq.name}</div>
-              <div className="tline-lane">
-                <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
-                {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                  const left = (b.start - 8) * 80;
-                  const w = (b.end - b.start) * 80;
-                  return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width: w-4}}>
-                    <div>{b.user}</div>
-                    <small>{b.purpose}</small>
-                  </div>;
-                })}
+          {EQUIPMENT.slice(0,4).map(eq => {
+            const access = eq.access || 'open';
+            const rowCls = 'tline-row' + (access === 'admin-view' ? ' tline-row--admin' : '') + (access === 'no-access' ? ' tline-row--noaccess' : '');
+            return (
+            <div className={rowCls} key={eq.id}>
+              <div className="tline-row__left">
+                <span className="tline-row__dot"/>
+                <span className="tline-row__name">{eq.name}</span>
+                {access === 'admin-view' && <span className="tline-row__access-badge">Admin</span>}
+                {access === 'no-access' && <Ic.Lock className="tline-row__lock"/>}
               </div>
+              {access === 'no-access' ? (
+                <div className="tline-lane tline-lane--noaccess">
+                  <div className="lane-locked-msg">
+                    <Ic.Lock style={{width:13, height:13}}/>
+                    <span>{eq.accessNote || 'Restricted'}</span>
+                    <button className="btn-request">Request access</button>
+                  </div>
+                </div>
+              ) : (
+                <div className={'tline-lane' + (access === 'admin-view' ? ' tline-lane--admin' : '')}>
+                  <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
+                  {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                    const left = b.start * 80;
+                    const w = (b.end - b.start) * 80;
+                    return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width: w-4}}>
+                      <div>{b.user}</div>
+                      <small>{b.purpose}</small>
+                    </div>;
+                  })}
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -1180,6 +2071,26 @@ function A_SampleDetail({ sample, setScreen }) {
   const [editing, setEditing] = React.useState(null);
   const [name, setName] = React.useState(s.name);
   const [desc, setDesc] = React.useState(s.description);
+  const [keywords, setKeywords] = React.useState(s.keywords || []);
+  const [steps, setSteps] = React.useState(STEPS);
+  const [status, setStatus] = React.useState(s.status);
+  const [owner, setOwner] = React.useState(s.owner);
+
+  const [kwOpen, setKwOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [shareOpen, setShareOpen] = React.useState(false);
+  const [delOpen, setDelOpen] = React.useState(false);
+  const [stepModal, setStepModal] = React.useState({ open: false, mode: 'add', step: null, index: null });
+  const [delStep, setDelStep] = React.useState({ open: false, index: null });
+
+  const removeKeyword = (k) => setKeywords(arr => arr.filter(x => x !== k));
+  const onSampleSave = (next) => { setName(next.name); setStatus(next.status); setOwner(next.owner); };
+  const onStepSave = (data, idx) => {
+    if (idx == null) setSteps(arr => [...arr, data]);
+    else setSteps(arr => arr.map((s, i) => i === idx ? data : s));
+  };
+  const onStepDelete = () => setSteps(arr => arr.filter((_, i) => i !== delStep.index));
+
   return (
     <div>
       <a style={{fontSize:12.5, color:'var(--text-muted)', cursor:'pointer', display:'inline-flex', alignItems:'center', gap: 6, marginBottom: 10}} onClick={()=>setScreen('samples')}><Ic.ArrowLeft style={{width:14,height:14}}/> Back to samples</a>
@@ -1187,22 +2098,23 @@ function A_SampleDetail({ sample, setScreen }) {
         <div className="topbar__left" style={{flex:1}}>
           <div className="u-center u-gap-md" style={{marginBottom: 4}}>
             <span style={{fontFamily:'var(--font-family-mono)', fontSize:12, color:'var(--text-muted)'}}>{s.id}</span>
-            {dirAStatusChip(s.status)}
+            {dirAStatusChip(status)}
           </div>
           {editing==='name' ? (
             <input autoFocus className="u-mono" style={{fontSize: 22, fontWeight: 700, width: '100%', padding: '4px 8px', border:'1px solid var(--color-primary)', borderRadius: 8, background:'var(--surface-default)', color:'var(--text-strong)'}} value={name} onChange={e=>setName(e.target.value)} onBlur={()=>setEditing(null)} onKeyDown={e=>{if(e.key==='Enter')setEditing(null)}}/>
           ) : (
             <h1 onClick={()=>setEditing('name')} style={{cursor:'text', color:'var(--text-strong)'}} title="Click to edit">{name}</h1>
           )}
-          <div className="crumbs">Created {s.createdAt} · Owner <strong>{s.owner}</strong> · {s.attachments} files · {s.steps} fabrication steps</div>
+          <div className="crumbs">Created {s.createdAt} · Owner <strong>{owner}</strong> · {s.attachments} files · {steps.length} fabrication steps</div>
         </div>
         <div className="topbar__actions">
           <button className="btn btn--ghost"><Ic.Download/> Export</button>
-          <button className="btn btn--secondary"><Ic.Edit/> Edit</button>
-          <button className="btn btn--primary"><Ic.Sparkle/> Share</button>
+          <button className="btn btn--danger" onClick={()=>setDelOpen(true)}><Ic.Trash/> Delete</button>
+          <button className="btn btn--secondary" onClick={()=>setEditOpen(true)}><Ic.Edit/> Edit</button>
+          <button className="btn btn--primary" onClick={()=>setShareOpen(true)}><Ic.Sparkle/> Share</button>
         </div>
       </div>
-      <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap: 18}}>
+      <div className="detail-grid" style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap: 18}}>
         <div style={{display:'flex', flexDirection:'column', gap:18}}>
           <div className="card" style={{padding:'18px 22px'}}>
             <div className="u-eyebrow" style={{marginBottom: 10}}>Description</div>
@@ -1212,17 +2124,22 @@ function A_SampleDetail({ sample, setScreen }) {
               <p style={{margin:0, lineHeight: 1.7, cursor:'text'}} onClick={()=>setEditing('desc')} title="Click to edit">{desc}</p>
             )}
             <div style={{display:'flex', gap:6, marginTop: 14, flexWrap:'wrap'}}>
-              {s.keywords.map(k=> <span key={k} style={{fontSize:12, padding:'3px 10px', borderRadius:999, background:'var(--color-secondary-bg)', color:'var(--color-secondary-text)', fontWeight:500}}>{k}</span>)}
-              <span style={{fontSize:12, padding:'3px 10px', borderRadius:999, border:'1px dashed var(--border-subtle)', color:'var(--text-muted)', cursor:'pointer'}}>+ Add</span>
+              {keywords.map(k=> (
+                <span key={k} className="kw-chip" style={{display:'inline-flex', alignItems:'center', gap: 6, fontSize:12, padding:'3px 4px 3px 10px', borderRadius:999, background:'var(--color-secondary-bg)', color:'var(--color-secondary-text)', fontWeight:500}}>
+                  {k}
+                  <button onClick={()=>removeKeyword(k)} title="Remove" style={{border:'none', background:'transparent', cursor:'pointer', color:'inherit', opacity:0.5, padding:'2px 4px', borderRadius:4, lineHeight:1, display:'inline-flex', alignItems:'center'}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=0.5}>×</button>
+                </span>
+              ))}
+              <span style={{fontSize:12, padding:'3px 10px', borderRadius:999, border:'1px dashed var(--border-subtle)', color:'var(--text-muted)', cursor:'pointer'}} onClick={()=>setKwOpen(true)}>+ Add</span>
             </div>
           </div>
           <div className="card" style={{padding:'18px 22px'}}>
             <div className="u-between" style={{marginBottom: 14}}>
               <div className="u-eyebrow">Fabrication Steps</div>
-              <button className="btn btn--ghost btn--sm"><Ic.Plus/> Add Step</button>
+              <button className="btn btn--ghost btn--sm" onClick={()=>setStepModal({ open:true, mode:'add', step:null, index:null })}><Ic.Plus/> Add Step</button>
             </div>
             <div className="fab-timeline">
-              {STEPS.map((st, i) => (
+              {steps.map((st, i) => (
                 <div key={i} className="fab-step">
                   <div style={{display:'flex', alignItems:'center', gap: 8}}>
                     <Ic.Drag style={{width: 12}} className="fab-step__grab"/>
@@ -1235,8 +2152,8 @@ function A_SampleDetail({ sample, setScreen }) {
                       {st.notes && <span style={{fontStyle:'italic'}}>{st.notes}</span>}
                     </div>
                     <div className="fab-step__actions">
-                      <button className="btn btn--ghost btn--sm"><Ic.Edit/></button>
-                      <button className="btn btn--danger btn--sm"><Ic.Trash/></button>
+                      <button className="btn btn--ghost btn--sm" onClick={()=>setStepModal({ open:true, mode:'edit', step:st, index:i })}><Ic.Edit/></button>
+                      <button className="btn btn--danger btn--sm" onClick={()=>setDelStep({ open:true, index:i })}><Ic.Trash/></button>
                     </div>
                   </div>
                 </div>
@@ -1286,10 +2203,16 @@ function A_SampleDetail({ sample, setScreen }) {
           <div className="card" style={{padding:'18px 22px', borderTopColor: 'var(--color-destructive)'}}>
             <div className="u-eyebrow" style={{marginBottom: 8, color:'var(--color-destructive)'}}>Danger Zone</div>
             <p style={{fontSize:12.5, color:'var(--text-muted)', margin:'0 0 10px'}}>Permanently delete this sample and all fabrication steps + attachments.</p>
-            <button className="btn btn--danger"><Ic.Trash/> Delete sample</button>
+            <button className="btn btn--danger" onClick={()=>setDelOpen(true)}><Ic.Trash/> Delete sample</button>
           </div>
         </div>
       </div>
+      <A_AddKeywordModal open={kwOpen} onClose={()=>setKwOpen(false)} existing={keywords} onAdd={(arr)=>setKeywords(prev => [...prev, ...arr.filter(k => !prev.includes(k))])}/>
+      <A_EditSampleModal open={editOpen} onClose={()=>setEditOpen(false)} sample={{ ...s, name, status, owner }} onSave={onSampleSave}/>
+      <A_ShareSampleModal open={shareOpen} onClose={()=>setShareOpen(false)} sample={s}/>
+      <A_DeleteConfirmModal open={delOpen} onClose={()=>setDelOpen(false)} title="Delete sample?" body={{ requireType: s.id, message: <>This will permanently delete <strong>{s.id}</strong> ({name}), including all {steps.length} fabrication steps and {s.attachments} attachments. This cannot be undone.</> }} confirmLabel="Delete sample" onConfirm={()=>setScreen('samples')}/>
+      <A_StepModal open={stepModal.open} onClose={()=>setStepModal({ open:false, mode:'add', step:null, index:null })} step={stepModal.step} index={stepModal.index} mode={stepModal.mode} onSave={onStepSave}/>
+      <A_DeleteConfirmModal open={delStep.open} onClose={()=>setDelStep({ open:false, index:null })} title="Delete fabrication step?" body={delStep.index!=null ? <>Remove step <strong>{String(delStep.index+1).padStart(2,'0')} — {steps[delStep.index]?.title}</strong> from this sample? Other steps will be renumbered automatically.</> : ''} confirmLabel="Delete step" onConfirm={onStepDelete}/>
     </div>
   );
 }
@@ -1371,7 +2294,7 @@ function A_WikiArticle({ setScreen }) {
           <button className="btn btn--ghost"><Ic.Download/> Export</button>
         </div>
       </div>
-      <div style={{display:'grid', gridTemplateColumns: '3fr 1fr', gap: 18}}>
+      <div className="wiki-grid" style={{display:'grid', gridTemplateColumns: '3fr 1fr', gap: 18}}>
         <div className="card" style={{padding:'24px 32px', fontSize: 15, lineHeight: 1.75}}>
           <h2 style={{fontSize: 18, marginTop: 0}}>Entering the cleanroom</h2>
           <ol>
@@ -1388,6 +2311,35 @@ function A_WikiArticle({ setScreen }) {
 [ ] Logged in registry`}</pre>
           <h2 style={{fontSize: 18}}>Emergency contacts</h2>
           <p>EHS on-call: <strong>x2500</strong> · Lab manager: <strong>msmith</strong></p>
+
+          <div className="wiki-attachments">
+            <div className="u-between" style={{marginBottom: 12}}>
+              <h3 style={{margin:0, fontSize: 15}}>Attachments <span style={{color:'var(--text-muted)', fontWeight: 500}}>· 4</span></h3>
+              <button className="btn btn--secondary btn--sm"><Ic.Plus/> Upload</button>
+            </div>
+            <div className="wiki-attach-list">
+              {[
+                {name:'cleanroom-floorplan.pdf', size:'1.4 MB', kind:'PDF', by:'msmith', when:'Apr 14'},
+                {name:'gowning-procedure.mp4',   size:'24.2 MB', kind:'VIDEO', by:'msmith', when:'Apr 14'},
+                {name:'wet-bench-registry.xlsx', size:'82 KB', kind:'XLSX', by:'j.chen', when:'Apr 12'},
+                {name:'sds-hf-acid.pdf',         size:'310 KB', kind:'PDF', by:'msmith', when:'Mar 30'},
+              ].map(f => (
+                <div key={f.name} className="wiki-attach">
+                  <div className={'wiki-attach__icon wiki-attach__icon--' + f.kind.toLowerCase()}>{f.kind}</div>
+                  <div className="wiki-attach__meta">
+                    <strong>{f.name}</strong>
+                    <div>{f.size} · uploaded by {f.by} · {f.when}</div>
+                  </div>
+                  <button className="btn btn--ghost btn--sm" title="Download"><Ic.Download/></button>
+                  <button className="btn btn--ghost btn--sm" title="Remove"><Ic.Trash/></button>
+                </div>
+              ))}
+              <div className="wiki-attach-drop">
+                <Ic.Plus style={{width:18, height:18, opacity:.6}}/>
+                <span>Drop files here or click <strong>Upload</strong> · max 50 MB</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="card" style={{padding:'18px 22px', alignSelf:'start'}}>
           <div className="u-eyebrow" style={{marginBottom: 10}}>On this page</div>
@@ -1402,17 +2354,121 @@ function A_WikiArticle({ setScreen }) {
   );
 }
 
+function A_BookingLane({ eq, hours, onCommit }) {
+  const access = eq.access || 'open';
+  const COL_W = 80;
+  const STEP = 0.25;
+  const HOUR_START = hours[0];
+  const HOUR_END = hours[hours.length - 1] + 1;
+  const laneRef = React.useRef(null);
+  const dragRef = React.useRef(null);
+  const [drag, setDrag] = React.useState(null);
+
+  const interactive = access === 'open';
+
+  const xToHour = (clientX) => {
+    const rect = laneRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const h = HOUR_START + (x / COL_W);
+    return Math.max(HOUR_START, Math.min(HOUR_END, Math.round(h / STEP) * STEP));
+  };
+
+  const onPointerDown = (e) => {
+    if (!interactive) return;
+    if (e.target.closest('.tline-block')) return;
+    e.preventDefault();
+    const h = xToHour(e.clientX);
+    try { laneRef.current.setPointerCapture?.(e.pointerId); } catch(_) {}
+    const next = { startH: h, endH: h, pointerId: e.pointerId };
+    dragRef.current = next;
+    setDrag(next);
+  };
+  const onPointerMove = (e) => {
+    if (!dragRef.current) return;
+    const h = xToHour(e.clientX);
+    const next = { ...dragRef.current, endH: h };
+    dragRef.current = next;
+    setDrag(next);
+  };
+  const onPointerUp = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    dragRef.current = null;
+    setDrag(null);
+    const a = Math.min(d.startH, d.endH);
+    const b = Math.max(d.startH, d.endH);
+    const start = a;
+    const end = (b - a < STEP) ? Math.min(HOUR_END, a + 1) : b;
+    onCommit(start, end);
+  };
+  const onPointerCancel = () => { dragRef.current = null; setDrag(null); };
+
+  const previewLeft = drag ? (Math.min(drag.startH, drag.endH) - HOUR_START) * COL_W : 0;
+  const previewWidth = drag ? Math.max(8, Math.abs(drag.endH - drag.startH) * COL_W) : 0;
+
+  // No-access lane: show locked overlay only
+  if (access === 'no-access') {
+    return (
+      <div className="tline-lane tline-lane--noaccess">
+        <div className="lane-locked-msg">
+          <Ic.Lock style={{width:13, height:13}}/>
+          <span>{eq.accessNote || 'Restricted equipment'}</span>
+          <button className="btn-request">Request access</button>
+        </div>
+      </div>
+    );
+  }
+
+  const adminView = access === 'admin-view';
+
+  return (
+    <div
+      className={'tline-lane' + (adminView ? ' tline-lane--admin' : '')}
+      ref={laneRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      style={{ touchAction: 'none', cursor: adminView ? 'not-allowed' : (drag ? 'col-resize' : 'crosshair') }}
+      title={adminView ? (eq.accessNote || 'You can view but not book this equipment') : undefined}
+    >
+      <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
+      {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+        const left=(b.start-HOUR_START)*COL_W, w=(b.end-b.start)*COL_W;
+        return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-4}}>
+          <div>{b.user}</div><small>{b.purpose}</small>
+        </div>;
+      })}
+      {drag && (
+        <div style={{position:'absolute', top: 4, bottom: 4, left: previewLeft, width: previewWidth, background: 'rgba(37,99,235,0.18)', border: '1.5px dashed var(--color-primary)', borderRadius: 6, pointerEvents:'none', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', fontFamily: 'var(--font-family-mono)'}}>
+          {(() => {
+            const a = Math.min(drag.startH, drag.endH);
+            const b = Math.max(drag.startH, drag.endH);
+            const fmt = (h) => `${String(Math.floor(h)).padStart(2,'0')}:${String(Math.round((h%1)*60)).padStart(2,'0')}`;
+            return previewWidth > 60 ? `${fmt(a)} – ${fmt(b)}` : '';
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function A_Booking({ setScreen }) {
-  const hours = Array.from({length: 12}, (_,i) => i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
+  const [bookOpen, setBookOpen] = React.useState(false);
+  const [prefill, setPrefill] = React.useState(null);
+  const scrollRef = React.useRef(null);
+  React.useEffect(()=>{ if(scrollRef.current) scrollRef.current.scrollLeft = 8 * 80; }, []);
   return (
     <div>
+      <A_BookSlotModal open={bookOpen} onClose={()=>setBookOpen(false)} prefill={prefill} onSave={()=>{}}/>
       <div className="topbar">
         <div className="topbar__left"><h1>Equipment Booking</h1><div className="crumbs">Friday, April 19, 2026 · Today</div></div>
         <div className="topbar__actions">
           <button className="btn btn--ghost">‹ Prev</button>
           <input type="date" defaultValue="2026-04-19" style={{padding:'8px 10px', borderRadius: 8, border:'1px solid var(--border-subtle)', background:'var(--surface-default)', color:'var(--text-strong)', minHeight: 38}}/>
           <button className="btn btn--ghost">Next ›</button>
-          <button className="btn btn--primary"><Ic.Plus/> Book Slot</button>
+          <button className="btn btn--primary" onClick={()=>{ setPrefill(null); setBookOpen(true); }}><Ic.Plus/> Book Slot</button>
         </div>
       </div>
       <div className="toolbar">
@@ -1420,29 +2476,36 @@ function A_Booking({ setScreen }) {
         <div className="filter-chip">My bookings</div>
         <div className="filter-chip">Available now</div>
         <div style={{flex:1}}/>
-        <div style={{fontSize:12.5, color:'var(--text-muted)'}}>Click a cell to book · drag to create a range</div>
+        <div style={{display:'flex', gap:14, alignItems:'center', fontSize:11.5, color:'var(--text-muted)'}}>
+          <span style={{display:'inline-flex', alignItems:'center', gap:6}}><span style={{width:10,height:10,borderRadius:'50%',background:'var(--color-primary)'}}/>Open</span>
+          <span style={{display:'inline-flex', alignItems:'center', gap:6}}><span style={{width:10,height:10,borderRadius:'50%',background:'#f59e0b'}}/>Restricted · admin view-only</span>
+          <span style={{display:'inline-flex', alignItems:'center', gap:6}}><Ic.Lock style={{width:12,height:12}}/>No access</span>
+        </div>
       </div>
       <div className="timeline-wrap">
-        <div className="timeline-wrap__scroll">
+        <div className="timeline-wrap__scroll" ref={scrollRef}>
           <div className="tline">
             <div className="tline-head">
               <div className="tline-head__left">Equipment</div>
-              <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{h}:00</div>)}</div>
+              <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
             </div>
-            {EQUIPMENT.map(eq => (
-              <div className="tline-row" key={eq.id}>
-                <div className="tline-row__left"><span className="tline-row__dot"/>{eq.name}</div>
-                <div className="tline-lane">
-                  <div className="slots">{hours.map(h => <div key={h} className="slot"/>)}</div>
-                  {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                    const left=(b.start-8)*80, w=(b.end-b.start)*80;
-                    return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-4}}>
-                      <div>{b.user}</div><small>{b.purpose}</small>
-                    </div>;
-                  })}
+            {EQUIPMENT.map(eq => {
+              const access = eq.access || 'open';
+              const rowCls = 'tline-row' +
+                (access === 'admin-view' ? ' tline-row--admin' : '') +
+                (access === 'no-access' ? ' tline-row--noaccess' : '');
+              return (
+              <div className={rowCls} key={eq.id}>
+                <div className="tline-row__left">
+                  <span className="tline-row__dot"/>
+                  <span className="tline-row__name">{eq.name}</span>
+                  {access === 'admin-view' && <span className="tline-row__access-badge" title={eq.accessNote}>Admin</span>}
+                  {access === 'no-access' && <Ic.Lock className="tline-row__lock"/>}
                 </div>
+                <A_BookingLane eq={eq} hours={hours} onCommit={(start, end)=>{ setPrefill({ eq: eq.id, start, end }); setBookOpen(true); }}/>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1454,7 +2517,7 @@ function A_Tokens() {
   return (
     <div>
       <div className="topbar"><div className="topbar__left"><h1>API Tokens</h1><div className="crumbs">Personal access tokens for programmatic access</div></div></div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18}}>
+      <div className="tokens-grid" style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18}}>
         <div className="card form-card">
           <h3 style={{margin:'0 0 4px', fontSize: 15, color:'var(--color-primary)'}}>Generate new token</h3>
           <p style={{fontSize:13, color:'var(--text-muted)', margin: '0 0 16px'}}>Tokens have full account permissions. Keep them secret.</p>
@@ -1492,15 +2555,20 @@ function A_Tokens() {
 }
 
 function A_Admin() {
+  const [groupOpen, setGroupOpen] = React.useState(false);
+  const [equipOpen, setEquipOpen] = React.useState(false);
+  const [editUser, setEditUser] = React.useState(null);
+  const [extraGroups, setExtraGroups] = React.useState([]);
+  const [extraEquip, setExtraEquip] = React.useState([]);
   return (
     <div>
       <div className="topbar"><div className="topbar__left"><h1>Admin Panel</h1><div className="crumbs">Manage users, groups, and equipment access</div></div></div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18, marginBottom: 18}}>
+      <div className="admin-grid" style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap: 18, marginBottom: 18}}>
         <div className="card" style={{padding: 0}}>
           <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-            <strong style={{fontSize:14}}>User Groups</strong><button className="btn btn--secondary btn--sm"><Ic.Plus/>Add</button>
+            <strong style={{fontSize:14}}>User Groups</strong><button className="btn btn--secondary btn--sm" onClick={()=>setGroupOpen(true)}><Ic.Plus/>Add</button>
           </div>
-          {['Barbaros', 'Ahmet', 'NewGroup'].map(g => (
+          {['Barbaros', 'Ahmet', 'NewGroup', ...extraGroups].map(g => (
             <div key={g} style={{padding:'12px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid var(--border-subtle)'}}>
               <div><strong style={{fontSize:14}}>{g}</strong><div style={{fontSize:12, color:'var(--text-muted)'}}>{g==='Barbaros'?3:g==='Ahmet'?2:1} members</div></div>
               <button className="btn btn--ghost btn--sm"><Ic.Trash/></button>
@@ -1509,7 +2577,7 @@ function A_Admin() {
         </div>
         <div className="card" style={{padding: 0}}>
           <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between'}}>
-            <strong style={{fontSize:14}}>Equipment Catalogue</strong><button className="btn btn--secondary btn--sm"><Ic.Plus/>Add Equipment</button>
+            <strong style={{fontSize:14}}>Equipment Catalogue</strong><button className="btn btn--secondary btn--sm" onClick={()=>setEquipOpen(true)}><Ic.Plus/>Add Equipment</button>
           </div>
           <table className="data-table" style={{border:'none', borderRadius: 0}}>
             <thead><tr><th>Name</th><th>Group access</th><th>Status</th><th></th></tr></thead>
@@ -1540,12 +2608,22 @@ function A_Admin() {
                 <td>{u.status==='approved' ? <span className="status-chip status-chip--active"><span className="dot"/>Approved</span> : <span className="status-chip status-chip--pending"><span className="dot"/>Pending</span>}</td>
                 <td>{u.admin ? <span className="status-chip status-chip--progress">Admin</span> : '—'}</td>
                 <td><span className="status-chip status-chip--archived">4 tools</span></td>
-                <td><button className="btn btn--ghost btn--sm"><Ic.Edit/></button></td>
+                <td><button className="btn btn--ghost btn--sm" onClick={()=>setEditUser(u)}><Ic.Edit/></button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <div className="card" style={{padding: 0, marginTop: 18}}>
+        <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)'}}>
+          <strong style={{fontSize:14}}>Notifications</strong>
+          <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>Posted as a banner on every page until each user dismisses it.</div>
+        </div>
+        <NotifAdminPanel direction="A"/>
+      </div>
+      <A_AddGroupModal open={groupOpen} onClose={()=>setGroupOpen(false)} onSave={g => setExtraGroups(s => [...s, g.name])}/>
+      <A_AddEquipmentModal open={equipOpen} onClose={()=>setEquipOpen(false)} onSave={e => setExtraEquip(s => [...s, e.name])}/>
+      <A_EditUserModal open={!!editUser} user={editUser} onClose={()=>setEditUser(null)} onSave={()=>{}}/>
     </div>
   );
 }
@@ -1556,6 +2634,7 @@ function DirectionA({ screen, setScreen, activeSample, setActiveSample }) {
       <div className="app-shell">
         <A_Sidebar screen={screen} setScreen={setScreen}/>
         <div className="main">
+          <A_NotifBanner/>
           {screen === 'dashboard' && <A_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen === 'samples' && <A_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen === 'detail' && <A_SampleDetail sample={activeSample} setScreen={setScreen}/>}
@@ -1904,7 +2983,9 @@ function B_WikiArticle({ setScreen }) {
 }
 
 function B_Booking() {
-  const hours = Array.from({length:12},(_,i)=>i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
+  const scrollRef = React.useRef(null);
+  React.useEffect(()=>{ if(scrollRef.current) scrollRef.current.scrollLeft = 8 * 72; }, []);
   return (
     <>
       <B_Topbar title="Equipment" crumbs="Friday, Apr 19" actions={<><button className="btn btn--sm">‹</button><button className="btn btn--sm">Today</button><button className="btn btn--sm">›</button><button className="btn btn--primary"><Ic.Plus/>Book</button></>}/>
@@ -1913,25 +2994,43 @@ function B_Booking() {
       </div>
       <div className="content">
         <div className="timeline-wrap">
-          <div className="timeline-wrap__scroll">
+          <div className="timeline-wrap__scroll" ref={scrollRef}>
             <div className="tline">
               <div className="tline-head">
                 <div className="tline-head__left">Equipment</div>
                 <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
               </div>
-              {EQUIPMENT.map(eq=>(
-                <div className="tline-row" key={eq.id}>
-                  <div className="tline-row__left"><Ic.Beaker style={{width:13,height:13,color:'var(--text-muted)'}}/>{eq.name}</div>
-                  <div className="tline-lane">
-                    {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                      const left=(b.start-8)*72, w=(b.end-b.start)*72;
-                      return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
-                        <strong style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{b.user}</strong><span style={{opacity:.7, fontSize:11, marginLeft:4}}>{b.purpose}</span>
-                      </div>;
-                    })}
+              {EQUIPMENT.map(eq=>{
+                const access = eq.access || 'open';
+                const rowCls = 'tline-row' + (access === 'no-access' ? ' tline-row--noaccess' : '');
+                return (
+                <div className={rowCls} key={eq.id}>
+                  <div className="tline-row__left">
+                    {access === 'no-access' ? <Ic.Lock className="tline-row__lock"/> : <Ic.Beaker style={{width:13,height:13,color:'var(--text-muted)',flexShrink:0}}/>}
+                    <span className="tline-row__name">{eq.name}</span>
+                    {access === 'admin-view' && <span className="tline-row__access-badge">view</span>}
                   </div>
+                  {access === 'no-access' ? (
+                    <div className="tline-lane tline-lane--noaccess">
+                      <div className="lane-locked-msg">
+                        <Ic.Lock style={{width:11, height:11}}/>
+                        <span>{eq.accessNote || 'restricted'}</span>
+                        <button className="btn-request">request</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={'tline-lane' + (access === 'admin-view' ? ' tline-lane--admin' : '')} title={access === 'admin-view' ? 'View-only · admin' : undefined}>
+                      {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                        const left=b.start*72, w=(b.end-b.start)*72;
+                        return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
+                          <strong style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{b.user}</strong><span style={{opacity:.7, fontSize:11, marginLeft:4}}>{b.purpose}</span>
+                        </div>;
+                      })}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -2014,6 +3113,13 @@ function B_Admin() {
             ))}</tbody>
           </table>
         </div>
+        <div style={{background:'var(--surface-default)',border:'1px solid var(--b-border)',borderRadius:8, marginTop:16}}>
+          <div style={{padding:'10px 14px',borderBottom:'1px solid var(--b-border)'}}>
+            <strong style={{fontSize:13}}>Notifications</strong>
+            <div style={{fontSize:11.5,color:'var(--text-muted)',marginTop:2,fontFamily:'JetBrains Mono,monospace'}}>banner shown until each user dismisses</div>
+          </div>
+          <NotifAdminPanel direction="B"/>
+        </div>
       </div>
     </>
   );
@@ -2025,6 +3131,7 @@ function DirectionB({ screen, setScreen, activeSample, setActiveSample }) {
       <div className="app-shell">
         <B_Sidebar screen={screen} setScreen={setScreen}/>
         <div className="main">
+          <B_NotifBanner/>
           {screen==='dashboard' && <B_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen==='samples' && <B_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
           {screen==='detail' && <B_Detail sample={activeSample} setScreen={setScreen}/>}
@@ -2302,7 +3409,9 @@ function C_WikiArticle({ setScreen }) {
 }
 
 function C_Booking() {
-  const hours = Array.from({length:12},(_,i)=>i+8);
+  const hours = Array.from({length:24},(_,i)=>i);
+  const scrollRef = React.useRef(null);
+  React.useEffect(()=>{ if(scrollRef.current) scrollRef.current.scrollLeft = 8 * 90; }, []);
   return (
     <div className="main">
       <div className="section-head">
@@ -2310,25 +3419,43 @@ function C_Booking() {
         <div><h1 className="section-head__title">Equipment.</h1><p className="section-head__sub">Click a lane to book. Drag the block edge to adjust.</p></div>
         <div className="section-head__actions"><button className="btn btn--sm">‹ Prev</button><button className="btn btn--sm">Today</button><button className="btn btn--sm">Next ›</button></div>
       </div>
-      <div className="timeline-wrap">
+      <div className="timeline-wrap" ref={scrollRef}>
         <div className="tline">
           <div className="tline-head">
             <div className="tline-head__left">Equipment</div>
             <div className="tline-hours">{hours.map(h=><div key={h} className="tline-hour">{String(h).padStart(2,'0')}:00</div>)}</div>
           </div>
-          {EQUIPMENT.map(eq=>(
-            <div className="tline-row" key={eq.id}>
-              <div className="tline-row__left">{eq.name}</div>
-              <div className="tline-lane">
-                {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
-                  const left=(b.start-8)*90, w=(b.end-b.start)*90;
-                  return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
-                    <div style={{fontWeight:600}}>{b.user}</div><small>{b.purpose}</small>
-                  </div>;
-                })}
+          {EQUIPMENT.map(eq=>{
+            const access = eq.access || 'open';
+            const rowCls = 'tline-row' + (access === 'no-access' ? ' tline-row--noaccess' : '');
+            return (
+            <div className={rowCls} key={eq.id}>
+              <div className="tline-row__left">
+                <span className="tline-row__name">{eq.name}</span>
+                {access === 'admin-view' && <span className="tline-row__access-badge">View only</span>}
+                {access === 'no-access' && <Ic.Lock className="tline-row__lock"/>}
               </div>
+              {access === 'no-access' ? (
+                <div className="tline-lane tline-lane--noaccess">
+                  <div className="lane-locked-msg">
+                    <Ic.Lock style={{width:13, height:13}}/>
+                    <span>{eq.accessNote || 'Restricted'}</span>
+                    <button className="btn-request">Request</button>
+                  </div>
+                </div>
+              ) : (
+                <div className={'tline-lane' + (access === 'admin-view' ? ' tline-lane--admin' : '')} title={access === 'admin-view' ? 'View-only · admin' : undefined}>
+                  {BOOKINGS.filter(b=>b.eq===eq.id).map((b,i)=>{
+                    const left=b.start*90, w=(b.end-b.start)*90;
+                    return <div key={i} className={'tline-block'+(b.own?' tline-block--own':'')} style={{left, width:w-2}}>
+                      <div style={{fontWeight:600}}>{b.user}</div><small>{b.purpose}</small>
+                    </div>;
+                  })}
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -2403,6 +3530,11 @@ function C_Admin() {
           </tr>
         ))}</tbody></table>
       </div>
+      <div style={{marginTop:48}}>
+        <div className="panel__title">Notifications</div>
+        <div style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,color:'var(--c-muted)',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:16}}>banner posted until each user dismisses</div>
+        <NotifAdminPanel direction="C"/>
+      </div>
     </div>
   );
 }
@@ -2412,6 +3544,7 @@ function DirectionC({ screen, setScreen, activeSample, setActiveSample }) {
     <div className="dirC">
       <div className="stage-bg">
         <C_Ribbon screen={screen} setScreen={setScreen}/>
+        <div style={{maxWidth:1400, margin:'0 auto', padding:'0 48px'}}><C_NotifBanner/></div>
         {screen==='dashboard' && <C_Dashboard setScreen={setScreen} setActiveSample={setActiveSample}/>}
         {screen==='samples' && <C_Samples setScreen={setScreen} setActiveSample={setActiveSample}/>}
         {screen==='detail' && <C_Detail sample={activeSample} setScreen={setScreen}/>}
@@ -2435,8 +3568,8 @@ const { useState: useStateA, useEffect: useEffectA } = React;
 
 const SCREENS = [
   ['login','Login'], ['dashboard','Dashboard'], ['samples','Samples'],
-  ['detail','Sample'], ['new','New Sample'],
-  ['wiki','Wiki'], ['wikiArticle','Article'],
+  ['new','New Sample'],
+  ['wiki','Wiki'],
   ['booking','Booking'], ['tokens','Tokens'], ['admin','Admin'],
 ];
 

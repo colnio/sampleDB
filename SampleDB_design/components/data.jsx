@@ -27,13 +27,16 @@ const ARTICLES = [
   { slug: 'q2-meeting', title: 'Lab Meeting Rotation (Q2 2026)', createdAt: 'Mar 22, 2026', author: 'msmith', tag: 'Admin', summary: 'Who presents when — updated every quarter.' },
 ];
 
+// access: 'open'        — anyone can book
+//         'admin-view'   — restricted; current user is admin → can see, cannot book
+//         'no-access'    — restricted; current user not allowed → row blurred, must request access
 const EQUIPMENT = [
-  { id: 1, name: 'AFM Dimension Icon' },
-  { id: 2, name: 'Zeiss Merlin SEM' },
-  { id: 3, name: 'Raman Spectrometer' },
-  { id: 4, name: 'E-beam Evaporator' },
-  { id: 5, name: 'Probe Station' },
-  { id: 6, name: 'Keithley 6517B' },
+  { id: 1, name: 'AFM Dimension Icon',   access: 'open' },
+  { id: 2, name: 'Zeiss Merlin SEM',     access: 'open' },
+  { id: 3, name: 'Raman Spectrometer',   access: 'open' },
+  { id: 4, name: 'E-beam Evaporator',    access: 'admin-view', accessNote: 'Cleanroom certification required' },
+  { id: 5, name: 'Probe Station',        access: 'no-access',  accessNote: 'Ahmet group only' },
+  { id: 6, name: 'Keithley 6517B',       access: 'open' },
 ];
 
 const BOOKINGS = [

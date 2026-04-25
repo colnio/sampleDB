@@ -193,8 +193,8 @@ func TestMainPage_View_Table_RendersTable(t *testing.T) {
 	rr := doMainPage(t, stub, "view=table")
 
 	body := rr.Body.String()
-	if !strings.Contains(body, "samples-table") {
-		t.Fatalf("view=table should render the samples-table class, got:\n%s", snippet(body))
+	if !strings.Contains(body, "data-table") {
+		t.Fatalf("view=table should render the data-table class, got:\n%s", snippet(body))
 	}
 	if !strings.Contains(body, "SMP-007") {
 		t.Errorf("table should include the sample ID label, body:\n%s", snippet(body))
