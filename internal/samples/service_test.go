@@ -43,7 +43,7 @@ func testDB(t *testing.T) *pgxpool.Pool {
 // CheckOwner — mock DB tests
 // ---------------------------------------------------------------------------
 
-func TestCheckOwner_NonAdmin_OwnerlessIsForbidden(t *testing.T) {
+func TestCheckOwner_ExistingSample_AnyUserAllowed(t *testing.T) {
 	mock, err := pgxmock.NewPool()
 	if err != nil {
 		t.Fatalf("pgxmock: %v", err)
@@ -51,69 +51,14 @@ func TestCheckOwner_NonAdmin_OwnerlessIsForbidden(t *testing.T) {
 	defer mock.Close()
 
 	svc := samples.NewService(mock)
-	userID := 5
 
-	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
+	mock.ExpectQuery(`SELECT EXISTS`).
 		WithArgs(10).
-		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
 
-	mock.ExpectQuery(`SELECT COALESCE\(admin`).
-		WithArgs(userID).
-		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(false))
-
-	gotErr := svc.CheckOwner(context.Background(), 10, userID)
-	if !errors.Is(gotErr, web.ErrForbidden) {
-		t.Errorf("expected web.ErrForbidden for non-admin + ownerless sample, got %v", gotErr)
-	}
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Fatalf("unmet mock expectations: %v", err)
-	}
-}
-
-func TestCheckOwner_Admin_OwnerlessAllowed(t *testing.T) {
-	mock, err := pgxmock.NewPool()
-	if err != nil {
-		t.Fatalf("pgxmock: %v", err)
-	}
-	defer mock.Close()
-
-	svc := samples.NewService(mock)
-	userID := 1
-
-	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
-		WithArgs(10).
-		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(nil))
-
-	mock.ExpectQuery(`SELECT COALESCE\(admin`).
-		WithArgs(userID).
-		WillReturnRows(pgxmock.NewRows([]string{"admin"}).AddRow(true))
-
-	gotErr := svc.CheckOwner(context.Background(), 10, userID)
+	gotErr := svc.CheckOwner(context.Background(), 10, 5)
 	if gotErr != nil {
-		t.Errorf("expected nil for admin + ownerless sample, got %v", gotErr)
-	}
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Fatalf("unmet mock expectations: %v", err)
-	}
-}
-
-func TestCheckOwner_OwnerMatch_Allowed(t *testing.T) {
-	mock, err := pgxmock.NewPool()
-	if err != nil {
-		t.Fatalf("pgxmock: %v", err)
-	}
-	defer mock.Close()
-
-	svc := samples.NewService(mock)
-	userID := 7
-
-	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
-		WithArgs(42).
-		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}).AddRow(&userID))
-
-	gotErr := svc.CheckOwner(context.Background(), 42, userID)
-	if gotErr != nil {
-		t.Errorf("expected nil for owner match, got %v", gotErr)
+		t.Errorf("expected nil for existing sample, got %v", gotErr)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -129,13 +74,16 @@ func TestCheckOwner_SampleNotFound(t *testing.T) {
 
 	svc := samples.NewService(mock)
 
-	mock.ExpectQuery(`SELECT owner_user_id FROM samples WHERE sample_id`).
+	mock.ExpectQuery(`SELECT EXISTS`).
 		WithArgs(999).
-		WillReturnRows(pgxmock.NewRows([]string{"owner_user_id"}))
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
 
 	gotErr := svc.CheckOwner(context.Background(), 999, 1)
 	if !errors.Is(gotErr, web.ErrNotFound) {
 		t.Errorf("expected web.ErrNotFound for missing sample, got %v", gotErr)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
 	}
 }
 

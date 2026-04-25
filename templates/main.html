@@ -174,7 +174,7 @@
                     {{if .FirstImageID}}
                     <img src="/attachment/{{.FirstImageID}}" alt="" loading="lazy">
                     {{end}}
-                    <span class="status-chip sample-card__status">{{statusLabel .Status}}</span>
+                    <span class="status-chip status-chip--{{statusChipClass .Status}} sample-card__status">{{statusLabel .Status}}</span>
                 </a>
                 <div class="sample-card__body">
                     <div class="sample-card__id">SMP-{{printf "%03d" .ID}}</div>
