@@ -18,18 +18,18 @@ import (
 	"sampleDB/internal/web"
 )
 
-// initLocation loads the local timezone and returns it.
-func initLocation() *time.Location {
-	loc, err := time.LoadLocation("Local")
+// initLocation loads the configured timezone and returns it.
+func initLocation(name string) *time.Location {
+	loc, err := app.LoadLocation(name)
 	if err != nil {
-		log.Fatalf("Failed to load local timezone: %v", err)
+		log.Fatalf("Failed to load timezone %q: %v", name, err)
 	}
 	return loc
 }
 
 func main() {
-	loc := initLocation()
 	cfg := app.LoadConfig()
+	loc := initLocation(cfg.Timezone)
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)

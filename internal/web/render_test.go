@@ -10,6 +10,7 @@ import (
 
 	"sampleDB/internal/samples"
 	"sampleDB/internal/web"
+	"sampleDB/internal/wiki"
 )
 
 // testTemplatesDir returns the repo-root templates directory.
@@ -176,5 +177,42 @@ func TestRenderSampleDetailTemplate(t *testing.T) {
 	}
 	if !strings.Contains(html, "Attachments") {
 		t.Error("rendered HTML missing 'Attachments' panel summary")
+	}
+}
+
+func TestRenderWikiEditTemplate_PreviewFetchSendsCSRFHeader(t *testing.T) {
+	dir := testTemplatesDir(t)
+	renderer, err := web.NewRenderer(dir, nil, time.UTC)
+	if err != nil {
+		t.Fatalf("web.NewRenderer: %v", err)
+	}
+
+	data := wiki.WikiEditPageData{
+		BasePageData: wiki.BasePageData{
+			Username:  "testuser",
+			UserID:    1,
+			CSRFToken: "csrf-token-123",
+		},
+		Article: &wiki.Article{
+			ID:      1,
+			Title:   "Preview Test",
+			Content: wiki.ArticleContent{Raw: "# Heading"},
+		},
+	}
+
+	w := httptest.NewRecorder()
+	if err := renderer.Render(w, "wiki_edit", data); err != nil {
+		t.Fatalf("Render(wiki_edit): %v", err)
+	}
+
+	html := w.Body.String()
+	for _, fragment := range []string{
+		`meta name="csrf-token" content="csrf-token-123"`,
+		`headers['X-CSRF-Token'] = csrfMeta.content`,
+		`fetch('/wiki/preview'`,
+	} {
+		if !strings.Contains(html, fragment) {
+			t.Fatalf("rendered wiki edit page missing %q", fragment)
+		}
 	}
 }

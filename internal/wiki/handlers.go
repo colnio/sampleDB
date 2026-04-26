@@ -117,26 +117,7 @@ func setDownloadHeaders(w http.ResponseWriter, filename string) {
 // path using cfg.BaseDir.  Returns "" if the resolved path would escape the
 // base directory.
 func (h *Handlers) resolveAppPath(path string) string {
-	if path == "" {
-		return path
-	}
-	if h.cfg.BaseDir == "" {
-		if filepath.IsAbs(path) {
-			return path
-		}
-		return filepath.Clean(path)
-	}
-	var joined string
-	if filepath.IsAbs(path) {
-		joined = filepath.Clean(path)
-	} else {
-		joined = filepath.Join(h.cfg.BaseDir, path)
-	}
-	rel, err := filepath.Rel(h.cfg.BaseDir, joined)
-	if err != nil || strings.HasPrefix(rel, "..") {
-		return ""
-	}
-	return joined
+	return web.ResolveStoragePath(path, h.cfg.BaseDir, h.cfg.UploadsDir)
 }
 
 // saveUploadedFile writes the uploaded file to disk and returns the storage

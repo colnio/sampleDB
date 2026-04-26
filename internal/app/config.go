@@ -6,7 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
+
+const defaultTimezone = "Asia/Singapore"
 
 // Config holds all runtime configuration for the application.
 // Values are populated by LoadConfig from environment variables.
@@ -22,6 +25,7 @@ type Config struct {
 	TemplatesDir  string
 	StaticDir     string
 	UploadsDir    string
+	Timezone      string
 	UseTLS        bool
 	AdminUsername string
 	AdminPassword string
@@ -36,6 +40,7 @@ func LoadConfig() Config {
 		TLSCertFile:   os.Getenv("TLS_CERT_FILE"),
 		TLSKeyFile:    os.Getenv("TLS_KEY_FILE"),
 		PublicHost:    os.Getenv("PUBLIC_HOST"),
+		Timezone:      getEnv("APP_TIMEZONE", defaultTimezone),
 		AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
 		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 	}
@@ -67,6 +72,13 @@ func LoadConfig() Config {
 	}
 
 	return cfg
+}
+
+func LoadLocation(name string) (*time.Location, error) {
+	if strings.TrimSpace(name) == "" {
+		name = defaultTimezone
+	}
+	return time.LoadLocation(name)
 }
 
 func getEnv(key, fallback string) string {

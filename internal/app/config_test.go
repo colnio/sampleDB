@@ -13,7 +13,7 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	unset := []string{
 		"APP_ADDR", "APP_HTTP_REDIRECT_ADDR", "DATABASE_URL",
 		"TLS_CERT_FILE", "TLS_KEY_FILE", "PUBLIC_HOST",
-		"APP_BASE_DIR", "TEMPLATES_DIR", "STATIC_DIR", "UPLOADS_DIR",
+		"APP_BASE_DIR", "TEMPLATES_DIR", "STATIC_DIR", "UPLOADS_DIR", "APP_TIMEZONE",
 	}
 	for _, k := range unset {
 		t.Setenv(k, "")
@@ -36,6 +36,9 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	if cfg.PublicHost == "" {
 		t.Error("PublicHost should not be empty")
 	}
+	if cfg.Timezone != "Asia/Singapore" {
+		t.Errorf("Timezone = %q, want Asia/Singapore", cfg.Timezone)
+	}
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
@@ -43,6 +46,7 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://user:pass@db:5432/mydb")
 	t.Setenv("PUBLIC_HOST", "example.com")
 	t.Setenv("APP_HTTP_REDIRECT_ADDR", ":8080")
+	t.Setenv("APP_TIMEZONE", "UTC")
 
 	cfg := app.LoadConfig()
 
@@ -57,6 +61,19 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	}
 	if cfg.RedirectAddr != ":8080" {
 		t.Errorf("RedirectAddr = %q, want :8080", cfg.RedirectAddr)
+	}
+	if cfg.Timezone != "UTC" {
+		t.Errorf("Timezone = %q, want UTC", cfg.Timezone)
+	}
+}
+
+func TestLoadLocation_DefaultsBlankTimezone(t *testing.T) {
+	loc, err := app.LoadLocation("")
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	if loc.String() != "Asia/Singapore" {
+		t.Fatalf("location = %q, want Asia/Singapore", loc.String())
 	}
 }
 

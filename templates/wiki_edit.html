@@ -158,9 +158,14 @@
             codeSyntaxHighlighting: true,
         },
         previewRender: function(plainText, preview) {
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            var headers = {'Content-Type': 'application/json'};
+            if (csrfMeta && csrfMeta.content) {
+                headers['X-CSRF-Token'] = csrfMeta.content;
+            }
             fetch('/wiki/preview', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: headers,
                 body: JSON.stringify({content: plainText}),
             })
             .then(function(r) { return r.text(); })
