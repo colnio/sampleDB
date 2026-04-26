@@ -355,7 +355,7 @@ ALTER TABLE sessions
 // an empty csrf_token. Without this, those sessions would bypass CSRF protection
 // because RequireCSRF exempts sessions with an empty token.
 const clearStaleCSRFSessions = `
-DELETE FROM sessions WHERE csrf_token = '';`
+DELETE FROM sessions WHERE csrf_token IS NULL OR csrf_token = '';`
 
 // seedEquipment inserts the default equipment rows when the database is blank
 // (no users, no samples, and no equipment present yet).  Matches the seed block

@@ -30,7 +30,7 @@ func (f *fakeService) KPIs(_ context.Context) (dashboard.KPIs, error) {
 func (f *fakeService) RecentSamples(_ context.Context, _ int) ([]dashboard.RecentSample, error) {
 	return f.recents, f.err
 }
-func (f *fakeService) TodayBookings(_ context.Context, _ time.Time, _ *time.Location) ([]dashboard.TodayBooking, error) {
+func (f *fakeService) TodayBookings(_ context.Context, _ time.Time, _ *time.Location, _ int, _ bool) ([]dashboard.TodayBooking, error) {
 	return f.today, f.err
 }
 

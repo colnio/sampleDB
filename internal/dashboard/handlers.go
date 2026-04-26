@@ -73,7 +73,16 @@ func (h *Handlers) DashboardPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error loading dashboard", http.StatusInternalServerError)
 		return
 	}
-	bookings, err := h.svc.TodayBookings(r.Context(), h.Now(), h.loc)
+	var isAdmin bool
+	if h.admin != nil {
+		var adminErr error
+		isAdmin, adminErr = h.admin.IsAdmin(r.Context(), session.UserID)
+		if adminErr != nil {
+			log.Printf("dashboard: IsAdmin: %v", adminErr)
+		}
+	}
+
+	bookings, err := h.svc.TodayBookings(r.Context(), h.Now(), h.loc, session.UserID, isAdmin)
 	if err != nil {
 		log.Printf("dashboard: TodayBookings: %v", err)
 		http.Error(w, "Error loading dashboard", http.StatusInternalServerError)
@@ -87,15 +96,6 @@ func (h *Handlers) DashboardPage(w http.ResponseWriter, r *http.Request) {
 			log.Printf("dashboard: activity.Recent: %v", err)
 		} else {
 			feed = entries
-		}
-	}
-
-	var isAdmin bool
-	if h.admin != nil {
-		var adminErr error
-		isAdmin, adminErr = h.admin.IsAdmin(r.Context(), session.UserID)
-		if adminErr != nil {
-			log.Printf("dashboard: IsAdmin: %v", adminErr)
 		}
 	}
 

@@ -121,7 +121,8 @@
                      data-end="{{.EndTime.UTC.Format "2006-01-02T15:04:05Z"}}"
                      data-user="{{.Username}}"
                      data-purpose="{{.Purpose}}"
-                     data-own="{{if eq .UserID $.UserID}}1{{else}}0{{end}}">
+                     data-own="{{if eq .UserID $.UserID}}1{{else}}0{{end}}"
+                     data-status="{{.EquipmentStatus}}">
                 </div>
                 {{end}}
                 </div>
@@ -144,19 +145,31 @@
         }
 
         var seen = {};
+        var eqStatus = {};
         var rows = bodyEl.querySelectorAll('[data-equipment-name]');
         rows.forEach(function(r) { bodyEl.removeChild(r); });
         rows.forEach(function(r) {
-            var name = r.getAttribute('data-equipment-name');
+            var name   = r.getAttribute('data-equipment-name');
+            var status = r.getAttribute('data-status') || 'online';
+            if (!eqStatus[name]) eqStatus[name] = status;
             if (!seen[name]) {
                 seen[name] = true;
-                var row = document.createElement('div');
-                row.className = 'tline-row';
+                var rowEl = document.createElement('div');
+                rowEl.className = 'tline-row tline-row--' + status;
                 var left = document.createElement('div');
                 left.className = 'tline-row__left';
-                left.innerHTML = '<span class="tline-row__dot"></span><span class="tline-row__name">' + esc(name) + '</span>';
+                var badge = '';
+                if (status === 'offline') {
+                    badge = '<span class="tline-row__status-badge tline-row__status-badge--offline">Offline</span>';
+                } else if (status === 'maintenance') {
+                    badge = '<span class="tline-row__status-badge tline-row__status-badge--maintenance">Maintenance</span>';
+                }
+                left.innerHTML = '<span class="tline-row__dot"></span><span class="tline-row__name">' + esc(name) + '</span>' + badge;
                 var lane = document.createElement('div');
-                lane.className = 'tline-lane';
+                var laneClass = 'tline-lane';
+                if (status === 'offline') laneClass += ' tline-lane--offline';
+                else if (status === 'maintenance') laneClass += ' tline-lane--maintenance';
+                lane.className = laneClass;
                 lane.setAttribute('data-eq-name', name);
                 var slots = document.createElement('div');
                 slots.className = 'slots';
@@ -166,9 +179,9 @@
                     slots.appendChild(s);
                 }
                 lane.appendChild(slots);
-                row.appendChild(left);
-                row.appendChild(lane);
-                bodyEl.appendChild(row);
+                rowEl.appendChild(left);
+                rowEl.appendChild(lane);
+                bodyEl.appendChild(rowEl);
             }
         });
 

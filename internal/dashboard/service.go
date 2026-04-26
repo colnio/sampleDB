@@ -12,7 +12,7 @@ import (
 type Service interface {
 	KPIs(ctx context.Context) (KPIs, error)
 	RecentSamples(ctx context.Context, limit int) ([]RecentSample, error)
-	TodayBookings(ctx context.Context, now time.Time, loc *time.Location) ([]TodayBooking, error)
+	TodayBookings(ctx context.Context, now time.Time, loc *time.Location, userID int, isAdmin bool) ([]TodayBooking, error)
 }
 
 // DBService is the concrete Service backed by a pgx pool.
@@ -103,10 +103,11 @@ func (s *DBService) RecentSamples(ctx context.Context, limit int) ([]RecentSampl
 	return out, rows.Err()
 }
 
-// TodayBookings returns every booking that starts today in loc, ordered by
-// start time. It is deliberately simple: the dashboard shows "today" so we
-// filter on DATE(start_time AT TIME ZONE loc) = today(loc).
-func (s *DBService) TodayBookings(ctx context.Context, now time.Time, loc *time.Location) ([]TodayBooking, error) {
+// TodayBookings returns bookings for today in loc that the requesting user is
+// allowed to see, ordered by start time. Visibility mirrors the calendar:
+// offline/maintenance equipment is visible to everyone; online equipment is
+// only visible to admins or users with an explicit permission row.
+func (s *DBService) TodayBookings(ctx context.Context, now time.Time, loc *time.Location, userID int, isAdmin bool) ([]TodayBooking, error) {
 	if loc == nil {
 		loc = time.UTC
 	}
@@ -118,6 +119,7 @@ func (s *DBService) TodayBookings(ctx context.Context, now time.Time, loc *time.
 		SELECT b.booking_id,
 		       b.equipment_id,
 		       e.name,
+		       COALESCE(e.status, 'online'),
 		       b.user_id,
 		       u.username,
 		       b.start_time,
@@ -127,7 +129,15 @@ func (s *DBService) TodayBookings(ctx context.Context, now time.Time, loc *time.
 		  JOIN equipment e ON b.equipment_id = e.equipment_id
 		  JOIN users u ON b.user_id = u.user_id
 		 WHERE b.start_time < $2 AND b.end_time > $1
-		 ORDER BY b.start_time`, dayStart, dayEnd)
+		   AND (
+		         COALESCE(e.status, 'online') IN ('offline', 'maintenance')
+		         OR $3 = true
+		         OR EXISTS (
+		             SELECT 1 FROM user_equipment_permissions
+		              WHERE user_id = $4 AND equipment_id = e.equipment_id
+		         )
+		       )
+		 ORDER BY b.start_time`, dayStart, dayEnd, isAdmin, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +146,7 @@ func (s *DBService) TodayBookings(ctx context.Context, now time.Time, loc *time.
 	var out []TodayBooking
 	for rows.Next() {
 		var b TodayBooking
-		if err := rows.Scan(&b.ID, &b.EquipmentID, &b.EquipmentName,
+		if err := rows.Scan(&b.ID, &b.EquipmentID, &b.EquipmentName, &b.EquipmentStatus,
 			&b.UserID, &b.Username, &b.StartTime, &b.EndTime, &b.Purpose); err != nil {
 			return nil, err
 		}

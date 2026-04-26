@@ -119,14 +119,14 @@ func TestDBService_TodayBookings(t *testing.T) {
 	start := time.Date(2026, 4, 20, 9, 0, 0, 0, loc)
 	end := time.Date(2026, 4, 20, 10, 30, 0, 0, loc)
 	mock.ExpectQuery(`FROM bookings b`).
-		WithArgs(dayStart, dayEnd).
+		WithArgs(dayStart, dayEnd, false, 0).
 		WillReturnRows(pgxmock.NewRows([]string{
-			"booking_id", "equipment_id", "name", "user_id", "username",
+			"booking_id", "equipment_id", "name", "status", "user_id", "username",
 			"start_time", "end_time", "purpose",
-		}).AddRow(101, 7, "AFM Dimension Icon", 3, "bob", start, end, "L.chen"))
+		}).AddRow(101, 7, "AFM Dimension Icon", "online", 3, "bob", start, end, "L.chen"))
 
 	svc := dashboard.NewService(mock)
-	rows, err := svc.TodayBookings(context.Background(), now, loc)
+	rows, err := svc.TodayBookings(context.Background(), now, loc, 0, false)
 	if err != nil {
 		t.Fatalf("TodayBookings: %v", err)
 	}

@@ -535,7 +535,7 @@ func (m *Manager) getSession(ctx context.Context, token string) (Session, bool, 
 	var s Session
 	s.Token = token
 	err := m.db.QueryRow(ctx,
-		`SELECT s.user_id, s.username, s.expires_at, s.csrf_token
+		`SELECT s.user_id, s.username, s.expires_at, COALESCE(s.csrf_token, '')
 		   FROM sessions s
 		   JOIN users u ON u.user_id = s.user_id
 		  WHERE s.id = $1 AND s.expires_at > NOW()

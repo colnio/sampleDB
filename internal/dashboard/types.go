@@ -41,14 +41,15 @@ func (r RecentSample) DisplayOwner() string {
 
 // TodayBooking is a single row in the "Today's bookings" timeline.
 type TodayBooking struct {
-	ID            int
-	EquipmentID   int
-	EquipmentName string
-	UserID        int
-	Username      string
-	StartTime     time.Time
-	EndTime       time.Time
-	Purpose       string
+	ID              int
+	EquipmentID     int
+	EquipmentName   string
+	EquipmentStatus string // "online", "maintenance", "offline"
+	UserID          int
+	Username        string
+	StartTime       time.Time
+	EndTime         time.Time
+	Purpose         string
 }
 
 // BasePageData mirrors the session-derived fields used across all templates.
