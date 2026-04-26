@@ -663,6 +663,10 @@ func (h *Handlers) CreateNotification(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin?error=message+required", http.StatusSeeOther)
 		return
 	}
+	if len(msg) > 2000 {
+		http.Redirect(w, r, "/admin?error=message+too+long+(max+2000+characters)", http.StatusSeeOther)
+		return
+	}
 	if level != "info" && level != "warning" && level != "critical" {
 		level = "info"
 	}
