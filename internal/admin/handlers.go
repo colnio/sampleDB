@@ -358,12 +358,10 @@ func (h *Handlers) SetEquipmentStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status := strings.TrimSpace(r.FormValue("status"))
-	validStatuses := map[string]bool{"online": true, "offline": true, "maintenance": true}
-	if !validStatuses[status] {
+	if status == "" {
 		http.Redirect(w, r, "/admin?error=Invalid+status+value", http.StatusSeeOther)
 		return
 	}
-
 	if err := h.svc.SetEquipmentStatus(r.Context(), equipmentID, status); err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			http.Redirect(w, r, "/admin?error=Equipment+not+found", http.StatusSeeOther)
@@ -497,13 +495,8 @@ func (h *Handlers) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parts := strings.Split(strings.TrimSuffix(r.URL.Path, "/"), "/")
-	if len(parts) < 4 {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-	groupID, err := strconv.Atoi(parts[len(parts)-1])
-	if err != nil || groupID <= 0 {
+	groupID, err := extractIDFromPrefixAndSuffix(r.URL.Path, "/admin/delete-group/", "")
+	if err != nil {
 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
 		return
 	}
@@ -549,6 +542,10 @@ func (h *Handlers) EquipmentReport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid end date, use YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
+	if startDate > endDate {
+		http.Error(w, "Start date must be before end date", http.StatusBadRequest)
+		return
+	}
 
 	records, err := h.svc.GetEquipmentReport(r.Context(), equipmentID, startDate, endDate)
 	if err != nil {
@@ -588,17 +585,17 @@ func (h *Handlers) EquipmentReport(w http.ResponseWriter, r *http.Request) {
 // APIUsers handles GET /api/v1/users.
 func (h *Handlers) APIUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		web.JSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
 
 	users, err := h.svc.ListAPIUsers(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		web.JSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	web.JSON(w, http.StatusOK, map[string]any{
 		"items": users,
 		"total": len(users),
 	})
@@ -607,13 +604,13 @@ func (h *Handlers) APIUsers(w http.ResponseWriter, r *http.Request) {
 // APIEquipment handles GET /api/v1/equipment.
 func (h *Handlers) APIEquipment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		web.JSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
 
 	equipment, err := h.svc.GetAllEquipment(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		web.JSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
 		return
 	}
 
@@ -627,7 +624,7 @@ func (h *Handlers) APIEquipment(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	web.JSON(w, http.StatusOK, map[string]any{
 		"items": items,
 		"total": len(items),
 	})
@@ -636,16 +633,16 @@ func (h *Handlers) APIEquipment(w http.ResponseWriter, r *http.Request) {
 // ListNotifications handles GET /api/notifications — returns active notifications as JSON.
 func (h *Handlers) ListNotifications(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		web.JSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
 	notifs, err := h.svc.ListNotifications(r.Context())
 	if err != nil {
 		log.Printf("admin: list notifications: %v", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
+		web.JSON(w, http.StatusInternalServerError, map[string]string{"error": "database error"})
 		return
 	}
-	writeJSON(w, http.StatusOK, notifs)
+	web.JSON(w, http.StatusOK, notifs)
 }
 
 // CreateNotification handles POST /admin/notifications.
@@ -697,7 +694,3 @@ func (h *Handlers) DeleteNotification(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin?success=Notification+removed", http.StatusSeeOther)
 }
 
-// writeJSON is a package-local helper for JSON responses.
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	web.JSON(w, status, v)
-}

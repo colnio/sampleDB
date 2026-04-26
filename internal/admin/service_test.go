@@ -575,8 +575,27 @@ func TestResetPassword_ServiceReturnsMinEntropyPassword(t *testing.T) {
 	if len(pw) < 12 {
 		t.Errorf("expected password length >= 12, got %d (%q)", len(pw), pw)
 	}
-	if pw == "" {
-		t.Error("expected non-empty password")
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet mock expectations: %v", err)
+	}
+}
+
+func TestResetPassword_PasswordOnlyAllowedCharset(t *testing.T) {
+	const charset = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`UPDATE users SET password_hash`).
+		WithArgs(pgxmock.AnyArg(), 7).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	pw, err := svc.ResetPassword(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("ResetPassword: %v", err)
+	}
+	for i, c := range pw {
+		if !strings.ContainsRune(charset, c) {
+			t.Errorf("pw[%d]=%q is not in allowed charset", i, c)
+		}
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet mock expectations: %v", err)
@@ -1179,6 +1198,19 @@ func TestHandlerSetEquipmentStatus_NotFound(t *testing.T) {
 	}
 }
 
+func TestHandlerSetEquipmentStatus_ServiceError(t *testing.T) {
+	h := newHandlers(&mockService{setEqStatusErr: errors.New("db error")})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/equipment/5/status", url.Values{"status": {"online"}})
+	rr := httptest.NewRecorder()
+	h.SetEquipmentStatus(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
+	}
+}
+
 func TestHandlerAddEquipmentGroup_Success(t *testing.T) {
 	svc := &mockService{}
 	h := newHandlers(svc)
@@ -1314,6 +1346,22 @@ func TestDeleteNotification_Success(t *testing.T) {
 	}
 }
 
+func TestDeleteNotification_NotFound(t *testing.T) {
+	svc, mock := newSvc(t)
+
+	mock.ExpectExec(`DELETE FROM notifications WHERE id = \$1`).
+		WithArgs(int64(999)).
+		WillReturnResult(pgxmock.NewResult("DELETE", 0))
+
+	err := svc.DeleteNotification(context.Background(), 999)
+	if !errors.Is(err, web.ErrNotFound) {
+		t.Errorf("expected web.ErrNotFound, got %v", err)
+	}
+	if err2 := mock.ExpectationsWereMet(); err2 != nil {
+		t.Error(err2)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Handler tests — Notifications
 // ---------------------------------------------------------------------------
@@ -1410,6 +1458,22 @@ func TestHandlerCreateNotification_InvalidLevelDefaultsToInfo(t *testing.T) {
 	}
 	if svc.lastNotifLevel != "info" {
 		t.Errorf("expected level to default to 'info', got %q", svc.lastNotifLevel)
+	}
+}
+
+func TestHandlerCreateNotification_ServiceError(t *testing.T) {
+	h := newHandlers(&mockService{createNotifErr: errors.New("db error")})
+	req := newAuthenticatedRequest(http.MethodPost, "/admin/notifications", url.Values{
+		"message": {"Scheduled maintenance"},
+		"level":   {"info"},
+	})
+	rr := httptest.NewRecorder()
+	h.CreateNotification(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected redirect, got %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "error") {
+		t.Errorf("expected error redirect, got %q", loc)
 	}
 }
 

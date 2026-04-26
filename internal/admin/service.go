@@ -511,8 +511,14 @@ func (s *DBService) CreateNotification(ctx context.Context, message, level, auth
 
 // DeleteNotification removes the notification with the given ID.
 func (s *DBService) DeleteNotification(ctx context.Context, id int64) error {
-	_, err := s.db.Exec(ctx, `DELETE FROM notifications WHERE id = $1`, id)
-	return err
+	tag, err := s.db.Exec(ctx, `DELETE FROM notifications WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
 }
 
 // generatePassword returns a cryptographically random alphanumeric string of

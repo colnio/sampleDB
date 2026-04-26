@@ -83,3 +83,5 @@ The ordering is important: `withAuth` → `adminMW` → `withCSRF` → handler.
 - Service interfaces use `dbiface.Pool`; tests inject `pgxmock`.
 - Tests call `mock.ExpectationsWereMet()` at the end of every DB test.
 - `web.ErrNotFound` / `web.ErrForbidden` are the sentinel errors for 404/403 responses.
+- Valid `samples.status` values (enforced by DB constraint): `active`, `in_progress`, `archived`, `planned`. The `statusChipClass` and `statusLabel` template functions map all four values.
+- `internal/admin` owns a **notifications subsystem**: admins post banners (`message`, `level` ∈ `info`/`warning`/`critical`) fetched by the base template on every page load via `GET /api/notifications`. Mutations: `POST /admin/notifications` (create), `POST /admin/notifications/{id}/delete`. Notifications have no expiry — they must be manually deleted.

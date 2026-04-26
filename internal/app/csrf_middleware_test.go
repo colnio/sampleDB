@@ -138,6 +138,31 @@ func TestRequireCSRF_BearerSessionExempt(t *testing.T) {
 	}
 }
 
+func TestRequireCSRF_APIPathReturnsJSONForbidden(t *testing.T) {
+	handler := RequireCSRF(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("handler should not be reached with wrong CSRF token")
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/something", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", "wrongtoken")
+	ctx := auth.ContextWithSession(req.Context(), sessionWithCSRF("correct"))
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %q", ct)
+	}
+	if body := rr.Body.String(); !strings.Contains(body, `"error"`) {
+		t.Errorf("expected JSON error body, got %q", body)
+	}
+}
+
 func TestRequireCSRF_NoSessionExempt(t *testing.T) {
 	reached := false
 	handler := RequireCSRF(func(w http.ResponseWriter, r *http.Request) {

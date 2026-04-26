@@ -1,7 +1,6 @@
 package app
 
 import (
-	"mime"
 	"net/http"
 	"strings"
 
@@ -27,10 +26,7 @@ func RequireCSRF(next http.HandlerFunc) http.HandlerFunc {
 
 		submitted := r.Header.Get("X-CSRF-Token")
 		if submitted == "" {
-			ct, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if ct != "application/json" {
-				submitted = r.FormValue("csrf_token")
-			}
+			submitted = r.FormValue("csrf_token")
 		}
 
 		if !auth.ValidateCSRFToken(session, submitted) {
