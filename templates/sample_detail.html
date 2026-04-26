@@ -472,6 +472,7 @@
                       hx-select="#attachments-panel"
                       hx-swap="outerHTML"
                       hx-confirm="Delete this attachment?">
+                    {{csrfField $.CSRFToken}}
                     <button type="submit" class="button button--destructive button--small">Delete</button>
                 </form>
             </figcaption>
@@ -517,6 +518,7 @@
                       hx-select="#attachments-panel"
                       hx-swap="outerHTML"
                       hx-confirm="Delete this attachment?">
+                    {{csrfField $.CSRFToken}}
                     <button type="submit" class="button button--destructive button--small">Delete</button>
                 </form>
             </div>

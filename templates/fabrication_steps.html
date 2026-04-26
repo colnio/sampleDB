@@ -69,6 +69,7 @@
                           hx-select="#fabrication-steps-panel"
                           hx-swap="outerHTML"
                           hx-confirm="Delete step {{printf "%02d" .StepOrder}}?">
+                        {{csrfField $.CSRFToken}}
                         <button type="submit"
                                 class="button button--ghost button--small fab-step__action-btn fab-step__action-btn--delete"
                                 aria-label="Delete step {{printf "%02d" .StepOrder}}">

@@ -236,7 +236,7 @@ func (s *DBService) Search(ctx context.Context, query string, f ListFilters) ([]
 	var args []interface{}
 	for i, kw := range keywords {
 		whereClauses = append(whereClauses,
-			fmt.Sprintf("$%d = ANY(string_to_array(lower(s.sample_keywords), ','))", i+1))
+			fmt.Sprintf("$%d = ANY(SELECT trim(k) FROM unnest(string_to_array(lower(s.sample_keywords), ',')) k)", i+1))
 		args = append(args, kw)
 	}
 

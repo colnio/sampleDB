@@ -16,6 +16,7 @@
               hx-select="#fabrication-steps-panel"
               hx-swap="outerHTML"
               hx-indicator="#step-add-indicator">
+            {{csrfField .CSRFToken}}
             <div class="modal__body">
                 <div class="form-row">
                     <div class="form-group">
