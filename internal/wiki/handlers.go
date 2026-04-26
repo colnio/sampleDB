@@ -160,13 +160,12 @@ func (h *Handlers) saveUploadedFile(file io.Reader, originalName string) (string
 	if err != nil {
 		return "", err
 	}
-	defer dst.Close()
-
 	if _, err = io.Copy(dst, file); err != nil {
 		dst.Close()
 		os.Remove(fullPath)
 		return "", err
 	}
+	dst.Close()
 
 	if h.cfg.BaseDir != "" {
 		if rel, err := filepath.Rel(h.cfg.BaseDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {

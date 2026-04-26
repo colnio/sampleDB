@@ -167,12 +167,12 @@ func (h *Handlers) saveUploadedFile(file io.Reader, originalName string) (string
 	if err != nil {
 		return "", err
 	}
-	defer dst.Close()
 	if _, err = io.Copy(dst, file); err != nil {
 		dst.Close()
 		os.Remove(fullPath)
 		return "", err
 	}
+	dst.Close()
 	if h.cfg.BaseDir != "" {
 		if rel, err := filepath.Rel(h.cfg.BaseDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
 			return filepath.ToSlash(rel), nil
@@ -356,8 +356,8 @@ func (h *Handlers) renderFabricationStepsSection(w http.ResponseWriter, r *http.
 func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())
 	query := strings.TrimSpace(r.URL.Query().Get("query"))
-	dateFrom := r.URL.Query().Get("date_from")
-	dateTo := r.URL.Query().Get("date_to")
+	dateFrom := normalizeDateFilter(r.URL.Query().Get("date_from"))
+	dateTo := normalizeDateFilter(r.URL.Query().Get("date_to"))
 	statusFilter := normalizeStatusFilter(r.URL.Query().Get("status"))
 	ownerFilter := normalizeOwnerFilter(r.URL.Query().Get("owner"))
 	view := r.URL.Query().Get("view")
@@ -421,8 +421,8 @@ func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	statusFilter := normalizeStatusFilter(r.URL.Query().Get("status"))
 	ownerFilter := normalizeOwnerFilter(r.URL.Query().Get("owner"))
-	dateFrom := r.URL.Query().Get("date_from")
-	dateTo := r.URL.Query().Get("date_to")
+	dateFrom := normalizeDateFilter(r.URL.Query().Get("date_from"))
+	dateTo := normalizeDateFilter(r.URL.Query().Get("date_to"))
 	query := strings.TrimSpace(r.URL.Query().Get("query"))
 
 	filters := ListFilters{
@@ -483,6 +483,18 @@ func normalizeStatusFilter(s string) string {
 		return s
 	}
 	return ""
+}
+
+// normalizeDateFilter validates that s is a YYYY-MM-DD date and returns it, or
+// "" for any malformed value, preventing DB cast errors on invalid input.
+func normalizeDateFilter(s string) string {
+	if s == "" {
+		return ""
+	}
+	if _, err := time.Parse("2006-01-02", s); err != nil {
+		return ""
+	}
+	return s
 }
 
 // normalizeOwnerFilter strips whitespace and treats "all" as empty (no filter).

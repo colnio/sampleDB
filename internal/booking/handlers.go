@@ -222,6 +222,20 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	eqStatus, err := h.svc.GetEquipmentStatus(r.Context(), equipmentID)
+	if err != nil {
+		http.Redirect(w, r, "/booking?error=Invalid+equipment", http.StatusSeeOther)
+		return
+	}
+	if eqStatus == "offline" {
+		http.Redirect(w, r, "/booking?error=Equipment+is+currently+offline", http.StatusSeeOther)
+		return
+	}
+	if eqStatus == "maintenance" && !isAdmin {
+		http.Redirect(w, r, "/booking?error=Equipment+is+under+maintenance", http.StatusSeeOther)
+		return
+	}
+
 	if !isAdmin {
 		permitted, err := h.svc.CheckUserPermission(r.Context(), session.UserID, equipmentID)
 		if err != nil {

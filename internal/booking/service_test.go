@@ -461,18 +461,25 @@ func TestCreate_ConcurrentConflictViaService(t *testing.T) {
 
 // mockService is a minimal mock of booking.Service for handler tests.
 type mockService struct {
-	equipment     []booking.Equipment
-	bookings      []booking.Booking
-	hasPermission bool
-	isAdmin       bool
-	createErr     error
-	deleteErr     error
-	conflictErr   error
-	hasConflict   bool
+	equipment      []booking.Equipment
+	bookings       []booking.Booking
+	hasPermission  bool
+	isAdmin        bool
+	createErr      error
+	deleteErr      error
+	conflictErr    error
+	hasConflict    bool
+	equipmentStatus string
 }
 
 func (m *mockService) GetAllEquipment(_ context.Context) ([]booking.Equipment, error) {
 	return m.equipment, nil
+}
+func (m *mockService) GetEquipmentStatus(_ context.Context, _ int) (string, error) {
+	if m.equipmentStatus != "" {
+		return m.equipmentStatus, nil
+	}
+	return "online", nil
 }
 func (m *mockService) CheckUserPermission(_ context.Context, _, _ int) (bool, error) {
 	return m.hasPermission, nil

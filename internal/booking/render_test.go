@@ -23,6 +23,9 @@ type renderStub struct {
 func (r *renderStub) GetAllEquipment(_ context.Context) ([]booking.Equipment, error) {
 	return r.equipment, nil
 }
+func (r *renderStub) GetEquipmentStatus(_ context.Context, _ int) (string, error) {
+	return "online", nil
+}
 func (r *renderStub) CheckUserPermission(_ context.Context, _, _ int) (bool, error) {
 	return true, nil
 }

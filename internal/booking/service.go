@@ -18,6 +18,7 @@ import (
 type Service interface {
 	// Equipment
 	GetAllEquipment(ctx context.Context) ([]Equipment, error)
+	GetEquipmentStatus(ctx context.Context, equipmentID int) (string, error)
 	CheckUserPermission(ctx context.Context, userID, equipmentID int) (bool, error)
 	IsAdmin(ctx context.Context, userID int) (bool, error)
 
@@ -71,6 +72,18 @@ func (s *DBService) GetAllEquipment(ctx context.Context) ([]Equipment, error) {
 		return nil, err
 	}
 	return equipment, nil
+}
+
+// GetEquipmentStatus returns the status of the given equipment, or ErrNotFound if it doesn't exist.
+func (s *DBService) GetEquipmentStatus(ctx context.Context, equipmentID int) (string, error) {
+	var status string
+	err := s.db.QueryRow(ctx,
+		`SELECT coalesce(status, 'online') FROM equipment WHERE equipment_id = $1`,
+		equipmentID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", web.ErrNotFound
+	}
+	return status, err
 }
 
 // CheckUserPermission returns true if userID has permission to book equipmentID.
@@ -204,6 +217,9 @@ func (s *DBService) GetBooking(ctx context.Context, bookingID int) (Booking, err
 
 // VerifyUserPassword checks the given password against the stored bcrypt hash for the user.
 func (s *DBService) VerifyUserPassword(ctx context.Context, userID int, password string) (bool, error) {
+	if len(password) > 72 {
+		return false, nil
+	}
 	var hash string
 	err := s.db.QueryRow(ctx,
 		"SELECT password_hash FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false",
