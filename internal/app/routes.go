@@ -70,7 +70,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	// Auth routes (no RequireAuth wrapper)
 	mux.HandleFunc("/login", a.Auth.LoginHandler())
 	mux.HandleFunc("/register", a.Auth.RegisterHandler())
-	mux.HandleFunc("/logout", withAuth(a.Auth.LogoutHandler()))
+	mux.HandleFunc("/logout", withAuth(withCSRF(a.Auth.LogoutHandler())))
 
 	// --- Sample domain routes (wired via samples.Handlers) ---
 	sampleSvc := samples.NewService(a.DB)

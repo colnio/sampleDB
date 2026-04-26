@@ -137,6 +137,10 @@
         xhr.open('POST', endpoint);
         // Tell the server this is an HTMX-style request so it returns the partial.
         xhr.setRequestHeader('HX-Request', 'true');
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMeta && csrfMeta.content) {
+            xhr.setRequestHeader('X-CSRF-Token', csrfMeta.content);
+        }
         xhr.send(fd);
     }
 }());

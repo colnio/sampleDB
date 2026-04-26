@@ -356,6 +356,10 @@ func (m *Manager) RegisterHandler() http.HandlerFunc {
 
 func (m *Manager) LogoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
 		cookie, err := r.Cookie("session_token")
 		if err == nil {
 			m.deleteSession(r.Context(), cookie.Value)

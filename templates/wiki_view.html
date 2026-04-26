@@ -178,6 +178,7 @@
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
                 <form action="/wiki/attachment/{{.ID}}/delete" method="POST" class="inline-form">
+                    {{csrfField $.CSRFToken}}
                     <button type="submit" class="button button--ghost button--small"
                             style="color:var(--color-destructive);"
                             onclick="return confirm('Delete this attachment?')">

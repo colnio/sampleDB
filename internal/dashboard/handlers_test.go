@@ -70,6 +70,7 @@ func buildRenderer(t *testing.T) *web.Renderer {
 		"formatDateChip":     func(s string) string { return s },
 		"today":              func() string { return "" },
 		"toJSON":             func(v interface{}) template.JS { return template.JS("null") },
+		"csrfField":          func(token string) template.HTML { return template.HTML("") },
 	}).ParseFiles("../../templates/base.html", "../../templates/header.html", "../../templates/dashboard.html")
 	if err != nil {
 		t.Fatalf("parse templates: %v", err)

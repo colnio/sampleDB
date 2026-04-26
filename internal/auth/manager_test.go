@@ -253,7 +253,7 @@ func TestLogoutHandler_ClearsSessionAndRedirects(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
 	m := NewManager(mock)
-	req := httptest.NewRequest(http.MethodGet, "/logout", nil)
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	req.AddCookie(&http.Cookie{Name: "session_token", Value: "test-token-123"})
 	rr := httptest.NewRecorder()
 
@@ -278,7 +278,7 @@ func TestLogoutHandler_NoCookie(t *testing.T) {
 	defer mock.Close()
 
 	m := NewManager(mock)
-	req := httptest.NewRequest(http.MethodGet, "/logout", nil)
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	rr := httptest.NewRecorder()
 
 	m.LogoutHandler()(rr, req)
