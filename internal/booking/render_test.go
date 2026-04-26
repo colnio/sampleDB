@@ -26,6 +26,9 @@ func (r *renderStub) GetAllEquipment(_ context.Context) ([]booking.Equipment, er
 func (r *renderStub) GetEquipmentStatus(_ context.Context, _ int) (string, error) {
 	return "online", nil
 }
+func (r *renderStub) GetEquipmentName(_ context.Context, _ int) (string, error) {
+	return "Equipment", nil
+}
 func (r *renderStub) CheckUserPermission(_ context.Context, _, _ int) (bool, error) {
 	return true, nil
 }

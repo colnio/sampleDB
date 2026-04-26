@@ -99,10 +99,16 @@ func (l *Logger) Recent(ctx context.Context, limit int) ([]Entry, error) {
 		limit = 10
 	}
 	rows, err := l.db.Query(ctx, `
-		SELECT id, actor_user_id, actor_username, verb, target_type, target_id,
-		       COALESCE(target_label, ''), created_at
-		  FROM activity_log
-		 ORDER BY created_at DESC, id DESC
+		SELECT al.id, al.actor_user_id, al.actor_username, al.verb, al.target_type, al.target_id,
+		       CASE
+		           WHEN al.target_type = 'booking' THEN COALESCE(e.name, COALESCE(al.target_label, ''))
+		           ELSE COALESCE(al.target_label, '')
+		       END,
+		       al.created_at
+		  FROM activity_log al
+		  LEFT JOIN bookings b ON al.target_type = 'booking' AND al.target_id = b.booking_id
+		  LEFT JOIN equipment e ON b.equipment_id = e.equipment_id
+		 ORDER BY al.created_at DESC, al.id DESC
 		 LIMIT $1`, limit)
 	if err != nil {
 		return nil, err

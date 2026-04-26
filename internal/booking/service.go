@@ -19,6 +19,7 @@ type Service interface {
 	// Equipment
 	GetAllEquipment(ctx context.Context) ([]Equipment, error)
 	GetEquipmentStatus(ctx context.Context, equipmentID int) (string, error)
+	GetEquipmentName(ctx context.Context, equipmentID int) (string, error)
 	CheckUserPermission(ctx context.Context, userID, equipmentID int) (bool, error)
 	IsAdmin(ctx context.Context, userID int) (bool, error)
 
@@ -84,6 +85,18 @@ func (s *DBService) GetEquipmentStatus(ctx context.Context, equipmentID int) (st
 		return "", web.ErrNotFound
 	}
 	return status, err
+}
+
+// GetEquipmentName returns the name of the given equipment.
+func (s *DBService) GetEquipmentName(ctx context.Context, equipmentID int) (string, error) {
+	var name string
+	err := s.db.QueryRow(ctx,
+		`SELECT name FROM equipment WHERE equipment_id = $1`,
+		equipmentID).Scan(&name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", web.ErrNotFound
+	}
+	return name, err
 }
 
 // CheckUserPermission returns true if userID has permission to book equipmentID.

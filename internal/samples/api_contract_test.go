@@ -406,6 +406,7 @@ func TestAPISamples_UpdateSample_ReturnsUpdatedDetail(t *testing.T) {
 
 func TestAPISamples_DeleteSample_RemovesAttachmentFiles(t *testing.T) {
 	h, baseDir := newSampleAPIHandlers(t, &sampleAPIServiceStub{
+		isAdmin:    func(_ context.Context, _ int) (bool, error) { return true, nil },
 		checkOwner: func(_ context.Context, _, _ int) error { return nil },
 		apiDeleteSample: func(_ context.Context, id int) ([]string, error) {
 			if id != 42 {

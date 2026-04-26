@@ -115,6 +115,9 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		if err := h.authMgr.RevokeUserSessions(r.Context(), payload.UserID); err != nil {
 			log.Printf("admin: UpdateAccess revoke sessions: %v", err)
 		}
+		if err := h.authMgr.RevokeAllUserTokens(r.Context(), payload.UserID); err != nil {
+			log.Printf("admin: UpdateAccess revoke tokens: %v", err)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

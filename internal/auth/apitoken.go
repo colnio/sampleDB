@@ -132,3 +132,15 @@ func (m *Manager) RevokeAPIToken(ctx context.Context, tokenID, userID int) error
 	}
 	return nil
 }
+
+// RevokeAllUserTokens revokes every active API token for the given user.
+// Called when a user is unapproved or demoted from admin.
+func (m *Manager) RevokeAllUserTokens(ctx context.Context, userID int) error {
+	_, err := m.db.Exec(ctx,
+		`UPDATE api_tokens SET revoked = true WHERE user_id = $1 AND revoked = false`,
+		userID)
+	if err != nil {
+		return fmt.Errorf("revoke all user tokens: %w", err)
+	}
+	return nil
+}

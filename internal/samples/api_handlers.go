@@ -368,6 +368,16 @@ func (h *Handlers) apiDeleteSample(w http.ResponseWriter, r *http.Request, sampl
 	}
 
 	session := auth.MustSessionFromContext(r.Context())
+	isAdmin, err := h.svc.IsAdmin(r.Context(), session.UserID)
+	if err != nil {
+		log.Printf("samples api: apiDeleteSample IsAdmin error: %v", err)
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if !isAdmin {
+		writeError(w, http.StatusForbidden, "admin required")
+		return
+	}
 	if err := h.svc.CheckOwner(r.Context(), id, session.UserID); err != nil {
 		writeOwnerError(w, err)
 		return

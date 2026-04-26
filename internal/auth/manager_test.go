@@ -339,7 +339,7 @@ func TestTryAuth_ValidCookie(t *testing.T) {
 	defer mock.Close()
 
 	expiresAt := time.Now().Add(24 * time.Hour)
-	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, s\.csrf_token`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, COALESCE`).
 		WithArgs(HashToken("valid-token")).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at", "csrf_token"}).
 			AddRow(5, "alice", expiresAt, "test-csrf-abc"))
@@ -389,7 +389,7 @@ func TestSessionSurvivesManagerRestart(t *testing.T) {
 
 	// Manager2 uses the same DB pool — simulates a restart with no in-memory state.
 	expiresAt := time.Now().Add(24 * time.Hour)
-	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, s\.csrf_token`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, COALESCE`).
 		WithArgs(HashToken(session.Token)).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at", "csrf_token"}).
 			AddRow(42, "alice", expiresAt, "test-csrf-token"))

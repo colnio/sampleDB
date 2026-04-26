@@ -481,6 +481,9 @@ func (m *mockService) GetEquipmentStatus(_ context.Context, _ int) (string, erro
 	}
 	return "online", nil
 }
+func (m *mockService) GetEquipmentName(_ context.Context, _ int) (string, error) {
+	return "Equipment", nil
+}
 func (m *mockService) CheckUserPermission(_ context.Context, _, _ int) (bool, error) {
 	return m.hasPermission, nil
 }

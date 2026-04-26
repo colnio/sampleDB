@@ -114,7 +114,7 @@ func TestLogger_Recent_ReturnsEntries(t *testing.T) {
 	userID := int64(4)
 	tID := int64(42)
 
-	mock.ExpectQuery(`SELECT id, actor_user_id`).
+	mock.ExpectQuery(`SELECT al\.id, al\.actor_user_id`).
 		WithArgs(5).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "actor_user_id", "actor_username", "verb", "target_type", "target_id", "target_label", "created_at",
@@ -155,7 +155,7 @@ func TestLogger_Recent_DefaultLimit(t *testing.T) {
 
 	l := activity.NewLogger(mock)
 	// Limit<=0 should be replaced by 10.
-	mock.ExpectQuery(`SELECT id, actor_user_id`).
+	mock.ExpectQuery(`SELECT al\.id, al\.actor_user_id`).
 		WithArgs(10).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "actor_user_id", "actor_username", "verb", "target_type", "target_id", "target_label", "created_at",

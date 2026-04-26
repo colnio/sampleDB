@@ -268,7 +268,7 @@ func TestRequireAuth_CookiePath(t *testing.T) {
 	}
 
 	// RequireAuth will SELECT the session from DB (joined with users) using the hash.
-	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, s\.csrf_token`).
+	mock.ExpectQuery(`SELECT s\.user_id, s\.username, s\.expires_at, COALESCE`).
 		WithArgs(HashToken(session.Token)).
 		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "expires_at", "csrf_token"}).
 			AddRow(1, "alice", time.Now().Add(24*time.Hour), "test-csrf"))

@@ -274,7 +274,8 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/booking?error=Error+creating+booking", http.StatusSeeOther)
 		return
 	}
-	h.logActivity(r.Context(), session, activity.Verb("booked"), activity.TargetType("booking"), bookingID, purpose)
+	eqName, _ := h.svc.GetEquipmentName(r.Context(), equipmentID)
+	h.logActivity(r.Context(), session, activity.Verb("booked"), activity.TargetType("booking"), bookingID, eqName)
 
 	week := r.FormValue("week")
 	if week != "" {
