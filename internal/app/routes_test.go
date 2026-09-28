@@ -94,11 +94,13 @@ func TestRegisterRoutes_AllPatternsRegistered(t *testing.T) {
 		{"/admin/equipment/1/groups/add", "/admin/equipment/"},
 		{"/admin/equipment/1/groups/remove", "/admin/equipment/"},
 		{"/admin/delete-user", "/admin/delete-user"},
+		{"/admin/set-email", "/admin/set-email"},
 		// steps
 		{"/steps/10/edit", "/steps/"},
 		// account
 		{"/change-password", "/change-password"},
 		{"/profile/tokens", "/profile/tokens"},
+		{"/profile/email", "/profile/email"},
 		{"/profile/tokens/abc", "/profile/tokens/"},
 		// api
 		{"/api/v1/samples", "/api/v1/samples"},

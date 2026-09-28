@@ -169,6 +169,96 @@ func (h *Handlers) renderChangePassword(w http.ResponseWriter, data ChangePasswo
 	}
 }
 
+// Email handles GET and POST /profile/email. It is both the mandatory prompt
+// that app.RequireEmail redirects to (FirstTime) and the page where users
+// change their email later.
+func (h *Handlers) Email(w http.ResponseWriter, r *http.Request) {
+	session := auth.MustSessionFromContext(r.Context())
+
+	base, ok := h.baseData(w, r, session)
+	if !ok {
+		return
+	}
+
+	current, err := h.svc.GetEmail(r.Context(), session.UserID)
+	if err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			http.Redirect(w, r, "/logout", http.StatusSeeOther)
+			return
+		}
+		log.Printf("profile: get email for user %d: %v", session.UserID, err)
+		http.Error(w, "Unable to load account information", http.StatusInternalServerError)
+		return
+	}
+
+	data := EmailPageData{
+		BasePageData: base,
+		Email:        current,
+		Next:         r.URL.Query().Get("next"),
+		FirstTime:    current == "",
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		h.renderEmail(w, data)
+
+	case http.MethodPost:
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		if err := r.ParseForm(); err != nil {
+			data.Error = "Invalid form submission"
+			w.WriteHeader(http.StatusBadRequest)
+			h.renderEmail(w, data)
+			return
+		}
+		data.Next = r.FormValue("next")
+
+		email, err := web.NormalizeEmail(r.FormValue("email"))
+		if err != nil {
+			data.Email = r.FormValue("email")
+			data.Error = err.Error()
+			w.WriteHeader(http.StatusBadRequest)
+			h.renderEmail(w, data)
+			return
+		}
+
+		if err := h.svc.UpdateEmail(r.Context(), session.UserID, email); err != nil {
+			data.Email = email
+			switch {
+			case errors.Is(err, web.ErrEmailTaken):
+				data.Error = "That email is already used by another account"
+				w.WriteHeader(http.StatusConflict)
+			case errors.Is(err, web.ErrNotFound):
+				http.Redirect(w, r, "/logout", http.StatusSeeOther)
+				return
+			default:
+				log.Printf("profile: update email for user %d: %v", session.UserID, err)
+				data.Error = "Failed to update email"
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			h.renderEmail(w, data)
+			return
+		}
+
+		if data.FirstTime {
+			http.Redirect(w, r, auth.SafeNext(data.Next, "/dashboard"), http.StatusSeeOther)
+			return
+		}
+		data.Email = email
+		data.Success = "Email updated"
+		h.renderEmail(w, data)
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handlers) renderEmail(w http.ResponseWriter, data EmailPageData) {
+	if err := h.renderer.Render(w, "profile_email", data); err != nil {
+		log.Printf("profile: render email page: %v", err)
+		http.Error(w, "Template execution error", http.StatusInternalServerError)
+	}
+}
+
 // ProfileTokens handles GET and POST /profile/tokens.
 func (h *Handlers) ProfileTokens(w http.ResponseWriter, r *http.Request) {
 	session := auth.MustSessionFromContext(r.Context())

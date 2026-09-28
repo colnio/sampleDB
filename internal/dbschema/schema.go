@@ -59,6 +59,9 @@ var schemaStatements = []string{
 	addPlannedStatusConstraint,
 	// Migration 011 (addon) – add csrf_token to sessions
 	addCSRFTokenToSessions,
+	// Migration 012 – see DDL/migrations/012_user_email.sql
+	addUserEmailColumn,
+	createUserEmailUniqueIndex,
 }
 
 var dataStatements = []string{
@@ -350,6 +353,16 @@ END $$;`
 const addCSRFTokenToSessions = `
 ALTER TABLE sessions
     ADD COLUMN IF NOT EXISTS csrf_token TEXT NOT NULL DEFAULT '';`
+
+const addUserEmailColumn = `
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS email VARCHAR(254);`
+
+// createUserEmailUniqueIndex makes emails unique case-insensitively; NULL
+// (not yet provided) is allowed for any number of users.
+const createUserEmailUniqueIndex = `
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower
+    ON users (lower(email)) WHERE email IS NOT NULL;`
 
 // clearStaleCSRFSessions removes sessions created before migration 011 that have
 // an empty csrf_token. Without this, those sessions would bypass CSRF protection

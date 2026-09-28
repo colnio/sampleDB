@@ -150,6 +150,9 @@
             </div>
             <div class="modal__foot">
                 <button type="button" class="button button--ghost" data-close-modal="delete-admin-modal">Cancel</button>
+                {{/* Filled in by the block click handler from ownerEmails. */}}
+                <a id="del-admin-email" class="button button--secondary" href="#" hidden>Email owner</a>
+                <span id="del-admin-no-email" class="modal__foot-note" hidden>No email on file</span>
                 <button type="submit" id="del-admin-submit" class="button button--destructive">Delete booking</button>
             </div>
         </form>
@@ -327,6 +330,8 @@
     }
 
     var isAdmin  = {{if .IsAdmin}}true{{else}}false{{end}};
+    // user_id → email of booking owners; the server only fills this for admins.
+    var ownerEmails = {{toJSON .OwnerEmails}} || {};
     var delOwnModal   = document.getElementById('delete-own-modal');
     var delAdminModal = document.getElementById('delete-admin-modal');
 
@@ -336,6 +341,31 @@
     var dayStart   = new Date(+_p[0], +_p[1] - 1, +_p[2], 0, 0, 0, 0);
     var dayStartMs = dayStart.getTime();
     var dayEndMs   = dayStartMs + 86400000; // exactly 24 h later
+
+    // Point the admin popup's "Email <user>" button at the booking owner, with
+    // a subject naming the equipment and slot, or show "No email on file".
+    function setOwnerEmailLink(b, lane, st, en) {
+        var link   = document.getElementById('del-admin-email');
+        var noMail = document.getElementById('del-admin-no-email');
+        var email  = ownerEmails[b.user_id];
+        if (!email) {
+            link.hidden = true;
+            link.removeAttribute('href');
+            noMail.hidden = false;
+            return;
+        }
+        var nameEl = lane.parentElement.querySelector('.tline-row__name');
+        var eqName = nameEl ? nameEl.textContent.trim() : 'equipment';
+        var subject = 'Your booking: ' + eqName + ', ' + st.toLocaleDateString() + ' ' +
+            pad(st.getHours()) + ':' + pad(st.getMinutes()) + '–' + pad(en.getHours()) + ':' + pad(en.getMinutes());
+        // Keep "@" literal: some mail clients do not decode %40 in the address.
+        link.href = 'mailto:' + encodeURIComponent(email).replace('%40', '@') +
+            '?subject=' + encodeURIComponent(subject);
+        link.textContent = 'Email ' + (b.username || 'owner');
+        link.title = email;
+        link.hidden = false;
+        noMail.hidden = true;
+    }
 
     if (bookings && bookings.length) {
         bookings.forEach(function (b) {
@@ -389,6 +419,7 @@
                         document.getElementById('del-admin-id').value = b.id;
                         document.getElementById('del-admin-desc').textContent = desc;
                         document.getElementById('admin-password').value = '';
+                        setOwnerEmailLink(b, lane, st, en);
                         openModalEl(delAdminModal);
                     }
                 });

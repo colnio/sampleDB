@@ -34,6 +34,17 @@ All state-changing routes protected by `RequireCSRF` middleware (`internal/app/c
 
 When adding a new state-changing route: wrap it with `withAuth(withCSRF(handler))` and ensure `CSRFToken` is set in the page data.
 
+### Mandatory user email
+
+`users.email` (migration 012) is unique case-insensitively via `idx_users_email_lower` on `lower(email)`; NULL means "not provided yet".
+
+- `withAuth` in `routes.go` is `RequireAuth` + `App.RequireEmail`: a browser session whose user has no email is redirected (303, or `HX-Redirect` for htmx) to `/profile/email?next=…` on every request. Exempt: Bearer-token sessions (empty `CSRFToken`), `/api/*`, `/profile/email`, `/logout`.
+- `/profile/email` (`profile.Handlers.Email`) is both the first-login prompt and the self-service edit page; `/admin/set-email` lets admins edit any user's email from the user card.
+- Validate with `web.NormalizeEmail`; map unique violations with `web.IsUniqueViolation` → `web.ErrEmailTaken`.
+- Emails are admin-only data. Never add them to `booking.Booking` (serialised into every user's page and `/api/bookings`) or `/api/v1/users`. The booking calendar exposes them via `BookingPageData.OwnerEmails`, filled only when the viewer is an admin, for the "Email <user>" button in the admin delete popup.
+- Integration-test fixtures that log in through the browser flow must insert users **with** an email, or they will be redirected to `/profile/email`.
+- `auth.SafeNext(next, fallback)` is the shared open-redirect guard for `?next=` parameters.
+
 ### CSS architecture
 
 All page-specific CSS lives in named sections of `static/css/design.css`:

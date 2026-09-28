@@ -26,6 +26,9 @@ type Service interface {
 	// Bookings
 	GetBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, error)
 	GetBooking(ctx context.Context, bookingID int) (Booking, error)
+	// GetUserEmails returns user_id → email for the given users that have an
+	// email linked. Callers must only expose the result to admins.
+	GetUserEmails(ctx context.Context, userIDs []int) (map[int]string, error)
 	CheckConflict(ctx context.Context, equipmentID int, start, end time.Time) (bool, error)
 	Create(ctx context.Context, p CreateParams) (int, error)
 	Delete(ctx context.Context, bookingID, userID int, isAdmin bool) error
@@ -160,6 +163,36 @@ func (s *DBService) GetBookingsForWeek(ctx context.Context, start, end time.Time
 		return []Booking{}, nil
 	}
 	return bookings, nil
+}
+
+// GetUserEmails returns the linked email for each of userIDs; users without an
+// email are omitted from the map.
+func (s *DBService) GetUserEmails(ctx context.Context, userIDs []int) (map[int]string, error) {
+	emails := make(map[int]string, len(userIDs))
+	if len(userIDs) == 0 {
+		return emails, nil
+	}
+	rows, err := s.db.Query(ctx,
+		`SELECT user_id, email FROM users WHERE user_id = ANY($1) AND email IS NOT NULL`,
+		userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id    int
+			email string
+		)
+		if err := rows.Scan(&id, &email); err != nil {
+			return nil, err
+		}
+		emails[id] = email
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return emails, nil
 }
 
 // CheckConflict returns true if a booking for equipmentID already overlaps [start, end).

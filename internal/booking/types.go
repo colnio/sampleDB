@@ -36,18 +36,19 @@ type BasePageData struct {
 // BookingPageData is the template data for the booking calendar page.
 type BookingPageData struct {
 	BasePageData
-	Equipment        []Equipment
-	Bookings         []Booking
-	HasPermission    map[int]bool // can SEE the lane (true for admins on all equipment)
-	HasBookPermission map[int]bool // can actually BOOK (based on real group access)
-	TimeSlots        []time.Time
-	Hours            []time.Time
-	WeekStart        time.Time
-	WeekEnd          time.Time
-	WeekOffset       int
-	SelectedDate     time.Time
-	Error            string
-	Success          string
+	Equipment         []Equipment
+	Bookings          []Booking
+	HasPermission     map[int]bool   // can SEE the lane (true for admins on all equipment)
+	HasBookPermission map[int]bool   // can actually BOOK (based on real group access)
+	OwnerEmails       map[int]string // user_id → email of booking owners; populated for admins only
+	TimeSlots         []time.Time
+	Hours             []time.Time
+	WeekStart         time.Time
+	WeekEnd           time.Time
+	WeekOffset        int
+	SelectedDate      time.Time
+	Error             string
+	Success           string
 }
 
 // CreateParams holds the fields for creating a new booking.

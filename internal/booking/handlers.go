@@ -106,7 +106,7 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hasBookPermission := make(map[int]bool) // can the current user create a booking?
-	hasPermission := make(map[int]bool)      // can the current user see the lane?
+	hasPermission := make(map[int]bool)     // can the current user see the lane?
 
 	for _, eq := range equipment {
 		permitted, err := h.svc.CheckUserPermission(r.Context(), session.UserID, eq.ID)
@@ -146,20 +146,43 @@ func (h *Handlers) showCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Owner emails are for the admin delete popup only; they must never reach
+	// a non-admin page (Bookings is serialised into every user's page).
+	ownerEmails := map[int]string{}
+	if isAdmin && len(bookings) > 0 {
+		seen := make(map[int]bool, len(bookings))
+		var ownerIDs []int
+		for _, b := range bookings {
+			if b.UserID != session.UserID && !seen[b.UserID] {
+				seen[b.UserID] = true
+				ownerIDs = append(ownerIDs, b.UserID)
+			}
+		}
+		if len(ownerIDs) > 0 {
+			// Best-effort: the popup degrades to "no email on file".
+			if emails, err := h.svc.GetUserEmails(r.Context(), ownerIDs); err != nil {
+				log.Printf("booking: GetUserEmails: %v", err)
+			} else {
+				ownerEmails = emails
+			}
+		}
+	}
+
 	data := BookingPageData{
 		BasePageData:      BasePageData{Username: session.Username, UserID: session.UserID, IsAdmin: isAdmin, CSRFToken: session.CSRFToken},
 		Equipment:         equipment,
 		Bookings:          bookings,
 		HasPermission:     hasPermission,
 		HasBookPermission: hasBookPermission,
-		TimeSlots:     timeSlots,
-		Hours:         hours,
-		WeekStart:     weekStart,
-		WeekEnd:       weekEnd,
-		WeekOffset:    weekOffset,
-		SelectedDate:  selectedDate,
-		Error:         r.URL.Query().Get("error"),
-		Success:       r.URL.Query().Get("success"),
+		OwnerEmails:       ownerEmails,
+		TimeSlots:         timeSlots,
+		Hours:             hours,
+		WeekStart:         weekStart,
+		WeekEnd:           weekEnd,
+		WeekOffset:        weekOffset,
+		SelectedDate:      selectedDate,
+		Error:             r.URL.Query().Get("error"),
+		Success:           r.URL.Query().Get("success"),
 	}
 
 	if err := h.renderer.Render(w, "booking", data); err != nil {

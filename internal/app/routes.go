@@ -1,7 +1,11 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"sampleDB/internal/admin"
@@ -51,9 +55,61 @@ func (a *App) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// emailSetupPath is the page where a user without an email must add one.
+const emailSetupPath = "/profile/email"
+
+// RequireEmail is a middleware that sends browser-session users who have not
+// linked an email yet to emailSetupPath until they do. It must be applied after
+// RequireAuth. Bearer-token API sessions (empty CSRFToken), /api/ requests, the
+// email page itself, and /logout are exempt so that scripts keep working and
+// the user can always complete the form or sign out.
+func (a *App) RequireEmail(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session := auth.MustSessionFromContext(r.Context())
+		path := r.URL.Path
+		if session.CSRFToken == "" || path == emailSetupPath || path == "/logout" ||
+			strings.HasPrefix(path, "/api/") {
+			next(w, r)
+			return
+		}
+
+		var hasEmail bool
+		err := a.DB.QueryRow(r.Context(),
+			"SELECT email IS NOT NULL FROM users WHERE user_id = $1",
+			session.UserID).Scan(&hasEmail)
+		if err != nil {
+			if !errors.Is(err, context.Canceled) {
+				log.Printf("app: RequireEmail lookup for user %d: %v", session.UserID, err)
+			}
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if hasEmail {
+			next(w, r)
+			return
+		}
+
+		target := emailSetupPath
+		if r.Method == http.MethodGet {
+			target += "?next=" + url.QueryEscape(r.URL.RequestURI())
+		}
+		// htmx follows a 303 inside its XHR and would swap the email form into
+		// the current page; HX-Redirect makes it do a full navigation instead.
+		if strings.EqualFold(r.Header.Get("HX-Request"), "true") {
+			w.Header().Set("HX-Redirect", target)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Redirect(w, r, target, http.StatusSeeOther)
+	}
+}
+
 // RegisterRoutes wires all application HTTP routes onto mux.
 func (a *App) RegisterRoutes(mux *http.ServeMux) {
-	withAuth := a.Auth.RequireAuth
+	// Every authenticated route also passes the mandatory-email gate.
+	withAuth := func(h http.HandlerFunc) http.HandlerFunc {
+		return a.Auth.RequireAuth(a.RequireEmail(h))
+	}
 	adminMW := a.RequireAdmin
 	withCSRF := RequireCSRF
 
@@ -162,6 +218,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/delete-group/", withAuth(adminMW(withCSRF(adminHdlrs.DeleteGroup))))
 	mux.HandleFunc("/admin/equipment-report", withAuth(adminMW(adminHdlrs.EquipmentReport)))
 	mux.HandleFunc("/admin/delete-user", withAuth(adminMW(withCSRF(adminHdlrs.DeleteUser))))
+	mux.HandleFunc("/admin/set-email", withAuth(adminMW(withCSRF(adminHdlrs.SetEmail))))
 	mux.HandleFunc("/admin/notifications", withAuth(adminMW(withCSRF(adminHdlrs.CreateNotification))))
 	mux.HandleFunc("/admin/notifications/", withAuth(adminMW(withCSRF(adminHdlrs.DeleteNotification))))
 
@@ -179,6 +236,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	profileSvc := profile.NewService(a.DB)
 	profileHdlrs := profile.NewHandlers(profileSvc, a.Renderer, a.Auth)
 	mux.HandleFunc("/change-password", withAuth(withCSRF(profileHdlrs.ChangePassword)))
+	mux.HandleFunc(emailSetupPath, withAuth(withCSRF(profileHdlrs.Email)))
 	mux.HandleFunc("/profile/tokens", withAuth(withCSRF(profileHdlrs.ProfileTokens)))
 	mux.HandleFunc("/profile/tokens/", withAuth(withCSRF(profileHdlrs.ProfileTokenRevoke)))
 

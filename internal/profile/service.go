@@ -25,6 +25,15 @@ type Service interface {
 	// UpdatePassword replaces the stored password hash for the given user. Returns
 	// web.ErrNotFound if the user does not exist or has been deleted.
 	UpdatePassword(ctx context.Context, userID int, newHash string) error
+
+	// GetEmail returns the user's email, or "" if none is linked yet. Returns
+	// web.ErrNotFound if the user does not exist or has been deleted.
+	GetEmail(ctx context.Context, userID int) (string, error)
+
+	// UpdateEmail links email to the user. Returns web.ErrEmailTaken if another
+	// account already uses it (case-insensitively) and web.ErrNotFound if the
+	// user does not exist or has been deleted.
+	UpdateEmail(ctx context.Context, userID int, email string) error
 }
 
 // DBService is the concrete Service implementation backed by PostgreSQL.
@@ -77,6 +86,40 @@ func (s *DBService) UpdatePassword(ctx context.Context, userID int, newHash stri
 		newHash, userID)
 	if err != nil {
 		return fmt.Errorf("profile: update password: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
+}
+
+// GetEmail returns the stored email for the given user, or "" if none is set.
+// Returns web.ErrNotFound if the user record is absent or soft-deleted.
+func (s *DBService) GetEmail(ctx context.Context, userID int) (string, error) {
+	var email string
+	err := s.db.QueryRow(ctx,
+		`SELECT COALESCE(email, '') FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
+		userID).Scan(&email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", web.ErrNotFound
+		}
+		return "", fmt.Errorf("profile: get email: %w", err)
+	}
+	return email, nil
+}
+
+// UpdateEmail stores email for the given user. The caller must validate it
+// with web.NormalizeEmail first.
+func (s *DBService) UpdateEmail(ctx context.Context, userID int, email string) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users SET email = $1 WHERE user_id = $2 AND COALESCE(deleted, false) = false`,
+		email, userID)
+	if err != nil {
+		if web.IsUniqueViolation(err) {
+			return web.ErrEmailTaken
+		}
+		return fmt.Errorf("profile: update email: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return web.ErrNotFound

@@ -113,6 +113,12 @@ ALTER TABLE users
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS "group" TEXT;
 
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS email VARCHAR(254);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower
+    ON users (lower(email)) WHERE email IS NOT NULL;
+
 ALTER TABLE samples
     ADD COLUMN IF NOT EXISTS owner_user_id INT REFERENCES users(user_id) ON DELETE SET NULL;
 

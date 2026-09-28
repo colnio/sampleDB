@@ -511,6 +511,9 @@ func (m *mockService) GetBooking(_ context.Context, _ int) (booking.Booking, err
 func (m *mockService) VerifyUserPassword(_ context.Context, _ int, _ string) (bool, error) {
 	return true, nil
 }
+func (m *mockService) GetUserEmails(_ context.Context, _ []int) (map[int]string, error) {
+	return map[int]string{}, nil
+}
 
 // newAuthenticatedRequest creates a request with an auth session in its context.
 func newAuthenticatedRequest(method, target string, body url.Values) *http.Request {

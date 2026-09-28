@@ -33,6 +33,7 @@ type Group struct {
 type UserAccess struct {
 	UserID          int         `json:"user_id"`
 	Username        string      `json:"username"`
+	Email           string      `json:"email"`
 	Approved        bool        `json:"approved"`
 	Admin           bool        `json:"admin"`
 	GroupName       string      `json:"group_name"`

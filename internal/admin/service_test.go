@@ -63,6 +63,7 @@ type mockService struct {
 	isAdmin          bool
 	updateErr        error
 	setAdminErr      error
+	setEmailErr      error
 	deleteRows       int64
 	deleteErr        error
 	resetPwd         string
@@ -92,6 +93,8 @@ type mockService struct {
 	lastNotifMsg       string
 	lastNotifLevel     string
 	lastDeleteNotifID  int64
+	lastEmailUserID    int
+	lastEmail          string
 }
 
 func (m *mockService) IsAdmin(_ context.Context, _ int) (bool, error) {
@@ -111,6 +114,10 @@ func (m *mockService) UpdateAccess(_ context.Context, _ admin.UpdateAccessParams
 }
 func (m *mockService) SetAdmin(_ context.Context, _ int, _ bool) error {
 	return m.setAdminErr
+}
+func (m *mockService) SetEmail(_ context.Context, userID int, email string) error {
+	m.lastEmailUserID, m.lastEmail = userID, email
+	return m.setEmailErr
 }
 func (m *mockService) DeleteUser(_ context.Context, _ int) (int64, error) {
 	return m.deleteRows, m.deleteErr

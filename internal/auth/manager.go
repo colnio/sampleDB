@@ -254,22 +254,31 @@ func (m *Manager) LoginHandler() http.HandlerFunc {
 			SameSite: http.SameSiteStrictMode,
 		})
 
-		// Honor ?next= redirect only for local paths to prevent open-redirect.
-		// Require an empty scheme, host, and user, and that the path starts with
-		// exactly one slash (rejects //host and /\host which some clients normalize
-		// to an external host).
 		next := r.FormValue("next")
 		if next == "" {
 			next = r.URL.Query().Get("next")
 		}
-		if u, err := url.Parse(next); next != "" && err == nil &&
-			u.Scheme == "" && u.Host == "" && u.User == nil && u.Opaque == "" &&
-			len(next) >= 1 && next[0] == '/' && (len(next) == 1 || next[1] != '/') {
-			http.Redirect(w, r, next, http.StatusSeeOther)
-		} else {
-			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-		}
+		http.Redirect(w, r, SafeNext(next, "/dashboard"), http.StatusSeeOther)
 	}
+}
+
+// SafeNext returns next if it is a local path that is safe to redirect to,
+// otherwise fallback. It prevents open redirects: next must have an empty
+// scheme, host, and user, and start with exactly one slash — "//host" is
+// rejected, and so is any backslash, because browsers treat "\" like "/" and
+// http.Redirect path-cleans "/a/../\host" down to "/\host".
+func SafeNext(next, fallback string) string {
+	if next == "" || next[0] != '/' || strings.ContainsRune(next, '\\') {
+		return fallback
+	}
+	if len(next) > 1 && next[1] == '/' {
+		return fallback
+	}
+	u, err := url.Parse(next)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil || u.Opaque != "" {
+		return fallback
+	}
+	return next
 }
 
 func (m *Manager) RegisterHandler() http.HandlerFunc {

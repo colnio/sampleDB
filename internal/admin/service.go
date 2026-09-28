@@ -28,6 +28,7 @@ type Service interface {
 	// User management
 	UpdateAccess(ctx context.Context, p UpdateAccessParams) error
 	SetAdmin(ctx context.Context, userID int, isAdmin bool) error
+	SetEmail(ctx context.Context, userID int, email string) error
 	DeleteUser(ctx context.Context, userID int) (rowsAffected int64, err error)
 	ResetPassword(ctx context.Context, userID int) (newPassword string, err error)
 
@@ -150,6 +151,7 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
         SELECT
             u.user_id,
             u.username,
+            COALESCE(u.email, '') AS email,
             COALESCE(u.is_approved, false) AS is_approved,
             COALESCE(u.admin, false) AS admin,
             btrim(u."group") AS group_name,
@@ -160,7 +162,7 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
         FROM users u
         LEFT JOIN user_equipment_permissions uep ON u.user_id = uep.user_id
         WHERE COALESCE(u.deleted, false) = false
-        GROUP BY u.user_id, u.username, u.is_approved, u.admin, group_name
+        GROUP BY u.user_id, u.username, u.email, u.is_approved, u.admin, group_name
         ORDER BY u.username`)
 	if err != nil {
 		return nil, err
@@ -179,7 +181,7 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
 			groupName    sql.NullString
 			equipmentIDs []int32
 		)
-		if err := rows.Scan(&u.UserID, &u.Username, &u.Approved, &u.Admin, &groupName, &equipmentIDs); err != nil {
+		if err := rows.Scan(&u.UserID, &u.Username, &u.Email, &u.Approved, &u.Admin, &groupName, &equipmentIDs); err != nil {
 			return nil, err
 		}
 		if groupName.Valid {
@@ -251,6 +253,25 @@ func (s *DBService) SetAdmin(ctx context.Context, userID int, isAdmin bool) erro
 		"UPDATE users SET admin = $1 WHERE user_id = $2 AND COALESCE(deleted, false) = false",
 		isAdmin, userID)
 	if err != nil {
+		return err
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
+}
+
+// SetEmail links email to the given user. The caller must validate it with
+// web.NormalizeEmail first. Returns web.ErrEmailTaken if another account
+// already uses the address and web.ErrNotFound if no such active user exists.
+func (s *DBService) SetEmail(ctx context.Context, userID int, email string) error {
+	cmdTag, err := s.db.Exec(ctx,
+		"UPDATE users SET email = $1 WHERE user_id = $2 AND COALESCE(deleted, false) = false",
+		email, userID)
+	if err != nil {
+		if web.IsUniqueViolation(err) {
+			return web.ErrEmailTaken
+		}
 		return err
 	}
 	if cmdTag.RowsAffected() == 0 {

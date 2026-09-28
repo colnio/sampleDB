@@ -216,3 +216,27 @@ DO $$ BEGIN
         );
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;`
+
+func TestMigration012_UserEmail(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+
+	for _, stmt := range []string{addUserEmailColumn, createUserEmailUniqueIndex} {
+		if _, err := pool.Exec(ctx, stmt); err != nil {
+			t.Fatalf("apply migration 012: %v", err)
+		}
+	}
+	if !columnExists(t, pool, "users", "email") {
+		t.Fatal("users.email column does not exist")
+	}
+
+	var indexExists bool
+	if err := pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_email_lower')`,
+	).Scan(&indexExists); err != nil {
+		t.Fatalf("index lookup: %v", err)
+	}
+	if !indexExists {
+		t.Fatal("idx_users_email_lower index does not exist")
+	}
+}

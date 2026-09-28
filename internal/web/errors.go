@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 )
 
@@ -11,6 +12,10 @@ var (
 	ErrForbidden  = errors.New("forbidden")
 	ErrConflict   = errors.New("conflict")
 	ErrValidation = errors.New("validation error")
+
+	// ErrEmailTaken is returned when an email is already linked to another
+	// account. It wraps ErrConflict so RenderError maps it to 409.
+	ErrEmailTaken = fmt.Errorf("email already in use: %w", ErrConflict)
 )
 
 // RenderError writes an appropriate HTTP error response for err.

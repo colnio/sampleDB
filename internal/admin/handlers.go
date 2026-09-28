@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -167,6 +168,47 @@ func (h *Handlers) SetAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/admin?success=Admin+status+updated", http.StatusSeeOther)
+}
+
+// SetEmail handles POST /admin/set-email.
+func (h *Handlers) SetEmail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.Atoi(r.FormValue("user_id"))
+	if err != nil {
+		http.Error(w, "Invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	email, err := web.NormalizeEmail(r.FormValue("email"))
+	if err != nil {
+		http.Redirect(w, r, "/admin?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	if err := h.svc.SetEmail(r.Context(), userID, email); err != nil {
+		switch {
+		case errors.Is(err, web.ErrEmailTaken):
+			http.Redirect(w, r, "/admin?error=Email+already+in+use+by+another+account", http.StatusSeeOther)
+		case errors.Is(err, web.ErrNotFound):
+			http.Error(w, "User not found", http.StatusNotFound)
+		default:
+			log.Printf("admin: SetEmail for user %d: %v", userID, err)
+			http.Error(w, "Database error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	http.Redirect(w, r, "/admin?success=Email+updated", http.StatusSeeOther)
 }
 
 // DeleteUser handles POST /admin/delete-user.

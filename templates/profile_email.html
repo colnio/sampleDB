@@ -1,0 +1,41 @@
+{{define "title"}}{{if .FirstTime}}Add Your Email{{else}}Email{{end}}{{end}}
+
+{{define "content"}}
+<div class="page-topbar">
+    <div class="page-topbar__left">
+        <h1>{{if .FirstTime}}Add your email{{else}}Email{{end}}</h1>
+        <div class="page-topbar__crumbs">{{if .FirstTime}}One more step before you continue{{else}}The address admins use to contact you{{end}}</div>
+    </div>
+</div>
+<div class="account-page">
+    <div class="card">
+        {{with .Error}}
+        <div class="alert alert-error">{{.}}</div>
+        {{end}}
+        {{with .Success}}
+        <div class="alert alert-success">{{.}}</div>
+        {{end}}
+
+        {{if .FirstTime}}
+        <p class="account-page__lead">Add an email so admins can contact you about your equipment bookings. It is only visible to admins.</p>
+        {{end}}
+
+        {{/* Not boosted: htmx does not swap 400/409 responses, so validation
+             errors would silently vanish. A plain submit always shows them. */}}
+        <form method="POST" action="/profile/email" class="form" hx-boost="false">
+            {{csrfField .CSRFToken}}
+            {{with .Next}}<input type="hidden" name="next" value="{{.}}">{{end}}
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" value="{{.Email}}" required maxlength="254"
+                       autocomplete="email" placeholder="you@example.com"{{if .FirstTime}} autofocus{{end}}>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="button button--primary">{{if .FirstTime}}Save and continue{{else}}Update Email{{end}}</button>
+                {{if not .FirstTime}}<a href="/dashboard" class="button button--secondary">Cancel</a>{{end}}
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

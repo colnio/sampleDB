@@ -73,6 +73,13 @@
             </svg>
             <span>API Tokens</span>
         </a>
+        <a href="/profile/email" class="sidebar__item" data-nav="email">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
+                <rect x="3.5" y="5.5" width="17" height="13" rx="2"/>
+                <path d="M4 7l8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Email</span>
+        </a>
         <a href="/change-password" class="sidebar__item" data-nav="change-password">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6">
                 <rect x="5" y="11" width="14" height="9" rx="2"/>
@@ -149,6 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (path.indexOf('/agents') === 0) return 'agents';
         if (path.indexOf('/profile/tokens') === 0) return 'tokens';
         if (path.indexOf('/change-password') === 0) return 'change-password';
+        if (path.indexOf('/profile/email') === 0) return 'email';
         if (path.indexOf('/admin') === 0) return 'admin';
         return '';
     }

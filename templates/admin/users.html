@@ -22,6 +22,11 @@
                 <header class="user-card__header">
                     <div class="user-meta">
                         <strong>{{$user.Username}}</strong>
+                        {{if $user.Email}}
+                        <a class="user-meta__email" href="mailto:{{$user.Email}}">{{$user.Email}}</a>
+                        {{else}}
+                        <span class="user-meta__email user-meta__email--missing">No email</span>
+                        {{end}}
                         {{if $user.GroupName}}<span class="badge">{{$user.GroupName}}</span>{{end}}
                         {{if $user.Approved}}
                         <span class="status-chip status-chip--active"><span class="status-chip__dot"></span>Approved</span>
@@ -55,6 +60,16 @@
                                    onchange="updateAccess({{$user.UserID}})">
                             <span>{{if $user.Approved}}Approved{{else}}Pending{{end}}</span>
                         </label>
+                    </div>
+                    <div class="user-card__field user-card__field--email">
+                        <label class="field-label" for="email-{{$user.UserID}}">Email</label>
+                        <form action="/admin/set-email" method="POST" class="inline-form user-email-form">
+                            {{csrfField $.CSRFToken}}
+                            <input type="hidden" name="user_id" value="{{$user.UserID}}">
+                            <input type="email" id="email-{{$user.UserID}}" name="email" value="{{$user.Email}}"
+                                   required maxlength="254" autocomplete="off" placeholder="user@example.com">
+                            <button type="submit" class="button button--secondary button--small">Save</button>
+                        </form>
                     </div>
                     <div class="user-card__field user-card__field--equipment">
                         <span class="field-label">Equipment Access</span>

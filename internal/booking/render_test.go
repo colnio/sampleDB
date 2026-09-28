@@ -18,6 +18,10 @@ import (
 type renderStub struct {
 	equipment []booking.Equipment
 	isAdmin   bool
+	bookings  []booking.Booking
+	emails    map[int]string
+
+	emailLookups [][]int // captured GetUserEmails arguments
 }
 
 func (r *renderStub) GetAllEquipment(_ context.Context) ([]booking.Equipment, error) {
@@ -34,7 +38,20 @@ func (r *renderStub) CheckUserPermission(_ context.Context, _, _ int) (bool, err
 }
 func (r *renderStub) IsAdmin(_ context.Context, _ int) (bool, error) { return r.isAdmin, nil }
 func (r *renderStub) GetBookingsForWeek(_ context.Context, _, _ time.Time) ([]booking.Booking, error) {
-	return []booking.Booking{}, nil
+	if r.bookings == nil {
+		return []booking.Booking{}, nil
+	}
+	return r.bookings, nil
+}
+func (r *renderStub) GetUserEmails(_ context.Context, ids []int) (map[int]string, error) {
+	r.emailLookups = append(r.emailLookups, ids)
+	out := map[int]string{}
+	for _, id := range ids {
+		if e, ok := r.emails[id]; ok {
+			out[id] = e
+		}
+	}
+	return out, nil
 }
 func (r *renderStub) CheckConflict(_ context.Context, _ int, _, _ time.Time) (bool, error) {
 	return false, nil

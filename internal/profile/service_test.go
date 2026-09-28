@@ -40,6 +40,11 @@ type mockService struct {
 	passwordHash string
 	hashErr      error
 	updateErr    error
+
+	email          string
+	emailErr       error
+	updateEmailErr error
+	updatedEmail   string
 }
 
 func (m *mockService) GetAdminStatus(_ context.Context, _ int) (bool, error) {
@@ -50,6 +55,16 @@ func (m *mockService) GetPasswordHash(_ context.Context, _ int) (string, error) 
 }
 func (m *mockService) UpdatePassword(_ context.Context, _ int, _ string) error {
 	return m.updateErr
+}
+
+func (m *mockService) GetEmail(_ context.Context, _ int) (string, error) {
+	return m.email, m.emailErr
+}
+func (m *mockService) UpdateEmail(_ context.Context, _ int, email string) error {
+	if m.updateEmailErr == nil {
+		m.updatedEmail = email
+	}
+	return m.updateEmailErr
 }
 
 func newHandlers(svc profile.Service, authMgr *auth.Manager) *profile.Handlers {

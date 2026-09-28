@@ -87,7 +87,7 @@ func TestAdmin_UserManagementColumns(t *testing.T) {
 		},
 		groups: []admin.Group{{ID: 10, Name: "PhDs"}},
 		users: []admin.UserAccess{
-			{UserID: 5, Username: "alice", Approved: true, Admin: true, GroupName: "PhDs",
+			{UserID: 5, Username: "alice", Email: "alice@example.com", Approved: true, Admin: true, GroupName: "PhDs",
 				EquipmentAccess: []admin.Equipment{{ID: 1, Name: "SEM"}}},
 			{UserID: 6, Username: "bob", Approved: false, Admin: false, GroupName: ""},
 		},
@@ -110,6 +110,12 @@ func TestAdmin_UserManagementColumns(t *testing.T) {
 		// Equipment count element
 		"equipment-count-value",
 		"user-card__equipment-count",
+		// Email shown as a mailto link for alice, missing marker for bob
+		`href="mailto:alice@example.com"`,
+		"user-meta__email--missing",
+		// Inline email edit form
+		`action="/admin/set-email"`,
+		`value="alice@example.com"`,
 	}
 	for _, w := range wants {
 		if !strings.Contains(body, w) {

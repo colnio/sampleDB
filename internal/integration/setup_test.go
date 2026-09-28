@@ -74,8 +74,8 @@ func runTests(m *testing.M) int {
 	testUser.username = "inttest_" + randomHex(8)
 	hash, _ := bcrypt.GenerateFromPassword([]byte("inttest_password"), bcrypt.DefaultCost)
 	if err = pool.QueryRow(bgCtx,
-		"INSERT INTO users (username, password_hash, is_approved, admin) VALUES ($1, $2, true, true) RETURNING user_id",
-		testUser.username, string(hash)).Scan(&testUser.id); err != nil {
+		"INSERT INTO users (username, password_hash, is_approved, admin, email) VALUES ($1, $2, true, true, $3) RETURNING user_id",
+		testUser.username, string(hash), testUser.username+"@example.com").Scan(&testUser.id); err != nil {
 		log.Fatalf("integration: create test user: %v", err)
 	}
 	defer pool.Exec(bgCtx, "DELETE FROM users WHERE user_id = $1", testUser.id)

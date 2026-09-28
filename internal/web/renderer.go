@@ -80,6 +80,7 @@ func NewRenderer(templatesDir string, extraFuncs template.FuncMap, loc *time.Loc
 		{"main", mainFM, []string{"main.html"}},
 		{"change_password", mainFM, []string{"change_password.html"}},
 		{"profile_tokens", mainFM, []string{"profile_tokens.html"}},
+		{"profile_email", mainFM, []string{"profile_email.html"}},
 		{"new_sample", mainFM, []string{"new_sample.html"}},
 		{"sample_detail", mainFM, []string{
 			"sample_detail.html",

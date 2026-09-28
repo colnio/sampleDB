@@ -19,6 +19,20 @@ type ChangePasswordPageData struct {
 	Success string
 }
 
+// EmailPageData is the template data for the /profile/email page.
+type EmailPageData struct {
+	BasePageData
+	Email string
+	// Next is where to continue after the first email is saved (already
+	// validated by auth.SafeNext before redirecting).
+	Next string
+	// FirstTime is true while the user has no email linked; the page is then
+	// the mandatory prompt shown right after login.
+	FirstTime bool
+	Error     string
+	Success   string
+}
+
 // ProfileTokensPageData holds data for the API token management page.
 type ProfileTokensPageData struct {
 	BasePageData

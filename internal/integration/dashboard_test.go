@@ -42,8 +42,8 @@ func TestRoot_RedirectsToDashboard(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	var uid int
 	if err := pool.QueryRow(bgCtx,
-		"INSERT INTO users (username, password_hash, is_approved) VALUES ($1, $2, true) RETURNING user_id",
-		username, string(hash)).Scan(&uid); err != nil {
+		"INSERT INTO users (username, password_hash, is_approved, email) VALUES ($1, $2, true, $3) RETURNING user_id",
+		username, string(hash), username+"@example.com").Scan(&uid); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	t.Cleanup(func() { pool.Exec(bgCtx, "DELETE FROM users WHERE user_id = $1", uid) })
@@ -76,8 +76,8 @@ func TestDashboard_Renders(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	var uid int
 	if err := pool.QueryRow(bgCtx,
-		"INSERT INTO users (username, password_hash, is_approved) VALUES ($1, $2, true) RETURNING user_id",
-		username, string(hash)).Scan(&uid); err != nil {
+		"INSERT INTO users (username, password_hash, is_approved, email) VALUES ($1, $2, true, $3) RETURNING user_id",
+		username, string(hash), username+"@example.com").Scan(&uid); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	t.Cleanup(func() { pool.Exec(bgCtx, "DELETE FROM users WHERE user_id = $1", uid) })
