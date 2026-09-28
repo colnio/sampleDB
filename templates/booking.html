@@ -134,23 +134,25 @@
             <h3 id="del-admin-title">Delete booking (admin)</h3>
             <button type="button" class="modal__close" data-close-modal="delete-admin-modal" aria-label="Close">&times;</button>
         </div>
-        <div class="modal__body">
-            <p id="del-admin-desc" style="margin:0 0 14px;font-size:13.5px;color:var(--text-strong);"></p>
-            <div class="form-group">
-                <label for="admin-password">Confirm with your password</label>
-                <input type="password" id="admin-password" name="admin_password" autocomplete="current-password" required
-                       placeholder="Your password">
-            </div>
-        </div>
-        <div class="modal__foot">
-            <button type="button" class="button button--ghost" data-close-modal="delete-admin-modal">Cancel</button>
-            <form id="delete-admin-form" action="/booking/delete" method="POST" class="inline-form">
+        {{/* The form wraps body + foot so the password field is a real form
+             descendant: a field outside the form is never serialised, neither by
+             the browser nor by htmx's hx-boost submit. */}}
+        <form id="delete-admin-form" action="/booking/delete" method="POST">
+            <div class="modal__body">
                 {{csrfField .CSRFToken}}
                 <input type="hidden" name="booking_id" id="del-admin-id">
-                <input type="hidden" name="admin_password" id="del-admin-pwd">
+                <p id="del-admin-desc" style="margin:0 0 14px;font-size:13.5px;color:var(--text-strong);"></p>
+                <div class="form-group">
+                    <label for="admin-password">Confirm with your password</label>
+                    <input type="password" id="admin-password" name="admin_password" autocomplete="current-password" required
+                           placeholder="Your password">
+                </div>
+            </div>
+            <div class="modal__foot">
+                <button type="button" class="button button--ghost" data-close-modal="delete-admin-modal">Cancel</button>
                 <button type="submit" id="del-admin-submit" class="button button--destructive">Delete booking</button>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -396,16 +398,6 @@
         });
     }
 
-    // Relay password from visible input to hidden form input before admin submit
-    var adminPwdInput  = document.getElementById('admin-password');
-    var adminPwdHidden = document.getElementById('del-admin-pwd');
-    var adminForm      = document.getElementById('delete-admin-form');
-    if (adminForm && adminPwdInput && adminPwdHidden) {
-        adminForm.addEventListener('submit', function () {
-            adminPwdHidden.value = adminPwdInput.value;
-        });
-    }
-
     /* ---------- Drag-to-create-range ---------- */
     var drag = null;
     // Width of the sticky equipment name column — must match CSS --tline-equipment-col
@@ -431,11 +423,34 @@
         return pad(hh) + ':' + pad(mm);
     }
 
-    // Flag set by commitDrag / tap-handler to suppress the browser's synthetic
-    // click event that always fires after pointerup regardless of pointer capture
-    // or preventDefault() — suppressing it prevents the click listener from
-    // re-opening the modal with a 1-hour default, overwriting the drag range.
-    var suppressNextClick = false;
+    // Time window (ms since epoch) during which a synthetic click is ignored.
+    // The browser fires a click after every mouse drag, which would otherwise
+    // re-open the modal with a 1-hour default and overwrite the drag range.
+    // A timestamp rather than a boolean flag: touch does not reliably fire a
+    // click after a long drag, and a sticky flag would then swallow the next
+    // legitimate tap.
+    var suppressClickUntil = 0;
+
+    // Touch drag is armed by a long press, so that ordinary swipes scroll the
+    // page and the timeline instead of being captured as a range selection.
+    var LONG_PRESS_MS  = 400;
+    var MOVE_TOLERANCE = 10; // px of travel that cancels an un-armed long press
+    var pressTimer = null, pressOrigin = null;
+
+    function clearPress() {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        pressOrigin = null;
+    }
+
+    function startDrag(lane, eqId, eqName, clientX) {
+        var startH  = clientXToHour(clientX);
+        var preview = document.createElement('div');
+        preview.className = 'tline-drag-preview';
+        lane.appendChild(preview);
+        lane.classList.add('tline-lane--armed');
+        drag = { lane: lane, eqId: eqId, eqName: eqName, startH: startH, endH: startH, preview: preview };
+        updatePreview();
+    }
 
     document.querySelectorAll('.tline-lane[data-can-book="1"]').forEach(function (lane) {
         var eqId    = lane.getAttribute('data-equipment');
@@ -445,30 +460,68 @@
         lane.addEventListener('pointerdown', function (e) {
             if (e.button !== 0) return;
             if (e.target.closest('.tline-block')) return;
+
+            if (e.pointerType === 'touch') {
+                if (pressTimer || drag) return; // second finger of a pinch
+                // Neither preventDefault() nor setPointerCapture() here: the
+                // browser must stay free to scroll until the press arms.
+                pressOrigin = { x: e.clientX, y: e.clientY };
+                var pointerId = e.pointerId;
+                pressTimer = setTimeout(function () {
+                    pressTimer = null;
+                    if (!pressOrigin) return; // press was cancelled
+                    // Throws if the pointer is already gone; a missed capture
+                    // only costs us moves that leave the lane.
+                    try { lane.setPointerCapture(pointerId); } catch (err) {}
+                    startDrag(lane, eqId, eqName, pressOrigin.x);
+                    if (navigator.vibrate) navigator.vibrate(12);
+                }, LONG_PRESS_MS);
+                return;
+            }
+
             e.preventDefault();
             lane.setPointerCapture(e.pointerId);
-            var startH  = clientXToHour(e.clientX);
-            var preview = document.createElement('div');
-            preview.className = 'tline-drag-preview';
-            lane.appendChild(preview);
-            drag = { lane: lane, eqId: eqId, eqName: eqName, startH: startH, endH: startH, preview: preview };
-            updatePreview();
+            startDrag(lane, eqId, eqName, e.clientX);
         });
 
         lane.addEventListener('pointermove', function (e) {
+            if (pressTimer && pressOrigin) {
+                // Moved before the press armed — the user is scrolling.
+                if (Math.abs(e.clientX - pressOrigin.x) > MOVE_TOLERANCE ||
+                    Math.abs(e.clientY - pressOrigin.y) > MOVE_TOLERANCE) clearPress();
+                return;
+            }
             if (!drag || drag.lane !== lane) return;
             drag.endH = clientXToHour(e.clientX);
             updatePreview();
         });
 
+        // Once a drag is armed the page must stop scrolling. Only a non-passive
+        // touchmove can do that: pointermove.preventDefault() has no effect on
+        // scrolling, and touch-action is only consulted at gesture start so it
+        // cannot be flipped mid-gesture. The finger was stationary for
+        // LONG_PRESS_MS, so no scroll has begun and preventDefault still wins.
+        lane.addEventListener('touchmove', function (e) {
+            if (drag && drag.lane === lane) e.preventDefault();
+        }, { passive: false });
+
+        // Suppress Android's long-press context menu while a press is pending or
+        // armed; leave the desktop right-click menu alone.
+        lane.addEventListener('contextmenu', function (e) {
+            if (pressTimer || drag) e.preventDefault();
+        });
+
         lane.addEventListener('pointerup', function (e) {
+            clearPress();
+            // A quick tap never arms a drag: it falls through to the synthetic
+            // click below, which opens the modal with a 1-hour default.
             if (!drag || drag.lane !== lane) return;
             drag.endH = clientXToHour(e.clientX);
 
             var a = Math.min(drag.startH, drag.endH);
             var b = Math.max(drag.startH, drag.endH);
 
-            suppressNextClick = true; // always suppress the following click event
+            suppressClickUntil = Date.now() + 500; // suppress the following click event
 
             if (b - a >= 0.25) {
                 // Real drag: use the full selected range
@@ -478,13 +531,14 @@
                 var h    = drag.startH;
                 var eId  = drag.eqId;
                 var eName = drag.eqName;
-                if (drag.preview) drag.preview.remove();
-                drag = null;
+                cancelDrag();
                 openPrefilled(eId, eName, h, Math.min(24, h + 1));
             }
         });
 
+        // Fires when the browser takes over the gesture for scrolling.
         lane.addEventListener('pointercancel', function () {
+            clearPress();
             if (drag && drag.lane === lane) cancelDrag();
         });
 
@@ -492,8 +546,8 @@
         // Without this, a completed drag would immediately re-open the modal with a
         // 1-hour slot at the release point, overwriting the correct drag range.
         lane.addEventListener('click', function (e) {
-            if (suppressNextClick) {
-                suppressNextClick = false;
+            if (Date.now() < suppressClickUntil) {
+                suppressClickUntil = 0;
                 e.stopPropagation();
                 return;
             }
@@ -516,7 +570,9 @@
     }
 
     function cancelDrag() {
-        if (drag && drag.preview) drag.preview.remove();
+        if (!drag) return;
+        if (drag.preview) drag.preview.remove();
+        drag.lane.classList.remove('tline-lane--armed');
         drag = null;
     }
 
@@ -527,8 +583,7 @@
         if (b - a < 0.25) b = Math.min(24, a + 1); // safety: enforce minimum slot
         var eqId   = drag.eqId;
         var eqName = drag.eqName;
-        if (drag.preview) drag.preview.remove();
-        drag = null;
+        cancelDrag();
         openPrefilled(eqId, eqName, a, b);
     }
 
