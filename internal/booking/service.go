@@ -22,6 +22,11 @@ type Service interface {
 	GetEquipmentName(ctx context.Context, equipmentID int) (string, error)
 	CheckUserPermission(ctx context.Context, userID, equipmentID int) (bool, error)
 	IsAdmin(ctx context.Context, userID int) (bool, error)
+	// CanBookAFMOutsideHours reports whether the user may book the AFM outside
+	// working hours. Unknown or deleted users may not.
+	CanBookAFMOutsideHours(ctx context.Context, userID int) (bool, error)
+	// GetWorkingWindow returns the working hours of the calendar day holding t.
+	GetWorkingWindow(ctx context.Context, t time.Time) (WorkingWindow, error)
 
 	// Bookings
 	GetBookingsForWeek(ctx context.Context, start, end time.Time) ([]Booking, error)
@@ -123,6 +128,58 @@ func (s *DBService) IsAdmin(ctx context.Context, userID int) (bool, error) {
 		return false, nil
 	}
 	return isAdmin, err
+}
+
+// CanBookAFMOutsideHours returns the user's afm_outside_hours_allowed flag.
+// Fails closed: an unknown or deleted user is not allowed.
+func (s *DBService) CanBookAFMOutsideHours(ctx context.Context, userID int) (bool, error) {
+	var allowed bool
+	err := s.db.QueryRow(ctx,
+		`SELECT afm_outside_hours_allowed FROM users WHERE user_id = $1 AND COALESCE(deleted, false) = false`,
+		userID).Scan(&allowed)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return allowed, err
+}
+
+// GetWorkingWindow returns the working hours of the calendar day holding t, in
+// the service's timezone. A date exception takes priority over the schedule.
+func (s *DBService) GetWorkingWindow(ctx context.Context, t time.Time) (WorkingWindow, error) {
+	t = t.In(s.loc)
+	w := WorkingWindow{
+		Date:               t.Format("2006-01-02"),
+		RegularStartMinute: 8 * 60,
+		RegularEndMinute:   18 * 60,
+		RegularWeekdays:    []int32{1, 2, 3, 4, 5},
+	}
+
+	// The row is seeded on startup; the defaults above only guard against it
+	// having been removed by hand.
+	err := s.db.QueryRow(ctx,
+		`SELECT start_minute, end_minute, weekdays FROM working_hours WHERE id = 1`,
+	).Scan(&w.RegularStartMinute, &w.RegularEndMinute, &w.RegularWeekdays)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return w, err
+	}
+
+	var start, end *int
+	err = s.db.QueryRow(ctx,
+		`SELECT start_minute, end_minute, note FROM working_hours_exceptions WHERE exception_date = $1::date`,
+		w.Date).Scan(&start, &end, &w.Note)
+	switch {
+	case err == nil:
+		w.IsException = true
+		if start != nil && end != nil {
+			w.Open, w.StartMinute, w.EndMinute = true, *start, *end
+		}
+	case errors.Is(err, pgx.ErrNoRows):
+		w.Open = containsWeekday(w.RegularWeekdays, t.Weekday())
+		w.StartMinute, w.EndMinute = w.RegularStartMinute, w.RegularEndMinute
+	default:
+		return w, err
+	}
+	return w, nil
 }
 
 // GetBookingsForWeek returns all bookings that overlap the given [start, end) window.

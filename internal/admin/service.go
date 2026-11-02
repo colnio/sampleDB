@@ -53,6 +53,13 @@ type Service interface {
 	ListNotifications(ctx context.Context) ([]Notification, error)
 	CreateNotification(ctx context.Context, message, level, author string) (Notification, error)
 	DeleteNotification(ctx context.Context, id int64) error
+
+	// AFM working hours
+	GetWorkingHours(ctx context.Context) (WorkingHours, error)
+	SetWorkingHours(ctx context.Context, w WorkingHours) error
+	ListWorkingHoursExceptions(ctx context.Context, from string) ([]WorkingHoursException, error)
+	SetWorkingHoursException(ctx context.Context, e WorkingHoursException) error
+	DeleteWorkingHoursException(ctx context.Context, date string) error
 }
 
 // DBService is the concrete Service implementation backed by PostgreSQL.
@@ -154,6 +161,7 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
             COALESCE(u.email, '') AS email,
             COALESCE(u.is_approved, false) AS is_approved,
             COALESCE(u.admin, false) AS admin,
+            u.afm_outside_hours_allowed,
             btrim(u."group") AS group_name,
             COALESCE(
                 array_agg(uep.equipment_id) FILTER (WHERE uep.equipment_id IS NOT NULL),
@@ -162,7 +170,7 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
         FROM users u
         LEFT JOIN user_equipment_permissions uep ON u.user_id = uep.user_id
         WHERE COALESCE(u.deleted, false) = false
-        GROUP BY u.user_id, u.username, u.email, u.is_approved, u.admin, group_name
+        GROUP BY u.user_id, u.username, u.email, u.is_approved, u.admin, u.afm_outside_hours_allowed, group_name
         ORDER BY u.username`)
 	if err != nil {
 		return nil, err
@@ -181,7 +189,7 @@ func (s *DBService) GetAllUsers(ctx context.Context, allEquipment []Equipment) (
 			groupName    sql.NullString
 			equipmentIDs []int32
 		)
-		if err := rows.Scan(&u.UserID, &u.Username, &u.Email, &u.Approved, &u.Admin, &groupName, &equipmentIDs); err != nil {
+		if err := rows.Scan(&u.UserID, &u.Username, &u.Email, &u.Approved, &u.Admin, &u.AFMOutsideHoursAllowed, &groupName, &equipmentIDs); err != nil {
 			return nil, err
 		}
 		if groupName.Valid {
@@ -220,8 +228,11 @@ func (s *DBService) UpdateAccess(ctx context.Context, p UpdateAccessParams) erro
 	}
 
 	userTag, err := tx.Exec(ctx,
-		`UPDATE users SET is_approved = $1, "group" = $2 WHERE user_id = $3 AND COALESCE(deleted, false) = false`,
-		p.Approved, groupParam, p.UserID)
+		`UPDATE users
+		    SET is_approved = $1, "group" = $2,
+		        afm_outside_hours_allowed = COALESCE($3, afm_outside_hours_allowed)
+		  WHERE user_id = $4 AND COALESCE(deleted, false) = false`,
+		p.Approved, groupParam, p.AFMOutsideHoursAllowed, p.UserID)
 	if err != nil {
 		return fmt.Errorf("update user approval: %w", err)
 	}
@@ -533,6 +544,82 @@ func (s *DBService) CreateNotification(ctx context.Context, message, level, auth
 // DeleteNotification removes the notification with the given ID.
 func (s *DBService) DeleteNotification(ctx context.Context, id int64) error {
 	tag, err := s.db.Exec(ctx, `DELETE FROM notifications WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return web.ErrNotFound
+	}
+	return nil
+}
+
+// GetWorkingHours returns the regular schedule. The row is seeded on startup;
+// the Mon-Fri 08:00-18:00 fallback only guards against it being removed by hand.
+func (s *DBService) GetWorkingHours(ctx context.Context) (WorkingHours, error) {
+	w := WorkingHours{StartMinute: 8 * 60, EndMinute: 18 * 60, Weekdays: []int32{1, 2, 3, 4, 5}}
+	err := s.db.QueryRow(ctx,
+		`SELECT start_minute, end_minute, weekdays FROM working_hours WHERE id = 1`,
+	).Scan(&w.StartMinute, &w.EndMinute, &w.Weekdays)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return w, nil
+	}
+	return w, err
+}
+
+// SetWorkingHours replaces the regular schedule.
+func (s *DBService) SetWorkingHours(ctx context.Context, w WorkingHours) error {
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO working_hours (id, start_minute, end_minute, weekdays)
+         VALUES (1, $1, $2, $3)
+         ON CONFLICT (id) DO UPDATE
+         SET start_minute = EXCLUDED.start_minute,
+             end_minute = EXCLUDED.end_minute,
+             weekdays = EXCLUDED.weekdays`,
+		w.StartMinute, w.EndMinute, w.Weekdays)
+	return err
+}
+
+// ListWorkingHoursExceptions returns exceptions on or after from (YYYY-MM-DD),
+// soonest first.
+func (s *DBService) ListWorkingHoursExceptions(ctx context.Context, from string) ([]WorkingHoursException, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT to_char(exception_date, 'YYYY-MM-DD'), start_minute, end_minute, note
+         FROM working_hours_exceptions
+         WHERE exception_date >= $1::date
+         ORDER BY exception_date`, from)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var exceptions []WorkingHoursException
+	for rows.Next() {
+		var e WorkingHoursException
+		if err := rows.Scan(&e.Date, &e.StartMinute, &e.EndMinute, &e.Note); err != nil {
+			return nil, err
+		}
+		exceptions = append(exceptions, e)
+	}
+	return exceptions, rows.Err()
+}
+
+// SetWorkingHoursException adds an exception, replacing any existing one for the date.
+func (s *DBService) SetWorkingHoursException(ctx context.Context, e WorkingHoursException) error {
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO working_hours_exceptions (exception_date, start_minute, end_minute, note)
+         VALUES ($1::date, $2, $3, $4)
+         ON CONFLICT (exception_date) DO UPDATE
+         SET start_minute = EXCLUDED.start_minute,
+             end_minute = EXCLUDED.end_minute,
+             note = EXCLUDED.note`,
+		e.Date, e.StartMinute, e.EndMinute, e.Note)
+	return err
+}
+
+// DeleteWorkingHoursException removes the exception for date. Returns
+// web.ErrNotFound if there is none.
+func (s *DBService) DeleteWorkingHoursException(ctx context.Context, date string) error {
+	tag, err := s.db.Exec(ctx, `DELETE FROM working_hours_exceptions WHERE exception_date = $1::date`, date)
 	if err != nil {
 		return err
 	}

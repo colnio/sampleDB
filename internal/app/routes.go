@@ -191,6 +191,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	// --- Admin domain routes (wired via admin.Handlers) ---
 	adminSvc := admin.NewService(a.DB)
 	adminHdlrs := admin.NewHandlers(adminSvc, a.Renderer, a.Auth)
+	adminHdlrs.Loc = a.Location
 	mux.HandleFunc("/admin", withAuth(adminMW(withCSRF(adminHdlrs.AdminPage))))
 	mux.HandleFunc("/admin/update-access", withAuth(adminMW(withCSRF(adminHdlrs.UpdateAccess))))
 	mux.HandleFunc("/admin/set-admin", withAuth(adminMW(withCSRF(adminHdlrs.SetAdmin))))
@@ -219,6 +220,9 @@ func (a *App) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/equipment-report", withAuth(adminMW(adminHdlrs.EquipmentReport)))
 	mux.HandleFunc("/admin/delete-user", withAuth(adminMW(withCSRF(adminHdlrs.DeleteUser))))
 	mux.HandleFunc("/admin/set-email", withAuth(adminMW(withCSRF(adminHdlrs.SetEmail))))
+	mux.HandleFunc("/admin/working-hours", withAuth(adminMW(withCSRF(adminHdlrs.SetWorkingHours))))
+	mux.HandleFunc("/admin/working-hours/exceptions", withAuth(adminMW(withCSRF(adminHdlrs.SetWorkingHoursException))))
+	mux.HandleFunc("/admin/working-hours/exceptions/delete", withAuth(adminMW(withCSRF(adminHdlrs.DeleteWorkingHoursException))))
 	mux.HandleFunc("/admin/notifications", withAuth(adminMW(withCSRF(adminHdlrs.CreateNotification))))
 	mux.HandleFunc("/admin/notifications/", withAuth(adminMW(withCSRF(adminHdlrs.DeleteNotification))))
 

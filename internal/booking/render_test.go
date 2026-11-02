@@ -37,6 +37,12 @@ func (r *renderStub) CheckUserPermission(_ context.Context, _, _ int) (bool, err
 	return true, nil
 }
 func (r *renderStub) IsAdmin(_ context.Context, _ int) (bool, error) { return r.isAdmin, nil }
+func (r *renderStub) CanBookAFMOutsideHours(_ context.Context, _ int) (bool, error) {
+	return true, nil
+}
+func (r *renderStub) GetWorkingWindow(_ context.Context, _ time.Time) (booking.WorkingWindow, error) {
+	return booking.WorkingWindow{}, nil
+}
 func (r *renderStub) GetBookingsForWeek(_ context.Context, _, _ time.Time) ([]booking.Booking, error) {
 	if r.bookings == nil {
 		return []booking.Booking{}, nil

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"sampleDB/internal/auth"
+	"sampleDB/internal/booking"
 	"sampleDB/internal/web"
 )
 
@@ -21,6 +22,8 @@ type Handlers struct {
 	svc      Service
 	renderer *web.Renderer
 	authMgr  *auth.Manager
+	// Loc is the app timezone, used to decide which dates have passed. Nil means UTC.
+	Loc *time.Location
 }
 
 // NewHandlers constructs a Handlers value.
@@ -56,6 +59,25 @@ func (h *Handlers) AdminPage(w http.ResponseWriter, r *http.Request) {
 		notifs = nil
 	}
 
+	workingHours, err := h.svc.GetWorkingHours(r.Context())
+	if err != nil {
+		http.Error(w, "Error getting working hours", http.StatusInternalServerError)
+		return
+	}
+
+	exceptions, err := h.svc.ListWorkingHoursExceptions(r.Context(), h.today())
+	if err != nil {
+		http.Error(w, "Error getting working hours", http.StatusInternalServerError)
+		return
+	}
+
+	var afmEquipment []string
+	for _, eq := range equipment {
+		if booking.IsAFM(eq.Name) {
+			afmEquipment = append(afmEquipment, eq.Name)
+		}
+	}
+
 	data := AdminPageData{
 		BasePageData: BasePageData{
 			Username:  session.Username,
@@ -67,6 +89,9 @@ func (h *Handlers) AdminPage(w http.ResponseWriter, r *http.Request) {
 		Equipment:     equipment,
 		Groups:        groups,
 		Notifications: notifs,
+		WorkingHours:  workingHours,
+		Exceptions:    exceptions,
+		AFMEquipment:  afmEquipment,
 		Error:         r.URL.Query().Get("error"),
 		Success:       r.URL.Query().Get("success"),
 	}
@@ -89,6 +114,9 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 		Approved  bool    `json:"approved"`
 		GroupName *string `json:"group_name"`
 		Equipment []int   `json:"equipment"`
+		// Absent means "leave unchanged", so a caller that doesn't know about
+		// this field can't change what the user may book.
+		AFMOutsideHoursAllowed *bool `json:"afm_outside_hours_allowed"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -98,10 +126,11 @@ func (h *Handlers) UpdateAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.UpdateAccess(r.Context(), UpdateAccessParams{
-		UserID:    payload.UserID,
-		Approved:  payload.Approved,
-		GroupName: payload.GroupName,
-		Equipment: payload.Equipment,
+		UserID:                 payload.UserID,
+		Approved:               payload.Approved,
+		GroupName:              payload.GroupName,
+		Equipment:              payload.Equipment,
+		AFMOutsideHoursAllowed: payload.AFMOutsideHoursAllowed,
 	}); err != nil {
 		if errors.Is(err, web.ErrNotFound) {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -743,3 +772,166 @@ func (h *Handlers) DeleteNotification(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin?success=Notification+removed", http.StatusSeeOther)
 }
 
+// maxExceptionNoteLen keeps the note short enough to fit in the booking error
+// message, which travels in a redirect URL.
+const maxExceptionNoteLen = 100
+
+// today returns the current date as YYYY-MM-DD in the app timezone.
+func (h *Handlers) today() string {
+	loc := h.Loc
+	if loc == nil {
+		loc = time.UTC
+	}
+	return time.Now().In(loc).Format("2006-01-02")
+}
+
+// parseTimeOfDay converts HH:MM to minutes from midnight.
+func parseTimeOfDay(s string) (int, error) {
+	t, err := time.Parse("15:04", s)
+	if err != nil {
+		return 0, err
+	}
+	return t.Hour()*60 + t.Minute(), nil
+}
+
+func redirectAdminError(w http.ResponseWriter, r *http.Request, message string) {
+	http.Redirect(w, r, "/admin?error="+url.QueryEscape(message), http.StatusSeeOther)
+}
+
+// SetWorkingHours handles POST /admin/working-hours.
+func (h *Handlers) SetWorkingHours(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	start, startErr := parseTimeOfDay(r.FormValue("start"))
+	end, endErr := parseTimeOfDay(r.FormValue("end"))
+	if startErr != nil || endErr != nil {
+		redirectAdminError(w, r, "Enter working hours as HH:MM")
+		return
+	}
+	if end <= start {
+		redirectAdminError(w, r, "Working hours must end after they start")
+		return
+	}
+
+	var seen [7]bool
+	var weekdays []int32
+	for _, raw := range r.Form["weekday"] {
+		day, err := strconv.Atoi(raw)
+		if err != nil || day < 0 || day > 6 {
+			redirectAdminError(w, r, "Invalid working day")
+			return
+		}
+		if !seen[day] {
+			seen[day] = true
+			weekdays = append(weekdays, int32(day))
+		}
+	}
+	if len(weekdays) == 0 {
+		redirectAdminError(w, r, "Select at least one working day")
+		return
+	}
+
+	if err := h.svc.SetWorkingHours(r.Context(), WorkingHours{StartMinute: start, EndMinute: end, Weekdays: weekdays}); err != nil {
+		log.Printf("admin: SetWorkingHours: %v", err)
+		redirectAdminError(w, r, "Could not save working hours")
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Working+hours+updated", http.StatusSeeOther)
+}
+
+// SetWorkingHoursException handles POST /admin/working-hours/exceptions.
+// Leaving both times empty means there are no working hours on that date.
+func (h *Handlers) SetWorkingHoursException(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	date := r.FormValue("date")
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		redirectAdminError(w, r, "Choose a date for the exception")
+		return
+	}
+	// A past date would have no effect and never be listed, so a mistyped year
+	// would look saved while the real holiday stayed bookable. ISO dates compare
+	// correctly as strings.
+	if date < h.today() {
+		redirectAdminError(w, r, "That date has passed. Check the year.")
+		return
+	}
+
+	note := strings.TrimSpace(r.FormValue("note"))
+	if len([]rune(note)) > maxExceptionNoteLen {
+		redirectAdminError(w, r, fmt.Sprintf("Note must be %d characters or fewer", maxExceptionNoteLen))
+		return
+	}
+
+	exception := WorkingHoursException{Date: date, Note: note}
+	startRaw, endRaw := r.FormValue("start"), r.FormValue("end")
+	if startRaw != "" || endRaw != "" {
+		start, startErr := parseTimeOfDay(startRaw)
+		end, endErr := parseTimeOfDay(endRaw)
+		if startErr != nil || endErr != nil {
+			redirectAdminError(w, r, "Enter both times, or leave both empty for no working hours")
+			return
+		}
+		if end <= start {
+			redirectAdminError(w, r, "Working hours must end after they start")
+			return
+		}
+		exception.StartMinute, exception.EndMinute = &start, &end
+	}
+
+	if err := h.svc.SetWorkingHoursException(r.Context(), exception); err != nil {
+		log.Printf("admin: SetWorkingHoursException: %v", err)
+		redirectAdminError(w, r, "Could not save the exception")
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Exception+saved", http.StatusSeeOther)
+}
+
+// DeleteWorkingHoursException handles POST /admin/working-hours/exceptions/delete.
+func (h *Handlers) DeleteWorkingHoursException(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	date := r.FormValue("date")
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		redirectAdminError(w, r, "Invalid date")
+		return
+	}
+
+	if err := h.svc.DeleteWorkingHoursException(r.Context(), date); err != nil {
+		if errors.Is(err, web.ErrNotFound) {
+			redirectAdminError(w, r, "Exception not found")
+			return
+		}
+		log.Printf("admin: DeleteWorkingHoursException: %v", err)
+		redirectAdminError(w, r, "Could not remove the exception")
+		return
+	}
+	http.Redirect(w, r, "/admin?success=Exception+removed", http.StatusSeeOther)
+}

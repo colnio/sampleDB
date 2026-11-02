@@ -240,3 +240,60 @@ func TestMigration012_UserEmail(t *testing.T) {
 		t.Fatal("idx_users_email_lower index does not exist")
 	}
 }
+
+func TestMigration013_AFMWorkingHours(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+
+	for _, stmt := range []string{
+		addUserAFMOutsideHoursColumn, createWorkingHoursTable, createWorkingHoursExceptionsTable, seedWorkingHours,
+	} {
+		if _, err := pool.Exec(ctx, stmt); err != nil {
+			t.Fatalf("apply migration 013: %v", err)
+		}
+	}
+
+	var columnDefault, nullable string
+	if err := pool.QueryRow(ctx, `
+		SELECT column_default, is_nullable FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'afm_outside_hours_allowed'`,
+	).Scan(&columnDefault, &nullable); err != nil {
+		t.Fatalf("column lookup: %v", err)
+	}
+	if columnDefault != "true" || nullable != "NO" {
+		t.Fatalf("default = %q, nullable = %q; want true, NO", columnDefault, nullable)
+	}
+
+	if !tableExists(t, pool, "working_hours_exceptions") {
+		t.Fatal("working_hours_exceptions table does not exist")
+	}
+	var rows int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM working_hours`).Scan(&rows); err != nil {
+		t.Fatalf("count working_hours: %v", err)
+	}
+	if rows != 1 {
+		t.Fatalf("working_hours has %d rows, want 1", rows)
+	}
+
+	// Half-specified and out-of-range hours are rejected; a NULL pair (closed) is fine.
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback(ctx)
+	insert := `INSERT INTO working_hours_exceptions (exception_date, start_minute, end_minute) VALUES ($1::date, $2, $3)`
+	if _, err := tx.Exec(ctx, insert, "2099-06-01", nil, nil); err != nil {
+		t.Fatalf("closed day rejected: %v", err)
+	}
+	for _, bad := range [][2]any{{nil, 600}, {600, nil}, {600, 600}, {600, 1440}} {
+		if _, err := tx.Exec(ctx, "SAVEPOINT s"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tx.Exec(ctx, insert, "2099-06-02", bad[0], bad[1]); err == nil {
+			t.Errorf("hours %v should be rejected", bad)
+		}
+		if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT s"); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

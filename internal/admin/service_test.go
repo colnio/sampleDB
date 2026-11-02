@@ -95,6 +95,15 @@ type mockService struct {
 	lastDeleteNotifID  int64
 	lastEmailUserID    int
 	lastEmail          string
+	lastAccess         admin.UpdateAccessParams
+	workingHours       admin.WorkingHours
+	exceptions         []admin.WorkingHoursException
+	setHoursErr        error
+	setExceptionErr    error
+	deleteExceptionErr error
+	lastHours          *admin.WorkingHours
+	lastException      *admin.WorkingHoursException
+	lastDeletedDate    string
 }
 
 func (m *mockService) IsAdmin(_ context.Context, _ int) (bool, error) {
@@ -109,7 +118,8 @@ func (m *mockService) GetAllGroups(_ context.Context) ([]admin.Group, error) {
 func (m *mockService) GetAllUsers(_ context.Context, _ []admin.Equipment) ([]admin.UserAccess, error) {
 	return m.users, nil
 }
-func (m *mockService) UpdateAccess(_ context.Context, _ admin.UpdateAccessParams) error {
+func (m *mockService) UpdateAccess(_ context.Context, p admin.UpdateAccessParams) error {
+	m.lastAccess = p
 	return m.updateErr
 }
 func (m *mockService) SetAdmin(_ context.Context, _ int, _ bool) error {
@@ -161,6 +171,24 @@ func (m *mockService) CreateNotification(_ context.Context, msg, level, _ string
 func (m *mockService) DeleteNotification(_ context.Context, id int64) error {
 	m.lastDeleteNotifID = id
 	return m.deleteNotifErr
+}
+func (m *mockService) GetWorkingHours(_ context.Context) (admin.WorkingHours, error) {
+	return m.workingHours, nil
+}
+func (m *mockService) SetWorkingHours(_ context.Context, w admin.WorkingHours) error {
+	m.lastHours = &w
+	return m.setHoursErr
+}
+func (m *mockService) ListWorkingHoursExceptions(_ context.Context, _ string) ([]admin.WorkingHoursException, error) {
+	return m.exceptions, nil
+}
+func (m *mockService) SetWorkingHoursException(_ context.Context, e admin.WorkingHoursException) error {
+	m.lastException = &e
+	return m.setExceptionErr
+}
+func (m *mockService) DeleteWorkingHoursException(_ context.Context, date string) error {
+	m.lastDeletedDate = date
+	return m.deleteExceptionErr
 }
 
 // ---------------------------------------------------------------------------
@@ -508,7 +536,7 @@ func TestUpdateAccess_CommitsOnSuccess(t *testing.T) {
 	grp := "phd"
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE users SET is_approved`).
-		WithArgs(true, "phd", 42).
+		WithArgs(true, "phd", (*bool)(nil), 42).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 	mock.ExpectExec(`DELETE FROM user_equipment_permissions`).
 		WithArgs(42).
@@ -539,7 +567,7 @@ func TestUpdateAccess_RollbackOnInsertFailure(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE users SET is_approved`).
-		WithArgs(true, nil, 42).
+		WithArgs(true, nil, (*bool)(nil), 42).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 	mock.ExpectExec(`DELETE FROM user_equipment_permissions`).
 		WithArgs(42).

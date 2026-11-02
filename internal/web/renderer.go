@@ -96,6 +96,7 @@ func NewRenderer(templatesDir string, extraFuncs template.FuncMap, loc *time.Loc
 			"admin.html",
 			"admin/groups.html",
 			"admin/users.html",
+			"admin/working_hours.html",
 		}},
 		{"wiki_list", mainFM, []string{"wiki_list.html"}},
 		{"wiki_view", mainFM, []string{"wiki_view.html"}},

@@ -470,6 +470,15 @@ type mockService struct {
 	conflictErr    error
 	hasConflict    bool
 	equipmentStatus string
+
+	// working-hours restriction
+	equipmentName string
+	afmAllowed    bool
+	afmErr        error
+	afmLookups    int
+	window        *booking.WorkingWindow
+	windowErr     error
+	created       int
 }
 
 func (m *mockService) GetAllEquipment(_ context.Context) ([]booking.Equipment, error) {
@@ -482,7 +491,31 @@ func (m *mockService) GetEquipmentStatus(_ context.Context, _ int) (string, erro
 	return "online", nil
 }
 func (m *mockService) GetEquipmentName(_ context.Context, _ int) (string, error) {
+	if m.equipmentName != "" {
+		return m.equipmentName, nil
+	}
 	return "Equipment", nil
+}
+func (m *mockService) CanBookAFMOutsideHours(_ context.Context, _ int) (bool, error) {
+	m.afmLookups++
+	return m.afmAllowed, m.afmErr
+}
+
+// GetWorkingWindow defaults to the seeded schedule, Mon-Fri 08:00-18:00.
+func (m *mockService) GetWorkingWindow(_ context.Context, t time.Time) (booking.WorkingWindow, error) {
+	if m.window != nil {
+		return *m.window, m.windowErr
+	}
+	wd := t.Weekday()
+	return booking.WorkingWindow{
+		Date:               t.Format("2006-01-02"),
+		Open:               wd != time.Saturday && wd != time.Sunday,
+		StartMinute:        480,
+		EndMinute:          1080,
+		RegularStartMinute: 480,
+		RegularEndMinute:   1080,
+		RegularWeekdays:    []int32{1, 2, 3, 4, 5},
+	}, m.windowErr
 }
 func (m *mockService) CheckUserPermission(_ context.Context, _, _ int) (bool, error) {
 	return m.hasPermission, nil
@@ -497,6 +530,7 @@ func (m *mockService) CheckConflict(_ context.Context, _ int, _, _ time.Time) (b
 	return m.hasConflict, m.conflictErr
 }
 func (m *mockService) Create(_ context.Context, _ booking.CreateParams) (int, error) {
+	m.created++
 	return 0, m.createErr
 }
 func (m *mockService) Delete(_ context.Context, _, _ int, _ bool) error {

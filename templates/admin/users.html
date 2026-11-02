@@ -61,6 +61,15 @@
                             <span>{{if $user.Approved}}Approved{{else}}Pending{{end}}</span>
                         </label>
                     </div>
+                    <div class="user-card__field">
+                        <span class="field-label">AFM Hours</span>
+                        <label class="toggle" title="Untick to limit this user's AFM bookings to working hours">
+                            <input type="checkbox" class="afm-hours-toggle"
+                                   {{if $user.AFMOutsideHoursAllowed}}checked{{end}}
+                                   onchange="updateAccess({{$user.UserID}})">
+                            <span>Can book outside working hours</span>
+                        </label>
+                    </div>
                     <div class="user-card__field user-card__field--email">
                         <label class="field-label" for="email-{{$user.UserID}}">Email</label>
                         <form action="/admin/set-email" method="POST" class="inline-form user-email-form">

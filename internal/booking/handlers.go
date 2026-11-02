@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -271,6 +272,25 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	eqName, err := h.svc.GetEquipmentName(r.Context(), equipmentID)
+	if err != nil {
+		log.Printf("booking: GetEquipmentName %d: %v", equipmentID, err)
+		http.Redirect(w, r, "/booking?error=Invalid+equipment", http.StatusSeeOther)
+		return
+	}
+	if IsAFM(eqName) {
+		message, err := h.afmHoursViolation(r.Context(), session.UserID, startTime, endTime)
+		if err != nil {
+			log.Printf("booking: AFM working hours check for user %d: %v", session.UserID, err)
+			http.Redirect(w, r, "/booking?error=Unable+to+verify+permissions", http.StatusSeeOther)
+			return
+		}
+		if message != "" {
+			http.Redirect(w, r, "/booking?error="+url.QueryEscape(message), http.StatusSeeOther)
+			return
+		}
+	}
+
 	hasConflict, err := h.svc.CheckConflict(r.Context(), equipmentID, startTime, endTime)
 	if err != nil {
 		http.Redirect(w, r, "/booking?error=Unable+to+check+availability", http.StatusSeeOther)
@@ -297,7 +317,6 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/booking?error=Error+creating+booking", http.StatusSeeOther)
 		return
 	}
-	eqName, _ := h.svc.GetEquipmentName(r.Context(), equipmentID)
 	h.logActivity(r.Context(), session, activity.Verb("booked"), activity.TargetType("booking"), bookingID, eqName)
 
 	week := r.FormValue("week")
@@ -308,6 +327,27 @@ func (h *Handlers) submitBooking(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.Redirect(w, r, "/booking?success=Booking+created+successfully", http.StatusSeeOther)
+}
+
+// afmHoursViolation returns the message to show when the user may not make this
+// AFM booking, or "" when they may.
+func (h *Handlers) afmHoursViolation(ctx context.Context, userID int, start, end time.Time) (string, error) {
+	allowed, err := h.svc.CanBookAFMOutsideHours(ctx, userID)
+	if err != nil || allowed {
+		return "", err
+	}
+	window, err := h.svc.GetWorkingWindow(ctx, start)
+	if err != nil {
+		return "", err
+	}
+	if window.Contains(start, end, h.loc) {
+		return "", nil
+	}
+	message := "Your account can only book the AFM during working hours. " + window.Describe()
+	if window.Open || !window.IsException {
+		message += " The whole booking must fit inside them, within a single day."
+	}
+	return message + " Ask an admin if you need access outside them.", nil
 }
 
 // DeleteBooking handles POST /booking/delete.

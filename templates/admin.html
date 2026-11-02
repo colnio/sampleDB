@@ -66,6 +66,8 @@
         </div>
     </section>
 
+    {{template "admin/working_hours" .}}
+
     <div class="admin-grid">
         {{template "admin/groups" .}}
 
@@ -232,6 +234,7 @@ function updateAccess(userId) {
     const approvedToggle = row.querySelector('.approved-toggle');
     const equipmentSelect = row.querySelector('.equipment-select');
     const groupSelect = row.querySelector('.group-select');
+    const afmHoursToggle = row.querySelector('.afm-hours-toggle');
 
     const approved = approvedToggle?.checked ?? false;
     const selectedEquipment = Array.from(equipmentSelect?.selectedOptions ?? [])
@@ -266,7 +269,8 @@ function updateAccess(userId) {
             user_id: userId,
             approved: approved,
             group_name: groupValue,
-            equipment: selectedEquipment
+            equipment: selectedEquipment,
+            afm_outside_hours_allowed: afmHoursToggle?.checked
         })
     })
     .then(response => {

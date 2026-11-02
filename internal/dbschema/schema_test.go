@@ -155,11 +155,13 @@ func TestEnsure_DataStatementError(t *testing.T) {
 func TestSchemaBootstrapCoversLatestMigrations(t *testing.T) {
 	combined := strings.Join(schemaStatements, "\n")
 	required := []string{
-		"equipment_text",        // migration 006
-		"btree_gist",            // migration 007
-		"bookings_no_overlap",   // migration 007
-		"sessions",              // migration 008
-		"idx_users_email_lower", // migration 012
+		"equipment_text",            // migration 006
+		"btree_gist",                // migration 007
+		"bookings_no_overlap",       // migration 007
+		"sessions",                  // migration 008
+		"idx_users_email_lower",     // migration 012
+		"afm_outside_hours_allowed", // migration 013
+		"working_hours_exceptions",  // migration 013
 	}
 	for _, fragment := range required {
 		if !strings.Contains(combined, fragment) {

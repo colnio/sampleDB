@@ -65,9 +65,9 @@ func TestSetEmail_NotFound(t *testing.T) {
 func TestGetAllUsers_IncludesEmail(t *testing.T) {
 	svc, mock := newSvc(t)
 	mock.ExpectQuery(`COALESCE\(u\.email, ''\) AS email`).
-		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "email", "is_approved", "admin", "group_name", "equipment_ids"}).
-			AddRow(1, "alice", "alice@example.com", true, false, nil, []int32{}).
-			AddRow(2, "bob", "", true, false, nil, []int32{}))
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "username", "email", "is_approved", "admin", "afm_outside_hours_allowed", "group_name", "equipment_ids"}).
+			AddRow(1, "alice", "alice@example.com", true, false, true, nil, []int32{}).
+			AddRow(2, "bob", "", true, false, false, nil, []int32{}))
 
 	users, err := svc.GetAllUsers(context.Background(), nil)
 	if err != nil {
@@ -75,6 +75,9 @@ func TestGetAllUsers_IncludesEmail(t *testing.T) {
 	}
 	if len(users) != 2 || users[0].Email != "alice@example.com" || users[1].Email != "" {
 		t.Fatalf("users = %+v", users)
+	}
+	if !users[0].AFMOutsideHoursAllowed || users[1].AFMOutsideHoursAllowed {
+		t.Fatalf("AFMOutsideHoursAllowed not scanned: %+v", users)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)

@@ -119,6 +119,31 @@ ALTER TABLE users
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower
     ON users (lower(email)) WHERE email IS NOT NULL;
 
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS afm_outside_hours_allowed BOOLEAN NOT NULL DEFAULT true;
+
+CREATE TABLE IF NOT EXISTS working_hours (
+    id           SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    start_minute INT NOT NULL DEFAULT 480,
+    end_minute   INT NOT NULL DEFAULT 1080,
+    weekdays     INT[] NOT NULL DEFAULT '{1,2,3,4,5}',
+    CHECK (start_minute >= 0 AND end_minute < 1440 AND end_minute > start_minute)
+);
+
+INSERT INTO working_hours (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS working_hours_exceptions (
+    exception_date DATE PRIMARY KEY,
+    start_minute   INT,
+    end_minute     INT,
+    note           TEXT NOT NULL DEFAULT '',
+    CHECK (
+        (start_minute IS NULL AND end_minute IS NULL)
+        OR (start_minute IS NOT NULL AND end_minute IS NOT NULL
+            AND start_minute >= 0 AND end_minute < 1440 AND end_minute > start_minute)
+    )
+);
+
 ALTER TABLE samples
     ADD COLUMN IF NOT EXISTS owner_user_id INT REFERENCES users(user_id) ON DELETE SET NULL;
 

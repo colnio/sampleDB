@@ -2777,6 +2777,51 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     min-width: 0;
 }
 
+.working-hours-card {
+    margin-bottom: var(--space-lg);
+}
+
+.working-hours__applies {
+    margin: 0 0 var(--space-md);
+}
+
+.working-hours__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    align-items: flex-end;
+}
+
+.working-hours__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.working-hours__field--grow {
+    flex: 1;
+    min-width: 180px;
+}
+
+.working-hours__days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm) var(--space-md);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.working-hours__days legend {
+    padding: 0;
+    margin-bottom: var(--space-xs);
+}
+
+.working-hours__subheading {
+    margin: var(--space-lg) 0 var(--space-xs);
+    font-size: var(--font-size-sm);
+}
+
 .user-card__equipment-count {
     display: inline-flex;
     align-items: baseline;
@@ -2837,6 +2882,7 @@ input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
 .admin-page input[type="text"],
 .admin-page input[type="email"],
 .admin-page input[type="date"],
+.admin-page input[type="time"],
 .admin-page textarea,
 .admin-page select {
     border: 1px solid var(--neutral-200);

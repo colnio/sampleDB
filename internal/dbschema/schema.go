@@ -62,12 +62,17 @@ var schemaStatements = []string{
 	// Migration 012 – see DDL/migrations/012_user_email.sql
 	addUserEmailColumn,
 	createUserEmailUniqueIndex,
+	// Migration 013 – see DDL/migrations/013_afm_working_hours.sql
+	addUserAFMOutsideHoursColumn,
+	createWorkingHoursTable,
+	createWorkingHoursExceptionsTable,
 }
 
 var dataStatements = []string{
 	seedEquipment,
 	backfillGroups,
 	clearStaleCSRFSessions,
+	seedWorkingHours,
 }
 
 const createUsersTable = `
@@ -363,6 +368,40 @@ ALTER TABLE users
 const createUserEmailUniqueIndex = `
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower
     ON users (lower(email)) WHERE email IS NOT NULL;`
+
+const addUserAFMOutsideHoursColumn = `
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS afm_outside_hours_allowed BOOLEAN NOT NULL DEFAULT true;`
+
+// createWorkingHoursTable holds the regular schedule as a single row. Minutes
+// are counted from midnight; weekdays use Go's numbering (0 = Sunday).
+const createWorkingHoursTable = `
+CREATE TABLE IF NOT EXISTS working_hours (
+    id           SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    start_minute INT NOT NULL DEFAULT 480,
+    end_minute   INT NOT NULL DEFAULT 1080,
+    weekdays     INT[] NOT NULL DEFAULT '{1,2,3,4,5}',
+    CHECK (start_minute >= 0 AND end_minute < 1440 AND end_minute > start_minute)
+);`
+
+// createWorkingHoursExceptionsTable holds one-day overrides such as holidays.
+// NULL times mean no working hours that day.
+const createWorkingHoursExceptionsTable = `
+CREATE TABLE IF NOT EXISTS working_hours_exceptions (
+    exception_date DATE PRIMARY KEY,
+    start_minute   INT,
+    end_minute     INT,
+    note           TEXT NOT NULL DEFAULT '',
+    CHECK (
+        (start_minute IS NULL AND end_minute IS NULL)
+        OR (start_minute IS NOT NULL AND end_minute IS NOT NULL
+            AND start_minute >= 0 AND end_minute < 1440 AND end_minute > start_minute)
+    )
+);`
+
+// seedWorkingHours creates the schedule row without touching an existing one.
+const seedWorkingHours = `
+INSERT INTO working_hours (id) VALUES (1) ON CONFLICT (id) DO NOTHING;`
 
 // clearStaleCSRFSessions removes sessions created before migration 011 that have
 // an empty csrf_token. Without this, those sessions would bypass CSRF protection

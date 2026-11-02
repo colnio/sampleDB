@@ -45,6 +45,17 @@ When adding a new state-changing route: wrap it with `withAuth(withCSRF(handler)
 - Integration-test fixtures that log in through the browser flow must insert users **with** an email, or they will be redirected to `/profile/email`.
 - `auth.SafeNext(next, fallback)` is the shared open-redirect guard for `?next=` parameters.
 
+### AFM working-hours restriction
+
+`users.afm_outside_hours_allowed` (migration 013, `NOT NULL DEFAULT true`) decides who is limited. Everyone may book at any time until an admin unticks "Can book outside working hours" on their user card; there is no implicit admin exemption.
+
+- Enforced in `submitBooking` through `afmHoursViolation`. `booking.IsAFM` selects the equipment (name contains "AFM", case-insensitive). A limited user's booking must fit entirely inside one day's window; ending exactly at closing time is allowed.
+- The hours live in the database and are edited in the "AFM Working Hours" admin section, all in the app timezone (`APP_TIMEZONE`). `working_hours` is a single row with the regular schedule (minutes from midnight, weekdays with 0 = Sunday). `working_hours_exceptions` overrides one date, for holidays; NULL times mean no working hours that day.
+- `booking.Service.GetWorkingWindow` resolves a date, with exceptions taking priority. `admin.Service` writes the same tables.
+- Changing the hours never touches existing bookings.
+- Exception dates in the past are rejected, as they would have no effect and never be listed. The admin section lists the equipment `IsAFM` matches and warns when nothing does.
+- The flag is sent by `updateAccess` to `/admin/update-access`. An absent `afm_outside_hours_allowed` field leaves the value unchanged.
+
 ### CSS architecture
 
 All page-specific CSS lives in named sections of `static/css/design.css`:

@@ -95,6 +95,9 @@ func TestRegisterRoutes_AllPatternsRegistered(t *testing.T) {
 		{"/admin/equipment/1/groups/remove", "/admin/equipment/"},
 		{"/admin/delete-user", "/admin/delete-user"},
 		{"/admin/set-email", "/admin/set-email"},
+		{"/admin/working-hours", "/admin/working-hours"},
+		{"/admin/working-hours/exceptions", "/admin/working-hours/exceptions"},
+		{"/admin/working-hours/exceptions/delete", "/admin/working-hours/exceptions/delete"},
 		// steps
 		{"/steps/10/edit", "/steps/"},
 		// account

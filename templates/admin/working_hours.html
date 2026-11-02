@@ -1,0 +1,82 @@
+{{define "admin/working_hours"}}
+<section class="card admin-section working-hours-card">
+    <div class="card-header">
+        <div>
+            <h2 class="heading-with-icon heading-with-icon--sm">
+                <svg class="heading-with-icon__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>AFM Working Hours</span>
+            </h2>
+            <p class="card-subtitle">Users whose "Can book outside working hours" box is unticked can only book the AFM inside these hours. Existing bookings are not changed.</p>
+        </div>
+    </div>
+    <div class="card-body working-hours">
+        {{if .AFMEquipment}}
+        <p class="hint working-hours__applies">Applies to: {{range $i, $name := .AFMEquipment}}{{if $i}}, {{end}}{{$name}}{{end}}</p>
+        {{else}}
+        <div class="alert alert-error working-hours__applies">No equipment has "AFM" in its name, so these hours are not being enforced on anything.</div>
+        {{end}}
+        <form action="/admin/working-hours" method="POST" class="working-hours__form" autocomplete="off">
+            {{csrfField .CSRFToken}}
+            <div class="working-hours__field">
+                <label class="field-label" for="working-hours-start">From</label>
+                <input type="time" id="working-hours-start" name="start" step="900" required value="{{.WorkingHours.Start}}">
+            </div>
+            <div class="working-hours__field">
+                <label class="field-label" for="working-hours-end">To</label>
+                <input type="time" id="working-hours-end" name="end" step="900" required value="{{.WorkingHours.End}}">
+            </div>
+            <fieldset class="working-hours__days">
+                <legend class="field-label">Working days</legend>
+                {{range .WorkingHours.DayOptions}}
+                <label class="toggle">
+                    <input type="checkbox" name="weekday" value="{{.Value}}" {{if .Checked}}checked{{end}}>
+                    <span>{{.Label}}</span>
+                </label>
+                {{end}}
+            </fieldset>
+            <button type="submit" class="button button--primary button--small">Save hours</button>
+        </form>
+
+        <h3 class="working-hours__subheading">Exceptions</h3>
+        <p class="hint">Change the hours for one date, such as a holiday. Leave both times empty for no working hours that day.</p>
+        <form action="/admin/working-hours/exceptions" method="POST" class="working-hours__form" autocomplete="off">
+            {{csrfField .CSRFToken}}
+            <div class="working-hours__field">
+                <label class="field-label" for="exception-date">Date</label>
+                <input type="date" id="exception-date" name="date" required>
+            </div>
+            <div class="working-hours__field">
+                <label class="field-label" for="exception-start">From</label>
+                <input type="time" id="exception-start" name="start" step="900">
+            </div>
+            <div class="working-hours__field">
+                <label class="field-label" for="exception-end">To</label>
+                <input type="time" id="exception-end" name="end" step="900">
+            </div>
+            <div class="working-hours__field working-hours__field--grow">
+                <label class="field-label" for="exception-note">Note</label>
+                <input type="text" id="exception-note" name="note" maxlength="100" placeholder="e.g. Christmas Day">
+            </div>
+            <button type="submit" class="button button--secondary button--small">Add exception</button>
+        </form>
+        <div class="notif-list">
+            {{range .Exceptions}}
+            <div class="notif-list__item">
+                <span class="notif-list__meta">{{.Date}}</span>
+                <span class="notif-list__msg">{{.Hours}}{{with .Note}} · {{.}}{{end}}</span>
+                <form action="/admin/working-hours/exceptions/delete" method="POST" class="inline-form">
+                    {{csrfField $.CSRFToken}}
+                    <input type="hidden" name="date" value="{{.Date}}">
+                    <button type="submit" class="button button--destructive button--small">Remove</button>
+                </form>
+            </div>
+            {{else}}
+            <div class="notif-list__empty">No upcoming exceptions.</div>
+            {{end}}
+        </div>
+    </div>
+</section>
+{{end}}
